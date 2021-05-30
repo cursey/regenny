@@ -233,31 +233,7 @@ void ReGenny::memory_ui() {
             ImGui::SameLine();
             ImGui::Text("%s =", var_decl.c_str());
             ImGui::SameLine();
-
-            switch (var->size()) { 
-            case 1:
-                ImGui::Text("%02X", *(uint8_t*)&cur_mem[i]);
-                break;
-            case 2:
-                ImGui::Text("%04X", *(uint16_t*)&cur_mem[i]);
-                break;
-            case 4:
-                ImGui::Text("%08X", *(uint32_t*)&cur_mem[i]);
-                break;
-            case 8:
-                ImGui::Text("%016llX", *(uint32_t*)&cur_mem[i]);
-                break;
-            default:
-                static std::string s{};
-
-                s.clear();
-
-                for (auto j = 0; j < var->size(); ++j) {
-                    s += fmt::format("{:02X} ", *(uint8_t*)&cur_mem[i]);
-                }
-
-                ImGui::Text(s.c_str());
-            }
+            draw_variable_value(var, cur_mem);
 
             i += var->size();
         } else if (i % sizeof(uintptr_t) != 0) {
@@ -283,5 +259,49 @@ void ReGenny::refresh_memory() {
 
     for (auto&& [address, buffer] : m_mem) {
         m_process->read(address, buffer.data(), buffer.size());
+    }
+}
+
+void ReGenny::draw_variable_value(genny::Variable* var, const std::vector<std::byte>& mem) {
+    auto draw_var_internal = [&mem](size_t size, uintptr_t offset) {
+        switch (size) { 
+        case 1:
+            ImGui::Text("%02X", *(uint8_t*)&mem[offset]);
+            break;
+        case 2:
+            ImGui::Text("%04X", *(uint16_t*)&mem[offset]);
+            break;
+        case 4:
+            ImGui::Text("%08X", *(uint32_t*)&mem[offset]);
+            break;
+        case 8:
+            ImGui::Text("%016llX", *(uint32_t*)&mem[offset]);
+            break;
+        default:
+            static std::string s{};
+
+            s.clear();
+
+            for (auto j = 0; j < size; ++j) {
+                s += fmt::format("{:02X} ", *(uint8_t*)&mem[offset]);
+            }
+
+            ImGui::Text(s.c_str());
+        }
+    };
+
+    if (auto arr = dynamic_cast<genny::Array*>(var)) {
+        auto element_size = arr->type()->size();
+        auto num_elements = arr->count();
+
+        for (auto i = 0; i < num_elements; ++i) {
+            draw_var_internal(element_size, arr->offset() + i * element_size);
+
+            if (i != num_elements - 1) {
+                ImGui::SameLine();
+            }
+        }
+    } else {
+        draw_var_internal(var->size(), var->offset());
     }
 }

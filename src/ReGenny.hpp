@@ -49,5 +49,7 @@ private:
     void attach();
     void memory_ui();
     void refresh_memory();
+
+    void draw_variable_value(genny::Variable* var, const std::vector<std::byte>& mem);
 };
 
