@@ -18,6 +18,13 @@
 #include <unordered_set>
 #include <vector>
 
+#ifdef GENNY_INCLUDE_PARSER
+#include <cstdlib>
+#include <optional>
+
+#include <tao/pegtl.hpp>
+#endif
+
 namespace genny {
 
 class Type;
@@ -337,6 +344,16 @@ public:
         return this;
     }
 
+    // Sets the offset to be at the end of the owners current size.
+    //
+    // NOTE: This will increase the size of the owner by the size of this variable. If you are explicitly setting the
+    // size of your structs beforehand do not use this.
+    //
+    // NOTE: If you're using append for the very first variables added to a struct make sure you append before setting
+    // the type of the variable otherwise the variable's offset will be set after where you want it (due to itself
+    // already being considered part of the struct).
+    auto append() { return offset(owner<Type>()->size()); }
+
     virtual size_t size() const {
         if (m_type == nullptr) {
             return 0;
@@ -470,7 +487,13 @@ public:
         return this;
     }
 
-    size_t size() const override { return m_type->size() * m_count; }
+    size_t size() const override {
+        if (m_type == nullptr) {
+            return 0;
+        }
+
+        return m_type->size() * m_count;
+    }
 
     void generate(std::ostream& os) const override {
         m_type->generate_typename_for(os, this);
@@ -1337,5 +1360,192 @@ protected:
         }
     }
 };
+
+#ifdef GENNY_INCLUDE_PARSER
+namespace parser {
+using namespace tao::pegtl;
+
+struct Comment : disable<one<'#'>, until<eolf>> {};
+struct Sep : sor<one<' ', '\t'>, Comment> {};
+struct Seps : star<Sep> {};
+
+struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
+struct DecNum : plus<digit> {};
+struct Num : sor<HexNum, DecNum> {};
+
+struct NsId : TAO_PEGTL_STRING("namespace") {};
+struct NsName : identifier {};
+struct NsNameList : list<NsName, one<'.'>, Sep> {};
+struct NsDecl : seq<NsId, Seps, opt<NsNameList>> {};
+
+struct TypeId : TAO_PEGTL_STRING("type") {};
+struct TypeName : identifier {};
+struct TypeSize : Num {};
+struct TypeDecl : seq<TypeId, Seps, TypeName, Seps, TypeSize> {};
+
+struct StructId : TAO_PEGTL_STRING("struct") {};
+struct StructName : identifier {};
+struct StructParent : identifier {};
+struct StructParentList : list<StructParent, one<','>, Sep> {};
+struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
+struct StructDecl : seq<StructId, Seps, StructName, Seps, opt<StructParentListDecl>> {};
+
+struct VarTypeName : identifier {};
+struct ArrayCount : Num {};
+struct ArrayType : seq<VarTypeName, one<'['>, ArrayCount, one<']'>> {};
+struct VarType : sor<ArrayType, VarTypeName> {};
+struct VarName : identifier {};
+struct VarOffset : Num {};
+struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
+struct VarDecl : seq<VarType, Seps, VarName, Seps, opt<VarOffsetDecl>> {};
+
+struct Decl : must<Seps, sor<NsDecl, TypeDecl, StructDecl, VarDecl>, Seps> {};
+struct Grammar : until<eof, sor<eolf, Decl>> {};
+
+struct State {
+    genny::Namespace* global_ns{};
+    genny::Namespace* cur_ns{};
+    genny::Struct* cur_struct{};
+
+    std::string type_name{};
+    size_t type_size{};
+
+    std::string struct_name{};
+    std::vector<std::string> struct_parents{};
+
+    std::string var_type{};
+    std::optional<size_t> array_count{};
+    std::string var_name{};
+    std::optional<uintptr_t> var_offset{};
+
+    std::vector<std::string> ns_pieces{};
+};
+
+template <typename Rule> struct Action : nothing<Rule> {};
+
+template <> struct Action<NsName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.ns_pieces.emplace_back(in.string_view());
+    }
+};
+
+template <> struct Action<NsDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        auto cur_ns = s.global_ns;
+
+        for (auto&& ns : s.ns_pieces) {
+            cur_ns = cur_ns->namespace_(ns);
+        }
+
+        s.cur_ns = cur_ns;
+        s.ns_pieces.clear();
+    }
+};
+
+template <> struct Action<TypeSize> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.type_size = std::stoull(in.string_view().data(), nullptr, 0);
+    }
+};
+
+template <> struct Action<TypeName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.type_name = in.string_view();
+    }
+};
+
+template <> struct Action<TypeDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.cur_ns->type(s.type_name)->size(s.type_size);
+        s.type_name.clear();
+        s.type_size = -1;
+    }
+};
+
+template <> struct Action<StructName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.struct_name = in.string_view();
+    }
+};
+
+template <> struct Action<StructParent> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.struct_parents.emplace_back(in.string_view());
+    }
+};
+
+template <> struct Action<StructDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.cur_struct = s.cur_ns->struct_(s.struct_name);
+
+        for (auto&& parent_name : s.struct_parents) {
+            auto parent = s.cur_ns->find<genny::Struct>(parent_name);
+
+            if (parent == nullptr) {
+                throw tao::pegtl::parse_error{"Parent '" + parent_name + "' does not exist", in};
+            }
+
+            s.cur_struct->parent(parent);
+        }
+
+        s.struct_name.clear();
+        s.struct_parents.clear();
+    }
+};
+
+template <> struct Action<VarTypeName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.var_type = in.string_view();
+    }
+};
+
+template <> struct Action<ArrayCount> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.array_count = std::stoull(in.string_view().data(), nullptr, 0);
+    }
+};
+
+template <> struct Action<VarName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.var_name = in.string_view();
+    }
+};
+
+template <> struct Action<VarOffset> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.var_offset = std::stoull(in.string_view().data(), nullptr, 0);
+    }
+};
+
+template <> struct Action<VarDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_struct == nullptr) {
+            throw parse_error{"Can't declare a variable outside of a struct!", in};
+        }
+
+        Variable* var{};
+
+        if (s.array_count) {
+            var = s.cur_struct->array_(s.var_name)->count(*s.array_count);
+        } else {
+            var = s.cur_struct->variable(s.var_name);
+        }
+
+        if (s.var_offset) {
+            var->offset(*s.var_offset);
+        } else {
+            var->append();
+        }
+
+        var->type(s.var_type);
+
+        s.var_type.clear();
+        s.array_count = std::nullopt;
+        s.var_name.clear();
+        s.var_offset = std::nullopt;
+    }
+};
+} // namespace parser
+#endif
 
 } // namespace genny

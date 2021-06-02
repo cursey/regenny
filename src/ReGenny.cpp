@@ -13,6 +13,32 @@
 #include "ReGenny.hpp"
 #include "arch/Arch.hpp"
 
+constexpr auto DEFAULT_EDITOR_TEXT = R"(
+type USHORT 2
+type LONG 4
+
+struct IMAGE_DOS_HEADER
+    USHORT e_magic
+    USHORT e_cblp
+    USHORT e_cp
+    USHORT e_crlc
+    USHORT e_cparhdr
+    USHORT e_minalloc
+    USHORT e_maxalloc
+    USHORT e_ss
+    USHORT e_sp
+    USHORT e_csum
+    USHORT e_ip
+    USHORT e_cs
+    USHORT e_lfarlc
+    USHORT e_ovno
+    USHORT[4] e_res
+    USHORT e_oemid
+    USHORT e_oeminfo
+    USHORT[10] e_res2
+    LONG e_lfanew
+)";
+
 ReGenny::ReGenny() {
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
@@ -20,8 +46,14 @@ ReGenny::ReGenny() {
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
 
+
+    m_ui.editor_text = DEFAULT_EDITOR_TEXT;
+    m_ui.type_name = "IMAGE_DOS_HEADER";
+
+    parse_editor_text();
+
     // Just for testing...
-    auto ns = m_sdk.global_ns();
+    /*auto ns = m_sdk.global_ns();
 
     ns->type("USHORT")->size(2);
     ns->type("LONG")->size(4);
@@ -48,13 +80,18 @@ ReGenny::ReGenny() {
     dos->array_("e_res2")->count(10)->offset(40)->type("USHORT");
     dos->variable("e_lfanew")->offset(60)->type("LONG");
 
-    m_type = dos;
+    auto bf = dos->bitfield(64);
 
-    for (auto&& var : m_type->get_all<genny::Variable>()) {
-        m_var_map[var->offset()] = var;
-    }
+    bf->type("USHORT");
+    bf->field("nWeekDay")->offset(0)->size(3);
+    bf->field("nMonthDay")->offset(3)->size(6);
+    bf->field("nMonth")->offset(bf->field("nMonthDay")->end())->size(5);
+    bf->field("nYear")->offset(16)->size(8);
 
-    m_ui.type_name = "IMAGE_DOS_HEADER";
+    m_type = dos;*/
+
+    set_type();
+
 }
 
 ReGenny::~ReGenny() {
@@ -103,8 +140,16 @@ void ReGenny::ui() {
     if (m_process == nullptr) {
         attach_ui();
     } else {
+        ImGui::BeginChild("memview", ImVec2{ImGui::GetWindowContentRegionWidth() * 0.66f, 0});
         memory_ui();
+        ImGui::EndChild();
+        ImGui::SameLine();
+        ImGui::BeginChild("editor");
+        editor_ui();
+        ImGui::EndChild();
     }
+
+    //ImGui::ShowDemoWindow();
 
     ImGui::End();
 
@@ -204,6 +249,7 @@ void ReGenny::memory_ui() {
     }
 
     if (ImGui::InputText("Typename", &m_ui.type_name)) {
+        set_type();
     }
 
     if (auto search = m_mem.find(m_address); search == m_mem.end()) {
@@ -217,23 +263,12 @@ void ReGenny::memory_ui() {
     for (auto i = 0; i < cur_mem.size();) {
         if (auto search = m_var_map.find(i); search != m_var_map.end()) {
             auto var = search->second;
-            static std::string var_decl{};
-
-            var_decl = var->name();
-
-            if (auto arr = dynamic_cast<genny::Array*>(var)) {
-                var_decl += fmt::format("[{}]", arr->count());
-            }
 
             ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", m_address + i);
             ImGui::SameLine();
             ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%8X", i);
             ImGui::SameLine();
-            ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, var->type()->name().c_str());
-            ImGui::SameLine();
-            ImGui::Text("%s =", var_decl.c_str());
-            ImGui::SameLine();
-            draw_variable_value(var, cur_mem);
+            draw_variable(var, cur_mem);
 
             i += var->size();
         } else if (i % sizeof(uintptr_t) != 0) {
@@ -262,8 +297,12 @@ void ReGenny::refresh_memory() {
     }
 }
 
-void ReGenny::draw_variable_value(genny::Variable* var, const std::vector<std::byte>& mem) {
-    auto draw_var_internal = [&mem](size_t size, uintptr_t offset) {
+void ReGenny::draw_variable(genny::Variable* var, const std::vector<std::byte>& mem) {
+    if (var == nullptr) {
+        return;
+    }
+
+    auto draw_val = [&mem](size_t size, uintptr_t offset) {
         switch (size) { 
         case 1:
             ImGui::Text("%02X", *(uint8_t*)&mem[offset]);
@@ -286,22 +325,145 @@ void ReGenny::draw_variable_value(genny::Variable* var, const std::vector<std::b
                 s += fmt::format("{:02X} ", *(uint8_t*)&mem[offset]);
             }
 
-            ImGui::Text(s.c_str());
+            ImGui::TextUnformatted(s.c_str());
         }
     };
 
-    if (auto arr = dynamic_cast<genny::Array*>(var)) {
+    auto draw_bin = [&mem](uintptr_t offset, size_t bit_start, size_t bit_end) {
+        static std::string s{};
+
+        s = "0b";
+
+        for (auto i = bit_start; i < bit_end; ++i) {
+            auto byte = *(uint8_t*)&mem[offset + i / CHAR_BIT];
+            auto bit = byte >> (i % CHAR_BIT) & 1;
+
+            if (bit) {
+                s += "1";
+            } else {
+                s += "0";
+            }
+        }
+
+        ImGui::TextUnformatted(s.c_str());
+    };
+    
+    if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
+        static std::map<uintptr_t, genny::Bitfield::Field*> field_map{};
+
+        field_map.clear();
+
+        for (auto&& field : bf->get_all<genny::Bitfield::Field>()) {
+            field_map[field->offset()] = field;
+        }
+
+        size_t offset = 0;
+        auto max_offset = bf->size() * CHAR_BIT;
+        auto last_offset = offset;
+
+        auto cur_x = ImGui::GetCursorPosX();
+
+        while (offset < max_offset) {
+            if (auto search = field_map.find(offset); search != field_map.end()) {
+                auto field = search->second;
+
+                // Skip unfinished fields.
+                if (field->size() == 0) {
+                    ++offset;
+                    continue;
+                }
+
+                if (offset - last_offset > 0) {
+                    ImGui::SetCursorPosX(cur_x);
+                    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, bf->type()->name().c_str());
+                    ImGui::SameLine();
+                    ImGui::Text("%s_pad_%x : %d =", bf->name().c_str(), last_offset, offset - last_offset);
+                    ImGui::SameLine();
+                    draw_bin(bf->offset(), last_offset, offset);
+                }
+
+                ImGui::SetCursorPosX(cur_x);
+                ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, bf->type()->name().c_str());
+                ImGui::SameLine();
+                ImGui::Text("%s : %d =", field->name().c_str(), field->size());
+                ImGui::SameLine();
+                draw_bin(bf->offset(), offset, offset + field->size());
+                offset += field->size();
+                last_offset = offset;
+            } else {
+                ++offset;
+            }
+        }
+    }
+    else if (auto arr = dynamic_cast<genny::Array*>(var)) {
+        ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, arr->type()->name().c_str());
+        ImGui::SameLine();
+        ImGui::TextUnformatted(fmt::format("{} [{}] =", arr->name(), arr->count()).c_str());
+        ImGui::SameLine();
+
         auto element_size = arr->type()->size();
         auto num_elements = arr->count();
 
         for (auto i = 0; i < num_elements; ++i) {
-            draw_var_internal(element_size, arr->offset() + i * element_size);
+            draw_val(element_size, arr->offset() + i * element_size);
 
             if (i != num_elements - 1) {
                 ImGui::SameLine();
             }
         }
     } else {
-        draw_var_internal(var->size(), var->offset());
+        ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, var->type()->name().c_str());
+        ImGui::SameLine();
+        ImGui::Text("%s =", var->name().c_str());
+        ImGui::SameLine();
+        draw_val(var->size(), var->offset());
+    }
+}
+
+void ReGenny::set_type() {
+    m_type = m_sdk->global_ns()->find<genny::Struct>(m_ui.type_name);
+
+    if (m_type == nullptr) {
+        return;
+    }
+
+    m_var_map.clear();
+
+    for (auto&& var : m_type->get_all<genny::Variable>()) {
+        m_var_map[var->offset()] = var;
+    }
+}
+
+void ReGenny::editor_ui() {
+
+    if (ImGui::InputTextMultiline(
+            "##source", &m_ui.editor_text, ImGui::GetWindowContentRegionMax(), ImGuiInputTextFlags_AllowTabInput)) {
+        parse_editor_text();
+    }
+
+    if (!m_ui.editor_error_msg.empty()) {
+        ImGui::BeginTooltip();
+        ImGui::TextColored({1.0f, 0.6f, 0.6f, 1.0f}, "%s", m_ui.editor_error_msg.c_str());
+        ImGui::EndTooltip();
+    }
+}
+
+void ReGenny::parse_editor_text() {
+    m_ui.editor_error_msg.clear();
+
+    m_sdk = std::make_unique<genny::Sdk>();
+    m_var_map.clear();
+
+    genny::parser::State s{};
+    s.global_ns = s.cur_ns = m_sdk->global_ns();
+
+    tao::pegtl::memory_input in{m_ui.editor_text, "editor"};
+
+    try {
+        if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+            set_type();
+        }
+    } catch (const tao::pegtl::parse_error& e) {
+        m_ui.editor_error_msg = e.what();
     }
 }

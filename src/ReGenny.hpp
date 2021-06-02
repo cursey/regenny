@@ -26,7 +26,7 @@ private:
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
     std::vector<std::unique_ptr<Module>> m_modules{};
-    genny::Sdk m_sdk{};
+    std::unique_ptr<genny::Sdk> m_sdk{};
     genny::Type* m_type{};
     std::unordered_map<uintptr_t, genny::Variable*> m_var_map{};
     uintptr_t m_address{};
@@ -42,14 +42,22 @@ private:
 
         std::string address{};
         std::string type_name{};
+
+        std::string editor_text{};
+        std::string editor_error_msg{};
     } m_ui{};
 
     void ui();
+
     void attach_ui();
     void attach();
+
     void memory_ui();
     void refresh_memory();
+    void draw_variable(genny::Variable* var, const std::vector<std::byte>& mem);
+    void set_type();
 
-    void draw_variable_value(genny::Variable* var, const std::vector<std::byte>& mem);
+    void editor_ui();
+    void parse_editor_text();
 };
 
