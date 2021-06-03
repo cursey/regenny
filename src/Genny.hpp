@@ -1444,7 +1444,7 @@ template <> struct Action<NsDecl> {
 
 template <> struct Action<TypeSize> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.type_size = std::stoull(in.string_view().data(), nullptr, 0);
+        s.type_size = std::stoull(in.string(), nullptr, 0);
     }
 };
 
@@ -1501,7 +1501,7 @@ template <> struct Action<VarTypeName> {
 
 template <> struct Action<ArrayCount> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.array_count = std::stoull(in.string_view().data(), nullptr, 0);
+        s.array_count = std::stoull(in.string(), nullptr, 0);
     }
 };
 
@@ -1513,7 +1513,7 @@ template <> struct Action<VarName> {
 
 template <> struct Action<VarOffset> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.var_offset = std::stoull(in.string_view().data(), nullptr, 0);
+        s.var_offset = std::stoull(in.string(), nullptr, 0);
     }
 };
 
