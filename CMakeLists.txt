@@ -19,7 +19,9 @@ add_executable(regenny
     "src/Helpers.hpp" 
     "src/arch/Arch.hpp" 
     "src/arch/Arch.cpp" 
-    "src/Module.hpp")
+    "src/Module.hpp" 
+    "src/Utility.hpp" 
+    "src/Utility.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 

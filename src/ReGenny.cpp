@@ -1,7 +1,6 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
-#include <regex>
 
 #include <SFML/System/Clock.hpp>
 #include <SFML/Window/Event.hpp>
@@ -10,8 +9,10 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include "ReGenny.hpp"
 #include "arch/Arch.hpp"
+#include "Utility.hpp"
+
+#include "ReGenny.hpp"
 
 constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type USHORT 2
@@ -218,24 +219,30 @@ void ReGenny::memory_ui() {
 
 
     if (ImGui::InputText("Address", &m_ui.address)) {
-        std::regex module_offset_regex{R"(<(.+)>\+([^0][0-9]+|0[xX][0-9a-fA-F]+))"};
-        std::smatch matches{};
+        auto addr = parse_address(m_ui.address);
 
-        if (std::regex_match(m_ui.address, matches, module_offset_regex)) {
-            auto modname = matches[1].str();
-            auto offset = matches[2].str();
+        switch (addr.index()) {
+        case 1:
+            m_address = std::get<uintptr_t>(addr);
+            break;
+        case 2: {
+            auto& modoffset = std::get<ModuleOffset>(addr);
+            auto& modname = modoffset.name;
 
             for (auto&& mod : m_modules) {
                 auto name = mod->name();
 
                 if (std::equal(modname.begin(), modname.end(), name, name + strlen(name),
                         [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
-                    m_address = (uintptr_t)std::strtoull(offset.c_str(), nullptr, 0);
-                    m_address += mod->address();
+                    m_address = mod->address() + modoffset.offset;
                 }
             }
-        } else {
-            m_address = (uintptr_t)std::strtoull(m_ui.address.c_str(), nullptr, 0);
+
+            break;
+        }
+        default:
+            m_address = 0;
+            break;
         }
     }
 
