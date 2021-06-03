@@ -1,16 +1,16 @@
 #pragma once
 
-#include <memory>
+#include <chrono>
 #include <map>
+#include <memory>
 #include <string>
 #include <unordered_map>
-#include <chrono>
 
 #include <SFML/Graphics/RenderWindow.hpp>
 
+#include "Genny.hpp"
 #include "Helpers.hpp"
 #include "Process.hpp"
-#include "Genny.hpp"
 
 class ReGenny {
 public:
@@ -60,4 +60,3 @@ private:
     void editor_ui();
     void parse_editor_text();
 };
-

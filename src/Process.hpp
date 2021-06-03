@@ -1,9 +1,9 @@
 #pragma once
 
-#include <string>
 #include <cstdint>
-#include <vector>
 #include <memory>
+#include <string>
+#include <vector>
 
 #include "Module.hpp"
 

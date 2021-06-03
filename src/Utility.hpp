@@ -1,8 +1,8 @@
 #pragma once
 
 #include <cstdint>
-#include <variant>
 #include <string>
+#include <variant>
 
 struct ModuleOffset {
     std::string name{};

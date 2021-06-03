@@ -9,8 +9,8 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 
-#include "arch/Arch.hpp"
 #include "Utility.hpp"
+#include "arch/Arch.hpp"
 
 #include "ReGenny.hpp"
 
@@ -46,7 +46,6 @@ ReGenny::ReGenny() {
 
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
-
 
     m_ui.editor_text = DEFAULT_EDITOR_TEXT;
     m_ui.type_name = "IMAGE_DOS_HEADER";
@@ -92,7 +91,6 @@ ReGenny::ReGenny() {
     m_type = dos;*/
 
     set_type();
-
 }
 
 ReGenny::~ReGenny() {
@@ -150,7 +148,7 @@ void ReGenny::ui() {
         ImGui::EndChild();
     }
 
-    //ImGui::ShowDemoWindow();
+    // ImGui::ShowDemoWindow();
 
     ImGui::End();
 
@@ -216,7 +214,6 @@ void ReGenny::memory_ui() {
         refresh_memory();
         m_next_refresh_time = now + std::chrono::milliseconds{500};
     }
-
 
     if (ImGui::InputText("Address", &m_ui.address)) {
         auto addr = parse_address(m_ui.address);
@@ -310,7 +307,7 @@ void ReGenny::draw_variable(genny::Variable* var, const std::vector<std::byte>& 
     }
 
     auto draw_val = [&mem](size_t size, uintptr_t offset) {
-        switch (size) { 
+        switch (size) {
         case 1:
             ImGui::Text("%02X", *(uint8_t*)&mem[offset]);
             break;
@@ -354,7 +351,7 @@ void ReGenny::draw_variable(genny::Variable* var, const std::vector<std::byte>& 
 
         ImGui::TextUnformatted(s.c_str());
     };
-    
+
     if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
         static std::map<uintptr_t, genny::Bitfield::Field*> field_map{};
 
@@ -401,8 +398,7 @@ void ReGenny::draw_variable(genny::Variable* var, const std::vector<std::byte>& 
                 ++offset;
             }
         }
-    }
-    else if (auto arr = dynamic_cast<genny::Array*>(var)) {
+    } else if (auto arr = dynamic_cast<genny::Array*>(var)) {
         ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, arr->type()->name().c_str());
         ImGui::SameLine();
         ImGui::TextUnformatted(fmt::format("{} [{}] =", arr->name(), arr->count()).c_str());

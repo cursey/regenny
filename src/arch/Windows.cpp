@@ -5,8 +5,8 @@
 #include "Windows.hpp"
 
 namespace arch {
-WindowsModule::WindowsModule(std::string name, uintptr_t address, size_t size) : 
-    m_name{std::move(name)}, m_address{address}, m_size{size} {
+WindowsModule::WindowsModule(std::string name, uintptr_t address, size_t size)
+    : m_name{std::move(name)}, m_address{address}, m_size{size} {
 }
 
 WindowsProcess::WindowsProcess(DWORD process_id) {

@@ -3,8 +3,8 @@
 #include <Windows.h>
 
 #include "Helpers.hpp"
-#include "Process.hpp"
 #include "Module.hpp"
+#include "Process.hpp"
 
 namespace arch {
 class WindowsModule : public Module {
