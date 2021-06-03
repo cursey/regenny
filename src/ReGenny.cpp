@@ -454,19 +454,21 @@ void ReGenny::editor_ui() {
 void ReGenny::parse_editor_text() {
     m_ui.editor_error_msg.clear();
 
-    m_sdk = std::make_unique<genny::Sdk>();
-    m_var_map.clear();
+    auto sdk = std::make_unique<genny::Sdk>();
 
     genny::parser::State s{};
-    s.global_ns = s.cur_ns = m_sdk->global_ns();
+    s.global_ns = s.cur_ns = sdk->global_ns();
 
     tao::pegtl::memory_input in{m_ui.editor_text, "editor"};
 
     try {
         if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+            m_var_map.clear();
+            m_sdk = std::move(sdk);
             set_type();
         }
     } catch (const tao::pegtl::parse_error& e) {
         m_ui.editor_error_msg = e.what();
+        return;
     }
 }
