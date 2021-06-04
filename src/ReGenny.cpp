@@ -291,11 +291,44 @@ void ReGenny::memory_ui() {
 void ReGenny::refresh_memory() {
     assert(m_process != nullptr);
 
+    // Keep a list of addresses we visit so we can remove unvisted memory buffers from m_mem.
+    std::unordered_set<uintptr_t> visited_addresses{};
+
     if (auto search = m_mem.find(m_address); search == m_mem.end()) {
-        m_mem.clear();
-        m_mem[m_address] = std::vector<std::byte>(0x1000, std::byte{});
+        m_mem[m_address] = std::vector<std::byte>(m_type->size() + 0x1000, std::byte{});
     }
 
+    visited_addresses.emplace(m_address);
+
+    // Visit pointers will walk through all variables for a given type and if it encounters a pointer it will create an
+    // entry in m_mem for it so that its memory can be refreshed.
+    std::function<void(genny::Type*, uintptr_t)> visit_pointers = [&](genny::Type* type, uintptr_t address) {
+        for (auto&& var : type->get_all<genny::Variable>()) {
+            if (auto ptr = dynamic_cast<genny::Pointer*>(var->type())) {
+                auto var_address = *(uintptr_t*)&m_mem[address][var->offset()];
+
+                if (auto search = m_mem.find(var_address); search == m_mem.end()) {
+                    m_mem[var_address] = std::vector<std::byte>(ptr->to()->size());
+                    visited_addresses.emplace(var_address);
+                }
+
+                visit_pointers(ptr->to(), var_address);
+            }
+        }
+    };
+
+    visit_pointers(m_type, m_address);
+
+    // Remove unvisted memory buffers.
+    for (auto it = m_mem.begin(); it != m_mem.end();) {
+        if (auto search = visited_addresses.find(it->first); search == visited_addresses.end()) {
+            it = m_mem.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    // Refresh the memory of all visited memory buffers.
     for (auto&& [address, buffer] : m_mem) {
         m_process->read(address, buffer.data(), buffer.size());
     }
@@ -438,7 +471,6 @@ void ReGenny::set_type() {
 }
 
 void ReGenny::editor_ui() {
-
     if (ImGui::InputTextMultiline(
             "##source", &m_ui.editor_text, ImGui::GetWindowContentRegionMax(), ImGuiInputTextFlags_AllowTabInput)) {
         parse_editor_text();
