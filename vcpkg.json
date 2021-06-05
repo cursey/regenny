@@ -1,0 +1,12 @@
+{
+  "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
+  "name": "regenny",
+  "version": "0.1.0",
+  "dependencies": [
+    "imgui",
+    "sfml",
+    "imgui-sfml",
+    "fmt",
+    "pegtl"
+  ]
+}
