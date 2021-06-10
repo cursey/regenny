@@ -21,7 +21,9 @@ add_executable(regenny
     "src/arch/Arch.cpp" 
     "src/Module.hpp" 
     "src/Utility.hpp" 
-    "src/Utility.cpp")
+    "src/Utility.cpp" 
+    "src/MemoryUi.hpp" 
+    "src/MemoryUi.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 

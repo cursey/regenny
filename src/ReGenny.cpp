@@ -15,8 +15,8 @@
 #include "ReGenny.hpp"
 
 constexpr auto DEFAULT_EDITOR_TEXT = R"(
-type USHORT 2
-type LONG 4
+type USHORT 2 [[u16]]
+type LONG 4   [[i32]]
 
 struct IMAGE_DOS_HEADER
     USHORT e_magic
@@ -47,9 +47,15 @@ ReGenny::ReGenny() {
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
 
+    // Defaults for testing.
     m_ui.editor_text = DEFAULT_EDITOR_TEXT;
     m_ui.type_name = "IMAGE_DOS_HEADER";
+    m_ui.process_id = GetCurrentProcessId();
+    m_ui.process_name = "ReGenny.exe";
+    m_ui.address = "<ReGenny.exe>+0x0";
 
+    attach();
+    set_address();
     parse_editor_text();
 
     // Just for testing...
@@ -207,40 +213,8 @@ void ReGenny::attach() {
 void ReGenny::memory_ui() {
     assert(m_process != nullptr);
 
-    // Handle refreshing our view of the memory automatically every half a second.
-    auto now = std::chrono::steady_clock::now();
-
-    if (now >= m_next_refresh_time) {
-        refresh_memory();
-        m_next_refresh_time = now + std::chrono::milliseconds{500};
-    }
-
     if (ImGui::InputText("Address", &m_ui.address)) {
-        auto addr = parse_address(m_ui.address);
-
-        switch (addr.index()) {
-        case 1:
-            m_address = std::get<uintptr_t>(addr);
-            break;
-        case 2: {
-            auto& modoffset = std::get<ModuleOffset>(addr);
-            auto& modname = modoffset.name;
-
-            for (auto&& mod : m_modules) {
-                auto name = mod->name();
-
-                if (std::equal(modname.begin(), modname.end(), name, name + strlen(name),
-                        [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
-                    m_address = mod->address() + modoffset.offset;
-                }
-            }
-
-            break;
-        }
-        default:
-            m_address = 0;
-            break;
-        }
+        set_address();
     }
 
     ImGui::SameLine();
@@ -256,213 +230,38 @@ void ReGenny::memory_ui() {
         set_type();
     }
 
-    if (auto search = m_mem.find(m_address); search == m_mem.end()) {
-        return;
-    }
-
-    auto& cur_mem = m_mem[m_address];
-
-    ImGui::Text("%16s %8s %s", "Address", "Offset", "Data");
-
-    for (auto i = 0; i < cur_mem.size();) {
-        if (auto search = m_var_map.find(i); search != m_var_map.end()) {
-            auto var = search->second;
-
-            ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", m_address + i);
-            ImGui::SameLine();
-            ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%8X", i);
-            ImGui::SameLine();
-            draw_variable(var, cur_mem);
-
-            i += var->size();
-        } else if (i % sizeof(uintptr_t) != 0) {
-            i = (i + sizeof(uintptr_t) - 1) / sizeof(uintptr_t) * sizeof(uintptr_t);
-        } else {
-            ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", m_address + i);
-            ImGui::SameLine();
-            ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%8X", i);
-            ImGui::SameLine();
-            ImGui::Text("%p", *(uintptr_t*)&cur_mem[i]);
-            i += sizeof(uintptr_t);
-        }
+    if (m_mem_ui != nullptr) {
+        m_mem_ui->display();
     }
 }
 
-void ReGenny::refresh_memory() {
-    assert(m_process != nullptr);
+void ReGenny::set_address() {
+    auto addr = parse_address(m_ui.address);
 
-    // Keep a list of addresses we visit so we can remove unvisted memory buffers from m_mem.
-    std::unordered_set<uintptr_t> visited_addresses{};
+    switch (addr.index()) {
+    case 1:
+        m_address = std::get<uintptr_t>(addr);
+        m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
+        break;
+    case 2: {
+        auto& modoffset = std::get<ModuleOffset>(addr);
+        auto& modname = modoffset.name;
 
-    if (auto search = m_mem.find(m_address); search == m_mem.end()) {
-        auto size = 0x1000;
+        for (auto&& mod : m_modules) {
+            auto name = mod->name();
 
-        if (m_type != nullptr) {
-            size += m_type->size();
+            if (std::equal(modname.begin(), modname.end(), name, name + strlen(name),
+                    [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
+                m_address = mod->address() + modoffset.offset;
+            }
         }
 
-        m_mem[m_address] = std::vector<std::byte>(size, std::byte{});
+        m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
+        break;
     }
-
-    visited_addresses.emplace(m_address);
-
-    // Visit pointers will walk through all variables for a given type and if it encounters a pointer it will create an
-    // entry in m_mem for it so that its memory can be refreshed.
-    std::function<void(genny::Type*, uintptr_t)> visit_pointers = [&](genny::Type* type, uintptr_t address) {
-        if (m_type == nullptr) {
-            return;
-        }
-
-        for (auto&& var : type->get_all<genny::Variable>()) {
-            if (auto ptr = dynamic_cast<genny::Pointer*>(var->type())) {
-                auto var_address = *(uintptr_t*)&m_mem[address][var->offset()];
-
-                if (auto search = m_mem.find(var_address); search == m_mem.end()) {
-                    m_mem[var_address] = std::vector<std::byte>(ptr->to()->size());
-                    visited_addresses.emplace(var_address);
-                }
-
-                visit_pointers(ptr->to(), var_address);
-            }
-        }
-    };
-
-    visit_pointers(m_type, m_address);
-
-    // Remove unvisted memory buffers.
-    for (auto it = m_mem.begin(); it != m_mem.end();) {
-        if (auto search = visited_addresses.find(it->first); search == visited_addresses.end()) {
-            it = m_mem.erase(it);
-        } else {
-            ++it;
-        }
-    }
-
-    // Refresh the memory of all visited memory buffers.
-    for (auto&& [address, buffer] : m_mem) {
-        m_process->read(address, buffer.data(), buffer.size());
-    }
-}
-
-void ReGenny::draw_variable(genny::Variable* var, const std::vector<std::byte>& mem) {
-    if (var == nullptr) {
-        return;
-    }
-
-    auto draw_val = [&mem](size_t size, uintptr_t offset) {
-        switch (size) {
-        case 1:
-            ImGui::Text("%02X", *(uint8_t*)&mem[offset]);
-            break;
-        case 2:
-            ImGui::Text("%04X", *(uint16_t*)&mem[offset]);
-            break;
-        case 4:
-            ImGui::Text("%08X", *(uint32_t*)&mem[offset]);
-            break;
-        case 8:
-            ImGui::Text("%016llX", *(uint32_t*)&mem[offset]);
-            break;
-        default:
-            static std::string s{};
-
-            s.clear();
-
-            for (auto j = 0; j < size; ++j) {
-                s += fmt::format("{:02X} ", *(uint8_t*)&mem[offset]);
-            }
-
-            ImGui::TextUnformatted(s.c_str());
-        }
-    };
-
-    auto draw_bin = [&mem](uintptr_t offset, size_t bit_start, size_t bit_end) {
-        static std::string s{};
-
-        s = "0b";
-
-        for (auto i = bit_start; i < bit_end; ++i) {
-            auto byte = *(uint8_t*)&mem[offset + i / CHAR_BIT];
-            auto bit = byte >> (i % CHAR_BIT) & 1;
-
-            if (bit) {
-                s += "1";
-            } else {
-                s += "0";
-            }
-        }
-
-        ImGui::TextUnformatted(s.c_str());
-    };
-
-    if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
-        static std::map<uintptr_t, genny::Bitfield::Field*> field_map{};
-
-        field_map.clear();
-
-        for (auto&& field : bf->get_all<genny::Bitfield::Field>()) {
-            field_map[field->offset()] = field;
-        }
-
-        size_t offset = 0;
-        auto max_offset = bf->size() * CHAR_BIT;
-        auto last_offset = offset;
-
-        auto cur_x = ImGui::GetCursorPosX();
-
-        while (offset < max_offset) {
-            if (auto search = field_map.find(offset); search != field_map.end()) {
-                auto field = search->second;
-
-                // Skip unfinished fields.
-                if (field->size() == 0) {
-                    ++offset;
-                    continue;
-                }
-
-                if (offset - last_offset > 0) {
-                    ImGui::SetCursorPosX(cur_x);
-                    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, bf->type()->name().c_str());
-                    ImGui::SameLine();
-                    ImGui::Text("%s_pad_%x : %d =", bf->name().c_str(), last_offset, offset - last_offset);
-                    ImGui::SameLine();
-                    draw_bin(bf->offset(), last_offset, offset);
-                }
-
-                ImGui::SetCursorPosX(cur_x);
-                ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, bf->type()->name().c_str());
-                ImGui::SameLine();
-                ImGui::Text("%s : %d =", field->name().c_str(), field->size());
-                ImGui::SameLine();
-                draw_bin(bf->offset(), offset, offset + field->size());
-                offset += field->size();
-                last_offset = offset;
-            } else {
-                ++offset;
-            }
-        }
-    } else if (auto arr = dynamic_cast<genny::Array*>(var)) {
-        ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, arr->type()->name().c_str());
-        ImGui::SameLine();
-        ImGui::TextUnformatted(fmt::format("{} [{}] =", arr->name(), arr->count()).c_str());
-        ImGui::SameLine();
-
-        auto element_size = arr->type()->size();
-        auto num_elements = arr->count();
-
-        for (auto i = 0; i < num_elements; ++i) {
-            draw_val(element_size, arr->offset() + i * element_size);
-
-            if (i != num_elements - 1) {
-                ImGui::SameLine();
-            }
-        }
-    } else {
-        ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, var->type()->name().c_str());
-        ImGui::SameLine();
-        ImGui::Text("%s =", var->name().c_str());
-        ImGui::SameLine();
-        draw_val(var->size(), var->offset());
+    default:
+        m_address = 0;
+        break;
     }
 }
 
@@ -473,11 +272,7 @@ void ReGenny::set_type() {
         return;
     }
 
-    m_var_map.clear();
-
-    for (auto&& var : m_type->get_all<genny::Variable>()) {
-        m_var_map[var->offset()] = var;
-    }
+    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
 }
 
 void ReGenny::editor_ui() {
@@ -505,7 +300,6 @@ void ReGenny::parse_editor_text() {
 
     try {
         if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
-            m_var_map.clear();
             m_sdk = std::move(sdk);
             set_type();
         }

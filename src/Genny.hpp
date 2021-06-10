@@ -72,6 +72,26 @@ public:
 
     const auto& name() const { return m_name; }
 
+    const auto& metadata() const { return m_metadata; }
+    auto& metadata() { return m_metadata; }
+
+    virtual void generate_metadata(std::ostream& os) const {
+        if (m_metadata.empty()) {
+            return;
+        }
+
+        os << "// Metadata: ";
+
+        for (auto&& md : m_metadata) {
+            os << md;
+            if (&md != &*m_metadata.rbegin()) {
+                os << md << ", ";
+            }
+        }
+
+        os << "\n";
+    }
+
     template <typename T> bool is_a() const { return dynamic_cast<const T*>(this) != nullptr; }
 
     // Searches for an owner of the correct type.
@@ -218,6 +238,7 @@ protected:
 
     std::string m_name{};
     std::vector<std::unique_ptr<Object>> m_children{};
+    std::vector<std::string> m_metadata{};
 };
 
 template <typename T> T* cast(const Object* object) {
@@ -365,6 +386,7 @@ public:
     auto end() const { return offset() + size(); }
 
     virtual void generate(std::ostream& os) const {
+        generate_metadata(os);
         m_type->generate_typename_for(os, this);
         os << " " << m_name << "; // 0x" << std::hex << m_offset << "\n";
     }
@@ -395,6 +417,7 @@ public:
         auto end() const { return offset() + size(); }
 
         void generate(std::ostream& os) const {
+            generate_metadata(os);
             owner<Variable>()->type()->generate_typename_for(os, this);
             os << " " << m_name << " : " << m_size << ";\n";
         }
@@ -496,6 +519,7 @@ public:
     }
 
     void generate(std::ostream& os) const override {
+        generate_metadata(os);
         m_type->generate_typename_for(os, this);
         os << " " << m_name << "[" << std::dec << m_count << "]; // 0x" << std::hex << m_offset << "\n";
     }
@@ -798,6 +822,7 @@ public:
     virtual void generate_forward_decl(std::ostream& os) const { os << "struct " << m_name << ";\n"; }
 
     virtual void generate(std::ostream& os) const {
+        generate_metadata(os);
         os << "struct " << m_name;
         generate_inheritance(os);
         os << " {\n";
@@ -1373,6 +1398,11 @@ struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
 
+// plus<printable characters not-including comma or closing square bracket>
+struct Metadata : plus<sor<range<32, 43>, range<45, 92>, range<94, 126>>> {};
+// struct Metadata : identifier {};
+struct MetadataDecl : seq<two<'['>, list<Metadata, one<','>, Sep>, two<']'>> {};
+
 struct NsId : TAO_PEGTL_STRING("namespace") {};
 struct NsName : identifier {};
 struct NsNameList : list<NsName, one<'.'>, Sep> {};
@@ -1381,7 +1411,16 @@ struct NsDecl : seq<NsId, Seps, opt<NsNameList>> {};
 struct TypeId : TAO_PEGTL_STRING("type") {};
 struct TypeName : identifier {};
 struct TypeSize : Num {};
-struct TypeDecl : seq<TypeId, Seps, TypeName, Seps, TypeSize> {};
+struct TypeDecl : seq<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>> {};
+
+struct EnumId : TAO_PEGTL_STRING("enum") {};
+struct EnumClassId : TAO_PEGTL_STRING("class") {};
+struct EnumName : identifier {};
+struct EnumType : identifier {};
+struct EnumDecl : seq<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
+struct EnumVal : Num {};
+struct EnumValName : identifier {};
+struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
 
 struct StructId : TAO_PEGTL_STRING("struct") {};
 struct StructName : identifier {};
@@ -1390,55 +1429,129 @@ struct StructParentList : list<StructParent, one<','>, Sep> {};
 struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
 struct StructDecl : seq<StructId, Seps, StructName, Seps, opt<StructParentListDecl>> {};
 
-struct VarTypeName : identifier {};
+struct VarTypeNamePart : identifier {};
+struct VarTypeName : list<VarTypeNamePart, one<'.'>> {};
+struct VarTypePtr : one<'*'> {};
 struct ArrayCount : Num {};
 struct ArrayType : seq<VarTypeName, one<'['>, ArrayCount, one<']'>> {};
-struct VarType : sor<ArrayType, VarTypeName> {};
+struct NormalVarType : seq<VarTypeName, star<VarTypePtr>> {};
+struct VarType : sor<ArrayType, NormalVarType> {};
 struct VarName : identifier {};
 struct VarOffset : Num {};
 struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
-struct VarDecl : seq<VarType, Seps, VarName, Seps, opt<VarOffsetDecl>> {};
+struct VarDecl : seq<VarType, Seps, VarName, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>> {};
 
-struct Decl : must<Seps, sor<NsDecl, TypeDecl, StructDecl, VarDecl>, Seps> {};
+struct Decl : must<Seps, sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, VarDecl>, Seps> {};
 struct Grammar : until<eof, sor<eolf, Decl>> {};
 
 struct State {
     genny::Namespace* global_ns{};
     genny::Namespace* cur_ns{};
+    genny::Enum* cur_enum{};
     genny::Struct* cur_struct{};
+
+    std::vector<std::string> metadata_parts{};
+    std::vector<std::string> metadata{};
+
+    std::vector<std::string> ns_parts{};
+    std::vector<std::string> ns{};
 
     std::string type_name{};
     size_t type_size{};
 
+    std::string enum_name{};
+    std::string enum_type{};
+    bool enum_class{};
+    std::string enum_val_name{};
+    uint32_t enum_val{};
+
     std::string struct_name{};
     std::vector<std::string> struct_parents{};
 
-    std::string var_type{};
+    std::vector<std::string> var_type_parts{};
+    std::vector<std::string> var_type{};
+    int var_type_ptr{}; // The number of *'s basically.
     std::optional<size_t> array_count{};
     std::string var_name{};
     std::optional<uintptr_t> var_offset{};
 
-    std::vector<std::string> ns_pieces{};
+    // Searches for the type identified by a vector of names.
+    template <typename T> T* lookup(const std::vector<std::string>& names) {
+        std::function<T*(Object*, int)> search = [&](Object* parent, int i) -> T* {
+            if (names.empty() || i >= names.size()) {
+                return nullptr;
+            }
+
+            const auto& name = names[i];
+
+            // Search for the name.
+            auto child = parent->find<Object>(name);
+
+            if (child == nullptr) {
+                return nullptr;
+            }
+
+            // We found the name. Is this the type we were looking for?
+            if (i == names.size() - 1) {
+                return dynamic_cast<T*>(child);
+            }
+
+            return search(child, ++i);
+        };
+
+        // First search the current struct.
+        if (cur_struct != nullptr) {
+            if (auto type = search(cur_struct, 0)) {
+                return type;
+            }
+        }
+
+        // Then search the local namespace.
+        if (auto type = search(cur_ns, 0)) {
+            return type;
+        }
+
+        // Otherwise search the global namespace.
+        return search(global_ns, 0);
+    }
 };
 
 template <typename Rule> struct Action : nothing<Rule> {};
 
+template <> struct Action<Metadata> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.metadata_parts.emplace_back(in.string_view());
+    }
+};
+
+template <> struct Action<MetadataDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.metadata = std::move(s.metadata_parts);
+    }
+};
+
 template <> struct Action<NsName> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.ns_pieces.emplace_back(in.string_view());
+        s.ns_parts.emplace_back(in.string_view());
     }
+};
+
+template <> struct Action<NsNameList> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.ns = std::move(s.ns_parts); }
 };
 
 template <> struct Action<NsDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         auto cur_ns = s.global_ns;
 
-        for (auto&& ns : s.ns_pieces) {
+        for (auto&& ns : s.ns) {
             cur_ns = cur_ns->namespace_(ns);
         }
 
         s.cur_ns = cur_ns;
-        s.ns_pieces.clear();
+        s.cur_enum = nullptr;
+        s.cur_struct = nullptr;
+        s.ns.clear();
     }
 };
 
@@ -1456,9 +1569,74 @@ template <> struct Action<TypeName> {
 
 template <> struct Action<TypeDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.cur_ns->type(s.type_name)->size(s.type_size);
+        auto type = s.cur_ns->type(s.type_name);
+        type->size(s.type_size);
+
+        if (!s.metadata.empty()) {
+            type->metadata() = std::move(s.metadata);
+        }
+
         s.type_name.clear();
         s.type_size = -1;
+    }
+};
+
+template <> struct Action<EnumName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.enum_name = in.string_view();
+    }
+};
+
+template <> struct Action<EnumType> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.enum_type = in.string_view();
+    }
+};
+
+template <> struct Action<EnumClassId> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.enum_class = true; }
+};
+
+template <> struct Action<EnumDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.enum_class) {
+            s.cur_enum = s.cur_ns->enum_class(s.enum_name);
+        } else {
+            s.cur_enum = s.cur_ns->enum_(s.enum_name);
+        }
+
+        if (!s.enum_type.empty()) {
+            s.cur_enum->type(s.cur_ns->type(s.enum_type));
+        }
+
+        s.cur_struct = nullptr;
+        s.enum_name.clear();
+        s.enum_type.clear();
+        s.enum_class = false;
+    }
+};
+
+template <> struct Action<EnumVal> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.enum_val = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
+template <> struct Action<EnumValName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.enum_val_name = in.string_view();
+    }
+};
+
+template <> struct Action<EnumValDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_enum == nullptr) {
+            throw parse_error{"Cannot declare an enum value outside of an enum", in};
+        }
+
+        s.cur_enum->value(s.enum_val_name, s.enum_val);
+        s.enum_val_name.clear();
+        s.enum_val = 0;
     }
 };
 
@@ -1482,7 +1660,7 @@ template <> struct Action<StructDecl> {
             auto parent = s.cur_ns->find<genny::Struct>(parent_name);
 
             if (parent == nullptr) {
-                throw tao::pegtl::parse_error{"Parent '" + parent_name + "' does not exist", in};
+                throw parse_error{"Parent '" + parent_name + "' does not exist", in};
             }
 
             s.cur_struct->parent(parent);
@@ -1490,13 +1668,24 @@ template <> struct Action<StructDecl> {
 
         s.struct_name.clear();
         s.struct_parents.clear();
+        s.cur_enum = nullptr;
+    }
+};
+
+template <> struct Action<VarTypeNamePart> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.var_type_parts.emplace_back(in.string_view());
     }
 };
 
 template <> struct Action<VarTypeName> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.var_type = in.string_view();
+        s.var_type = std::move(s.var_type_parts);
     }
+};
+
+template <> struct Action<VarTypePtr> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) { ++s.var_type_ptr; }
 };
 
 template <> struct Action<ArrayCount> {
@@ -1520,7 +1709,7 @@ template <> struct Action<VarOffset> {
 template <> struct Action<VarDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         if (s.cur_struct == nullptr) {
-            throw parse_error{"Can't declare a variable outside of a struct!", in};
+            throw parse_error{"Can't declare a variable outside of a struct", in};
         }
 
         Variable* var{};
@@ -1537,9 +1726,24 @@ template <> struct Action<VarDecl> {
             var->append();
         }
 
-        var->type(s.var_type);
+        auto var_type = s.lookup<Type>(s.var_type);
+
+        if (var_type == nullptr) {
+            throw parse_error{"Can't find type with name '" + s.var_type.back() + "'", in};
+        }
+
+        var->type(var_type);
+
+        for (auto i = 0; i < s.var_type_ptr; ++i) {
+            var->type(var->type()->ptr());
+        }
+
+        if (!s.metadata.empty()) {
+            var->metadata() = std::move(s.metadata);
+        }
 
         s.var_type.clear();
+        s.var_type_ptr = 0;
         s.array_count = std::nullopt;
         s.var_name.clear();
         s.var_offset = std::nullopt;

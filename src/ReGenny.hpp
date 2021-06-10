@@ -1,6 +1,5 @@
 #pragma once
 
-#include <chrono>
 #include <map>
 #include <memory>
 #include <string>
@@ -10,6 +9,7 @@
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
+#include "MemoryUi.hpp"
 #include "Process.hpp"
 
 class ReGenny {
@@ -28,10 +28,7 @@ private:
     std::vector<std::unique_ptr<Module>> m_modules{};
     std::unique_ptr<genny::Sdk> m_sdk{};
     genny::Type* m_type{};
-    std::unordered_map<uintptr_t, genny::Variable*> m_var_map{};
     uintptr_t m_address{};
-    std::unordered_map<uintptr_t, std::vector<std::byte>> m_mem{};
-    std::chrono::steady_clock::time_point m_next_refresh_time{};
 
     struct {
         // Process name -> process ID.
@@ -47,14 +44,15 @@ private:
         std::string editor_error_msg{};
     } m_ui{};
 
+    std::unique_ptr<MemoryUi> m_mem_ui{};
+
     void ui();
 
     void attach_ui();
     void attach();
 
     void memory_ui();
-    void refresh_memory();
-    void draw_variable(genny::Variable* var, const std::vector<std::byte>& mem);
+    void set_address();
     void set_type();
 
     void editor_ui();
