@@ -23,7 +23,15 @@ add_executable(regenny
     "src/Utility.hpp" 
     "src/Utility.cpp" 
     "src/MemoryUi.hpp" 
-    "src/MemoryUi.cpp")
+    "src/MemoryUi.cpp" 
+    "src/node/Base.hpp" 
+    "src/node/Base.cpp" 
+    "src/node/Variable.hpp" 
+    "src/node/Variable.cpp" 
+    "src/node/Array.hpp" 
+    "src/node/Array.cpp" 
+    "src/node/Struct.hpp" 
+    "src/node/Struct.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 

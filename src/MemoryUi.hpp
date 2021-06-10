@@ -8,16 +8,10 @@
 
 #include "Genny.hpp"
 #include "Process.hpp"
+#include "node/Base.hpp"
 
 class MemoryUi {
 public:
-    class Node {
-    public:
-        void display_address_offset(uintptr_t address, uintptr_t offset);
-        virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
-        virtual size_t size() = 0;
-    };
-
     MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address);
 
     void display();
@@ -32,7 +26,7 @@ private:
     std::chrono::steady_clock::time_point m_mem_refresh_time{};
 
     std::unique_ptr<genny::Variable> m_proxy_variable{};
-    std::unique_ptr<Node> m_root{};
+    std::unique_ptr<node::Base> m_root{};
 
     void refresh_memory();
 };
