@@ -1,12 +1,13 @@
 #include <fmt/format.h>
 #include <imgui.h>
 
+#include "Pointer.hpp"
 #include "Struct.hpp"
 
 #include "Array.hpp"
 
 namespace node {
-Array::Array(genny::Array* arr) : Variable{arr}, m_arr{arr} {
+Array::Array(Process& process, genny::Array* arr) : Variable{process, arr}, m_arr{arr} {
     for (auto i = 0; i < m_arr->count(); ++i) {
         auto proxy_variable = std::make_unique<genny::Variable>(fmt::format("{}[{}]", m_arr->name(), i));
 
@@ -16,9 +17,13 @@ Array::Array(genny::Array* arr) : Variable{arr}, m_arr{arr} {
         std::unique_ptr<Variable> node{};
 
         if (proxy_variable->type()->is_a<genny::Struct>()) {
-            node = std::make_unique<Struct>(proxy_variable.get());
+            auto struct_ = std::make_unique<Struct>(m_process, proxy_variable.get());
+            struct_->display_self(false);
+            node = std::move(struct_);
+        } else if (proxy_variable->type()->is_a<genny::Pointer>()) {
+            node = std::make_unique<Pointer>(m_process, proxy_variable.get());
         } else {
-            node = std::make_unique<Variable>(proxy_variable.get());
+            node = std::make_unique<Variable>(m_process, proxy_variable.get());
         }
 
         m_proxy_variables.emplace_back(std::move(proxy_variable));
@@ -27,9 +32,8 @@ Array::Array(genny::Array* arr) : Variable{arr}, m_arr{arr} {
 }
 
 void Array::display_type() {
-    auto g = ImGui::GetCurrentContext();
     ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
-    ImGui::SameLine(0, 0.0);
+    ImGui::SameLine(0.0f, 0.0f);
     ImGui::TextColored({0.4f, 0.4f, 0.8f, 1.0f}, "[%d]", m_arr->count());
 }
 

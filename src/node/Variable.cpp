@@ -10,6 +10,9 @@ template <typename T> void display_as(std::string& s, std::byte* mem) {
     fmt::format_to(std::back_inserter(s), "{} ", *(T*)mem);
 }
 
+Variable::Variable(Process& process, genny::Variable* var) : Base{process}, m_var{var} {
+}
+
 void Variable::display_type() {
     ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
 }

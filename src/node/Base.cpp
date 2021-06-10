@@ -4,7 +4,10 @@
 #include "Base.hpp"
 
 namespace node {
-int Base::indentation_level = 0;
+int Base::indentation_level = -1;
+
+Base::Base(Process& process) : m_process{process} {
+}
 
 void Base::display_address_offset(uintptr_t address, uintptr_t offset) {
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", address);

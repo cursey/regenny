@@ -6,7 +6,7 @@
 namespace node {
 class Variable : public Base {
 public:
-    Variable(genny::Variable* var) : m_var{var} {}
+    Variable(Process& process, genny::Variable* var);
 
     virtual void display_type();
     virtual void display_name();

@@ -5,7 +5,7 @@
 namespace node {
 class Array : public Variable {
 public:
-    Array(genny::Array* arr);
+    Array(Process& process, genny::Array* arr);
 
     void display_type() override;
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;

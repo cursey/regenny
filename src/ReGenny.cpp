@@ -14,7 +14,7 @@
 
 #include "ReGenny.hpp"
 
-constexpr auto DEFAULT_EDITOR_TEXT = R"(
+/*constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type USHORT 2 [[u16]]
 type LONG 4   [[i32]]
 
@@ -40,6 +40,38 @@ struct IMAGE_DOS_HEADER
     LONG e_lfanew
 )";
 
+constexpr auto DEFAULT_EDITOR_TYPE = "IMAGE_DOS_HEADER";
+*/
+
+constexpr auto DEFAULT_EDITOR_TEXT = R"(
+type int 4 [[i32]]
+type float 4 [[f32]]
+
+struct Foo
+    int a
+    int b
+    float c
+
+struct Bar
+    int a
+    Foo* foo
+)";
+
+constexpr auto DEFAULT_EDITOR_TYPE = "Bar";
+
+#include <pshpack1.h>
+struct Foo {
+    int a{};
+    int b{};
+    float c{};
+};
+
+struct Bar {
+    int a{};
+    Foo* foo{};
+};
+#include <poppack.h>
+
 ReGenny::ReGenny() {
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
@@ -49,10 +81,21 @@ ReGenny::ReGenny() {
 
     // Defaults for testing.
     m_ui.editor_text = DEFAULT_EDITOR_TEXT;
-    m_ui.type_name = "IMAGE_DOS_HEADER";
+    m_ui.type_name = DEFAULT_EDITOR_TYPE;
     m_ui.process_id = GetCurrentProcessId();
     m_ui.process_name = "ReGenny.exe";
-    m_ui.address = "<ReGenny.exe>+0x0";
+    // m_ui.address = "<ReGenny.exe>+0x0";
+
+    auto foo = new Foo{};
+    foo->a = 42;
+    foo->b = 1337;
+    foo->c = 77.7f;
+
+    auto bar = new Bar{};
+    bar->a = 123;
+    bar->foo = foo;
+
+    m_ui.address = fmt::format("0x{:X}", (uintptr_t)bar);
 
     attach();
     set_address();

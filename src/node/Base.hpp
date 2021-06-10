@@ -3,14 +3,19 @@
 #include <cstddef>
 #include <cstdint>
 
+#include "../Process.hpp"
+
 namespace node {
 class Base {
 public:
+    Base(Process& process);
+
     void display_address_offset(uintptr_t address, uintptr_t offset);
     virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
     virtual size_t size() = 0;
 
 protected:
     static int indentation_level;
+    Process& m_process;
 };
 } // namespace node
