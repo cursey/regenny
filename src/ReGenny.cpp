@@ -55,6 +55,7 @@ struct Foo
 struct Bar
     int a
     Foo* foo
+    int[3][4] m
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Bar";
@@ -69,6 +70,7 @@ struct Foo {
 struct Bar {
     int a{};
     Foo* foo{};
+    int m[4][3];
 };
 #include <poppack.h>
 
@@ -94,6 +96,11 @@ ReGenny::ReGenny() {
     auto bar = new Bar{};
     bar->a = 123;
     bar->foo = foo;
+    for (auto i = 0; i < 4; ++i) {
+        for (auto j = 0; j < 3; ++j) {
+            bar->m[i][j] = i + j;
+        }
+    }
 
     m_ui.address = fmt::format("0x{:X}", (uintptr_t)bar);
 

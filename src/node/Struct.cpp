@@ -14,8 +14,8 @@ Struct::Struct(Process& process, genny::Variable* var)
     for (auto&& var : m_struct->get_all<genny::Variable>()) {
         std::unique_ptr<Variable> node{};
 
-        if (auto arr = dynamic_cast<genny::Array*>(var)) {
-            node = std::make_unique<Array>(m_process, arr);
+        if (var->type()->is_a<genny::Array>()) {
+            node = std::make_unique<Array>(m_process, var);
         } else if (var->type()->is_a<genny::Struct>()) {
             node = std::make_unique<Struct>(m_process, var);
         } else if (var->type()->is_a<genny::Pointer>()) {
