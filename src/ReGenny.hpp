@@ -46,7 +46,17 @@ private:
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
 
+    std::string m_open_filename{};
+
     void ui();
+    void menu_ui();
+
+    void file_open();
+    void file_save();
+    void file_save_as();
+
+    void action_detach();
+    void action_generate_sdk();
 
     void attach_ui();
     void attach();

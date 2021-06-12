@@ -7,6 +7,7 @@ find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
 find_package(ImGui-SFML CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(pegtl CONFIG REQUIRED)
+find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 
 add_executable(regenny 
     "src/Genny.hpp" 
@@ -41,5 +42,6 @@ target_link_libraries(regenny PRIVATE
     sfml-system sfml-network sfml-graphics sfml-window sfml-main
     ImGui-SFML::ImGui-SFML
     fmt::fmt
-    taocpp::pegtl)
+    taocpp::pegtl
+    unofficial::nativefiledialog::nfd)
 target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER)

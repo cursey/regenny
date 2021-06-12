@@ -8,6 +8,7 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
+#include <nfd.h>
 
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
@@ -179,7 +180,7 @@ void ReGenny::run() {
 void ReGenny::ui() {
     ImGui::SetNextWindowPos({0, 0}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({(float)m_window.getSize().x, (float)m_window.getSize().y}, ImGuiCond_Always);
-    ImGui::Begin("ReGenny", nullptr, ImGuiWindowFlags_NoTitleBar);
+    ImGui::Begin("ReGenny", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar);
 
     // Resizing gets kinda wonky because the ImGui window will try to resize more often than the actual window (atleast
     // on Windows 10). If we add the ImGuiWindowFlags_NoResize option to the window flags above, the window becomes even
@@ -191,6 +192,8 @@ void ReGenny::ui() {
         m_window.setSize(winsize);
         m_window_size = m_window.getSize();
     }
+
+    menu_ui();
 
     if (m_process == nullptr) {
         attach_ui();
@@ -217,6 +220,104 @@ void ReGenny::ui() {
 
         ImGui::EndPopup();
     }
+}
+
+void ReGenny::menu_ui() {
+    if (ImGui::BeginMenuBar()) {
+        if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("Open")) {
+                file_open();
+            }
+
+            if (ImGui::MenuItem("Save")) {
+                file_save();
+            }
+
+            if (ImGui::MenuItem("Save As...")) {
+                file_save_as();
+            }
+
+            if (ImGui::MenuItem("Exit")) {
+                m_window.close();
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Action")) {
+            if (ImGui::MenuItem("Detach")) {
+                action_detach();
+            }
+
+            if (ImGui::MenuItem("Generate SDK")) {
+                action_generate_sdk();
+            }
+
+            ImGui::EndMenu();
+        }
+
+        ImGui::EndMenuBar();
+    }
+}
+
+void ReGenny::file_open() {
+    nfdchar_t* out_path{};
+
+    if (NFD_OpenDialog("genny", nullptr, &out_path) != NFD_OKAY) {
+        return;
+    }
+
+    std::ifstream f{out_path, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
+
+    m_ui.editor_text.resize(f.tellg());
+    f.seekg(0, std::ifstream::beg);
+    f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
+
+    m_open_filename = out_path;
+    free(out_path);
+    parse_editor_text();
+}
+
+void ReGenny::file_save() {
+    if (m_open_filename.empty()) {
+        return;
+    }
+
+    std::ofstream f{m_open_filename, std::ofstream::out | std::ofstream::binary};
+
+    f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
+}
+
+void ReGenny::file_save_as() {
+    nfdchar_t* save_path{};
+
+    if (NFD_SaveDialog("genny", m_open_filename.c_str(), &save_path) != NFD_OKAY) {
+        return;
+    }
+
+    m_open_filename = save_path;
+
+    file_save();
+    free(save_path);
+}
+
+void ReGenny::action_detach() {
+    m_process.reset();
+}
+
+void ReGenny::action_generate_sdk() {
+    if (m_sdk == nullptr) {
+        return;
+    }
+
+    nfdchar_t* sdk_path{};
+
+    if (NFD_PickFolder(nullptr, &sdk_path) != NFD_OKAY) {
+        return;
+    }
+
+    m_sdk->generate(sdk_path);
+    free(sdk_path);
 }
 
 void ReGenny::attach_ui() {
@@ -256,6 +357,10 @@ void ReGenny::attach() {
     }
 
     m_modules = m_process->modules();
+
+    parse_editor_text();
+    set_address();
+    set_type();
 
     m_window.setTitle(fmt::format("ReGenny - {} PID: {}", m_ui.process_name, m_ui.process_id));
 }
@@ -316,6 +421,7 @@ void ReGenny::set_address() {
 }
 
 void ReGenny::set_type() {
+    m_mem_ui.reset();
     m_type = m_sdk->global_ns()->find<genny::Struct>(m_ui.type_name);
 
     if (m_type == nullptr) {

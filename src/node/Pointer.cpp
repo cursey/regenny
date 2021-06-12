@@ -59,6 +59,12 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     refresh_memory();
 
+    // This can happen if the type pointed to is empty. For example if the user has just created the type in the editor
+    // and the memory ui has been refreshed.
+    if (m_mem.empty()) {
+        return;
+    }
+
     ++indentation_level;
     ImGui::PushID(m_ptr_node.get());
     // node->display(address + offset, offset, &mem[offset]);
