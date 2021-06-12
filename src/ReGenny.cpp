@@ -303,6 +303,7 @@ void ReGenny::file_save_as() {
 
 void ReGenny::action_detach() {
     m_process.reset();
+    m_window.setTitle("ReGenny");
 }
 
 void ReGenny::action_generate_sdk() {
