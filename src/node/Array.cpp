@@ -36,12 +36,6 @@ Array::Array(Process& process, genny::Variable* var)
     }
 }
 
-void Array::display_type() {
-    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
-    // ImGui::SameLine(0.0f, 0.0f);
-    // ImGui::TextColored({0.4f, 0.4f, 0.8f, 1.0f}, "[%d]", m_arr->count());
-}
-
 void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::BeginGroup();
     display_address_offset(address, offset);
@@ -52,20 +46,30 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::EndGroup();
 
     if (ImGui::BeginPopupContextItem("ArrayNode")) {
-        if (ImGui::InputInt("Display element", &m_cur_element, 1, 100)) {
-            m_cur_element = std::clamp(m_cur_element, -1, (int)m_elements.size() - 1);
+        if (ImGui::InputInt("Start element", &m_start_element)) {
+            m_start_element = std::clamp(m_start_element, 0, (int)m_elements.size() - 1);
+        }
+
+        if (ImGui::InputInt("# Elements displayed", &m_num_elements_displayed)) {
+            m_num_elements_displayed = std::clamp(m_num_elements_displayed, 0, (int)m_elements.size());
         }
 
         ImGui::EndPopup();
     }
 
-    if (m_cur_element != -1) {
-        auto& cur_node = m_elements[m_cur_element];
+    for (auto i = 0; i < m_num_elements_displayed; ++i) {
+        if (m_start_element + i >= (int)m_arr->count()) {
+            break;
+        }
+
+        auto cur_element = m_start_element + i;
+
+        auto& cur_node = m_elements[cur_element];
 
         ++indentation_level;
         ImGui::PushID(cur_node.get());
-        cur_node->display(address + m_cur_element * m_arr->of()->size(), offset + m_cur_element * m_arr->of()->size(),
-            mem + m_cur_element * m_arr->of()->size());
+        cur_node->display(address + cur_element * m_arr->of()->size(), offset + cur_element * m_arr->of()->size(),
+            mem + cur_element * m_arr->of()->size());
         ImGui::PopID();
         --indentation_level;
     }
