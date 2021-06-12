@@ -347,7 +347,16 @@ public:
     auto count(size_t count) {
         // Fix the name of this array type.
         if (m_of != nullptr && count != m_count) {
-            m_name = m_of->name() + "[" + std::to_string(count) + "]";
+            const auto& base = m_of->name();
+            auto first_brace = base.find_first_of('[');
+            auto head = base.substr(0, first_brace);
+            std::string tail{};
+
+            if (first_brace != std::string::npos) {
+                tail = base.substr(first_brace);
+            }
+
+            m_name = head + '[' + std::to_string(count) + ']' + tail;
         }
 
         m_count = count;
@@ -368,8 +377,8 @@ public:
     }
 
     void generate_variable_postamble(std::ostream& os) const override {
-        m_of->generate_variable_postamble(os);
         os << "[" << std::dec << m_count << "]";
+        m_of->generate_variable_postamble(os);
     }
 
 protected:
@@ -1483,7 +1492,7 @@ struct VarTypeName : list<VarTypeNamePart, one<'.'>> {};
 struct VarTypePtr : one<'*'> {};
 struct VarTypeArrayCount : Num {};
 struct VarTypeArray : seq<one<'['>, VarTypeArrayCount, one<']'>> {};
-struct VarType : seq<VarTypeName, star<sor<VarTypeArray, VarTypePtr>>> {};
+struct VarType : seq<VarTypeName, star<VarTypePtr>, star<VarTypeArray>> {};
 struct VarName : identifier {};
 struct VarOffset : Num {};
 struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
@@ -1526,6 +1535,7 @@ struct State {
     genny::Type* cur_type{};
     std::vector<std::string> var_type{};
     std::optional<size_t> var_type_array_count{};
+    std::vector<size_t> var_type_array_counts{};
     std::string var_name{};
     std::optional<uintptr_t> var_offset{};
 
@@ -1752,6 +1762,7 @@ template <> struct Action<VarTypeName> {
         }
 
         s.var_type.clear();
+        s.var_type_array_counts.clear();
     }
 };
 
@@ -1773,16 +1784,29 @@ template <> struct Action<VarTypeArrayCount> {
 
 template <> struct Action<VarTypeArray> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.cur_type == nullptr) {
-            throw parse_error{"The current type is null", in};
-        }
-
         if (!s.var_type_array_count) {
             throw parse_error{"The array count is invalid", in};
         }
 
-        s.cur_type = s.cur_type->array_(*s.var_type_array_count);
+        s.var_type_array_counts.emplace_back(*s.var_type_array_count);
         s.var_type_array_count = std::nullopt;
+    }
+};
+
+template <> struct Action<VarType> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_type == nullptr) {
+            throw parse_error{"The current type is null", in};
+        }
+
+        // Reverse the order because we want to adhear to how multi-dimensional arrays are declared in C/C++.
+        std::reverse(s.var_type_array_counts.begin(), s.var_type_array_counts.end());
+
+        for (auto&& count : s.var_type_array_counts) {
+            s.cur_type = s.cur_type->array_(count);
+        }
+
+        s.var_type_array_counts.clear();
     }
 };
 

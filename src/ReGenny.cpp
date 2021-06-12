@@ -55,7 +55,7 @@ struct Foo
 struct Bar
     int a
     Foo* foo
-    int[3][4] m
+    int[4][3] m
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Bar";
