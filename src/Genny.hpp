@@ -427,26 +427,7 @@ public:
     }
 
     // Sets the offset to be after the last variable in the struct.
-    auto append() {
-        auto type = owner<Type>();
-        uintptr_t highest_offset{};
-        Variable* highest_var{};
-
-        for (auto&& var : type->get_all<Variable>()) {
-            if (var->offset() >= highest_offset && var != this) {
-                highest_offset = var->offset();
-                highest_var = var;
-            }
-        }
-
-        if (highest_var != nullptr) {
-            offset(highest_var->offset() + highest_var->size());
-        } else {
-            // This branch usually gets called on the first variable of a struct. We set it to type->size() because if
-            // its the first variable of a subclass we want this variable to be after the super clases variables.
-            offset(type->size());
-        }
-    }
+    Variable* append();
 
     virtual size_t size() const {
         if (m_type == nullptr) {
@@ -1074,6 +1055,29 @@ protected:
         }
     }
 };
+
+inline Variable* Variable::append() {
+    auto struct_ = owner<Struct>();
+    uintptr_t highest_offset{};
+    Variable* highest_var{};
+
+    for (auto&& var : struct_->get_all<Variable>()) {
+        if (var->offset() >= highest_offset && var != this) {
+            highest_offset = var->offset();
+            highest_var = var;
+        }
+    }
+
+    if (highest_var != nullptr) {
+        offset(highest_var->end());
+    } else if (!struct_->parents().empty()) {
+        offset(struct_->size());
+    } else {
+        offset(0);
+    }
+
+    return this;
+}
 
 class Class : public Struct {
 public:
