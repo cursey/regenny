@@ -426,15 +426,27 @@ public:
         return this;
     }
 
-    // Sets the offset to be at the end of the owners current size.
-    //
-    // NOTE: This will increase the size of the owner by the size of this variable. If you are explicitly setting the
-    // size of your structs beforehand do not use this.
-    //
-    // NOTE: If you're using append for the very first variables added to a struct make sure you append before setting
-    // the type of the variable otherwise the variable's offset will be set after where you want it (due to itself
-    // already being considered part of the struct).
-    auto append() { return offset(owner<Type>()->size()); }
+    // Sets the offset to be after the last variable in the struct.
+    auto append() {
+        auto type = owner<Type>();
+        uintptr_t highest_offset{};
+        Variable* highest_var{};
+
+        for (auto&& var : type->get_all<Variable>()) {
+            if (var->offset() >= highest_offset && var != this) {
+                highest_offset = var->offset();
+                highest_var = var;
+            }
+        }
+
+        if (highest_var != nullptr) {
+            offset(highest_var->offset() + highest_var->size());
+        } else {
+            // This branch usually gets called on the first variable of a struct. We set it to type->size() because if
+            // its the first variable of a subclass we want this variable to be after the super clases variables.
+            offset(type->size());
+        }
+    }
 
     virtual size_t size() const {
         if (m_type == nullptr) {
@@ -1485,7 +1497,8 @@ struct StructName : identifier {};
 struct StructParent : identifier {};
 struct StructParentList : list<StructParent, one<','>, Sep> {};
 struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
-struct StructDecl : seq<StructId, Seps, StructName, Seps, opt<StructParentListDecl>> {};
+struct StructSize : Num {};
+struct StructDecl : seq<StructId, Seps, StructName, Seps, opt<StructParentListDecl>, Seps, opt<StructSize>> {};
 
 struct VarTypeNamePart : identifier {};
 struct VarTypeName : list<VarTypeNamePart, one<'.'>> {};
@@ -1519,7 +1532,7 @@ struct State {
     std::vector<std::string> ns{};
 
     std::string type_name{};
-    size_t type_size{};
+    int type_size{};
 
     genny::Enum* cur_enum{};
     std::string enum_name{};
@@ -1531,6 +1544,7 @@ struct State {
     genny::Struct* cur_struct{};
     std::string struct_name{};
     std::vector<std::string> struct_parents{};
+    std::optional<size_t> struct_size{};
 
     genny::Type* cur_type{};
     std::vector<std::string> var_type{};
@@ -1632,7 +1646,7 @@ template <> struct Action<NsDecl> {
 
 template <> struct Action<TypeSize> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.type_size = std::stoull(in.string(), nullptr, 0);
+        s.type_size = std::stoi(in.string(), nullptr, 0);
     }
 };
 
@@ -1693,7 +1707,7 @@ template <> struct Action<EnumDecl> {
 
 template <> struct Action<EnumVal> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.enum_val = std::stoull(in.string(), nullptr, 0);
+        s.enum_val = std::stoul(in.string(), nullptr, 0);
     }
 };
 
@@ -1727,6 +1741,12 @@ template <> struct Action<StructParent> {
     }
 };
 
+template <> struct Action<StructSize> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.struct_size = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
 template <> struct Action<StructDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.cur_struct = s.cur_ns->struct_(s.struct_name);
@@ -1741,8 +1761,13 @@ template <> struct Action<StructDecl> {
             s.cur_struct->parent(parent);
         }
 
+        if (s.struct_size) {
+            s.cur_struct->size(*s.struct_size);
+        }
+
         s.struct_name.clear();
         s.struct_parents.clear();
+        s.struct_size = std::nullopt;
         s.cur_enum = nullptr;
     }
 };
