@@ -18,7 +18,7 @@ void Variable::display_type() {
 }
 
 void Variable::display_name() {
-    ImGui::Text("%s", m_var->name().c_str());
+    ImGui::TextUnformatted(m_var->name().c_str());
 }
 
 void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {

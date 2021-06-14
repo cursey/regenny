@@ -24,6 +24,5 @@ MemoryUi::MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, ui
 }
 
 void MemoryUi::display() {
-
     m_root->display(m_address, 0, (std::byte*)&m_address);
 }

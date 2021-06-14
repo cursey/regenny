@@ -34,7 +34,9 @@ add_executable(regenny
     "src/node/Struct.hpp" 
     "src/node/Struct.cpp" 
     "src/node/Pointer.hpp" 
-    "src/node/Pointer.cpp")
+    "src/node/Pointer.cpp" 
+    "src/node/Undefined.hpp" 
+    "src/node/Undefined.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 
