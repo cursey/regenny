@@ -54,12 +54,15 @@ struct Foo
     float c
 
 struct Bar
-    int a
+    int d
     Foo* foo
     int[4][3] m
+
+struct Baz : Bar
+    int e
 )";
 
-constexpr auto DEFAULT_EDITOR_TYPE = "Bar";
+constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
 
 #include <pshpack1.h>
 struct Foo {
@@ -69,9 +72,13 @@ struct Foo {
 };
 
 struct Bar {
-    int a{};
+    int d{};
     Foo* foo{};
     int m[4][3];
+};
+
+struct Baz : Bar {
+    int e{};
 };
 #include <poppack.h>
 
@@ -94,16 +101,17 @@ ReGenny::ReGenny() {
     foo->b = 1337;
     foo->c = 77.7f;
 
-    auto bar = new Bar{};
-    bar->a = 123;
-    bar->foo = foo;
+    auto baz = new Baz{};
+    baz->d = 123;
+    baz->foo = foo;
     for (auto i = 0; i < 4; ++i) {
         for (auto j = 0; j < 3; ++j) {
-            bar->m[i][j] = i + j;
+            baz->m[i][j] = i + j;
         }
     }
+    baz->e = 666;
 
-    m_ui.address = fmt::format("0x{:X}", (uintptr_t)bar);
+    m_ui.address = fmt::format("0x{:X}", (uintptr_t)baz);
 
     attach();
     set_address();

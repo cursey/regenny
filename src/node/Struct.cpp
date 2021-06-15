@@ -12,21 +12,28 @@ Struct::Struct(Process& process, genny::Variable* var)
     assert(m_struct != nullptr);
 
     // Build the node map.
-    for (auto&& var : m_struct->get_all<genny::Variable>()) {
-        std::unique_ptr<Variable> node{};
-
+    auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {
         if (var->type()->is_a<genny::Array>()) {
-            node = std::make_unique<Array>(m_process, var);
+            return std::make_unique<Array>(m_process, var);
         } else if (var->type()->is_a<genny::Struct>()) {
-            node = std::make_unique<Struct>(m_process, var);
+            return std::make_unique<Struct>(m_process, var);
         } else if (var->type()->is_a<genny::Pointer>()) {
-            node = std::make_unique<Pointer>(m_process, var);
+            return std::make_unique<Pointer>(m_process, var);
         } else {
-            node = std::make_unique<Variable>(m_process, var);
+            return std::make_unique<Variable>(m_process, var);
+        }
+    };
+    std::function<void(genny::Struct*)> add_vars = [&](genny::Struct* s) {
+        for (auto&& parent : s->parents()) {
+            add_vars(parent);
         }
 
-        m_nodes[var->offset()] = std::move(node);
-    }
+        for (auto&& var : s->get_all<genny::Variable>()) {
+            m_nodes[var->offset()] = make_node(var);
+        }
+    };
+
+    add_vars(m_struct);
 
     // Fill in the rest of the offsets with undefined nodes.
     uintptr_t last_offset{};
