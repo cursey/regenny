@@ -20,6 +20,8 @@ public:
 
 protected:
     bool m_is_collapsed{true};
+    bool m_is_array{false};
+    int m_count{1};
     genny::Pointer* m_ptr{};
     std::vector<std::byte> m_mem{};
     std::chrono::steady_clock::time_point m_mem_refresh_time{};

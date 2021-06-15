@@ -60,6 +60,7 @@ struct Bar
 
 struct Baz : Bar
     int e
+    int* f
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
@@ -79,6 +80,7 @@ struct Bar {
 
 struct Baz : Bar {
     int e{};
+    int* f{};
 };
 #include <poppack.h>
 
@@ -110,6 +112,10 @@ ReGenny::ReGenny() {
         }
     }
     baz->e = 666;
+    baz->f = new int[10];
+    for (auto i = 0; i < 10; ++i) {
+        baz->f[i] = i;
+    }
 
     m_ui.address = fmt::format("0x{:X}", (uintptr_t)baz);
 
