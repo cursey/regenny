@@ -8,6 +8,7 @@ public:
     Array(Process& process, genny::Variable* var);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
+    void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
 protected:
     genny::Array* m_arr{};

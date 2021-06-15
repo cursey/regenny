@@ -127,8 +127,8 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
     }
 
-    for (uintptr_t offset = 0; offset < m_size;) {
-        if (auto search = m_nodes.find(offset); search != m_nodes.end()) {
+    for (uintptr_t node_offset = 0; node_offset < m_size;) {
+        if (auto search = m_nodes.find(node_offset); search != m_nodes.end()) {
             auto& node = search->second;
 
             if (m_display_self) {
@@ -136,17 +136,23 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             }
 
             ImGui::PushID(node.get());
-            node->display(address + offset, offset, &mem[offset]);
+            node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
             ImGui::PopID();
 
             if (m_display_self) {
                 --indentation_level;
             }
 
-            offset += node->size();
+            node_offset += node->size();
         } else {
-            ++offset;
+            ++node_offset;
         }
+    }
+}
+
+void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    for (auto&& [node_offset, node] : m_nodes) {
+        node->on_refresh(address + node_offset, offset + node_offset, &mem[node_offset]);
     }
 }
 } // namespace node

@@ -57,14 +57,6 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         m_address = pointed_to_address;
     }
 
-    refresh_memory();
-
-    // This can happen if the type pointed to is empty. For example if the user has just created the type in the editor
-    // and the memory ui has been refreshed.
-    if (m_mem.empty()) {
-        return;
-    }
-
     // We create the node here right before displaying it to avoid pointer loop crashes. Only nodes that are uncollapsed
     // get created.
     if (m_ptr_node == nullptr) {
@@ -88,6 +80,14 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
     }
 
+    refresh_memory();
+
+    // This can happen if the type pointed to is empty. For example if the user has just created the type in the editor
+    // and the memory ui has been refreshed.
+    if (m_mem.empty()) {
+        return;
+    }
+
     ++indentation_level;
     ImGui::PushID(m_ptr_node.get());
     m_ptr_node->display(m_address, 0, &m_mem[0]);
@@ -102,6 +102,7 @@ void Pointer::refresh_memory() {
         // Make sure our memory buffer is large enough (since the first refresh it wont be).
         m_mem.resize(m_ptr->to()->size() * m_count);
         m_process.read(m_address, m_mem.data(), m_mem.size());
+        m_ptr_node->on_refresh(m_address, 0, &m_mem[0]);
     }
 }
 } // namespace node

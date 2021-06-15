@@ -63,15 +63,28 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
 
         auto cur_element = m_start_element + i;
-
         auto& cur_node = m_elements[cur_element];
+        auto cur_offset = cur_element * m_arr->of()->size();
 
         ++indentation_level;
         ImGui::PushID(cur_node.get());
-        cur_node->display(address + cur_element * m_arr->of()->size(), offset + cur_element * m_arr->of()->size(),
-            mem + cur_element * m_arr->of()->size());
+        cur_node->display(address + cur_offset, offset + cur_offset, mem + cur_offset);
         ImGui::PopID();
         --indentation_level;
+    }
+}
+
+void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    for (auto i = 0; i < m_num_elements_displayed; ++i) {
+        if (m_start_element + i >= (int)m_arr->count()) {
+            break;
+        }
+
+        auto cur_element = m_start_element + i;
+        auto& cur_node = m_elements[cur_element];
+        auto cur_offset = cur_element * m_arr->of()->size();
+
+        cur_node->on_refresh(address + cur_offset, offset + cur_offset, mem + cur_offset);
     }
 }
 } // namespace node

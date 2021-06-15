@@ -10,6 +10,7 @@ public:
     Struct(Process& process, genny::Variable* var);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
+    void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto collapse(bool collapse) {
         m_is_collapsed = collapse;
