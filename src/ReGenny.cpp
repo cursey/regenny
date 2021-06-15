@@ -431,7 +431,26 @@ void ReGenny::set_address() {
 
 void ReGenny::set_type() {
     m_mem_ui.reset();
-    m_type = m_sdk->global_ns()->find<genny::Struct>(m_ui.type_name);
+
+    if (m_sdk == nullptr) {
+        return;
+    }
+
+    genny::Object* parent = m_sdk->global_ns();
+    std::string type_name = m_ui.type_name;
+    size_t pos{};
+
+    while ((pos = type_name.find('.')) != std::string::npos) {
+        parent = parent->find<genny::Object>(type_name.substr(0, pos));
+
+        if (parent == nullptr) {
+            return;
+        }
+
+        type_name.erase(0, pos + 1);
+    }
+
+    m_type = parent->find<genny::Struct>(type_name);
 
     if (m_type == nullptr) {
         return;
