@@ -7,7 +7,24 @@
 
 namespace node {
 template <typename T> void display_as(std::string& s, std::byte* mem) {
-    fmt::format_to(std::back_inserter(s), "{} ", *(T*)mem);
+    fmt::format_to(std::back_inserter(s), " {}", *(T*)mem);
+}
+
+template <typename T> void display_enum(std::string& s, std::byte* mem, genny::Enum* enum_) {
+    auto val = *(T*)mem;
+    auto val_found = false;
+
+    for (auto&& [val_name, val_val] : enum_->values()) {
+        if (val_val == val) {
+            s += ' ' + val_name;
+            val_found = true;
+            break;
+        }
+    }
+
+    if (!val_found) {
+        display_as<T>(s, mem);
+    }
 }
 
 Variable::Variable(Process& process, genny::Variable* var) : Base{process}, m_var{var}, m_size{var->size()} {
@@ -43,8 +60,6 @@ void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         s += "...";
     }
 
-    s += ' ';
-
     std::array<std::vector<std::string>*, 2> metadatas{&m_var->metadata(), &m_var->type()->metadata()};
 
     for (auto&& metadata : metadatas) {
@@ -70,6 +85,23 @@ void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             } else if (md == "f64") {
                 display_as<double>(s, mem);
             }
+        }
+    }
+
+    if (auto enum_ = dynamic_cast<genny::Enum*>(m_var->type())) {
+        switch (m_size) {
+        case 1:
+            display_enum<uint8_t>(s, mem, enum_);
+            break;
+        case 2:
+            display_enum<uint16_t>(s, mem, enum_);
+            break;
+        case 4:
+            display_enum<uint32_t>(s, mem, enum_);
+            break;
+        case 8:
+            display_enum<uint64_t>(s, mem, enum_);
+            break;
         }
     }
 

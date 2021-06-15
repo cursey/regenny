@@ -750,6 +750,9 @@ public:
         return this;
     }
 
+    auto&& values() const { return m_values; }
+    auto&& values() { return m_values; }
+
     size_t size() const override {
         if (m_type == nullptr) {
             return sizeof(int);

@@ -48,10 +48,16 @@ constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type int 4 [[i32]]
 type float 4 [[f32]]
 
+enum Place
+    EARTH = 1
+    MOON = 2
+    MARS = 3
+
 struct Foo
     int a
     int b
     float c
+    Place p
 
 struct Bar
     int d
@@ -66,10 +72,13 @@ struct Baz : Bar
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
 
 #include <pshpack1.h>
+enum Place { EARTH = 1, MOON = 2, MARS = 3 };
+
 struct Foo {
     int a{};
     int b{};
     float c{};
+    Place p{};
 };
 
 struct Bar {
@@ -102,6 +111,7 @@ ReGenny::ReGenny() {
     foo->a = 42;
     foo->b = 1337;
     foo->c = 77.7f;
+    foo->p = Place::MARS;
 
     auto baz = new Baz{};
     baz->d = 123;
