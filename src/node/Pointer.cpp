@@ -14,18 +14,6 @@ Pointer::Pointer(Process& process, genny::Variable* var) : Variable{process, var
 
     m_proxy_var = std::make_unique<genny::Variable>(m_var->name());
     m_proxy_var->type(m_ptr->to());
-
-    std::unique_ptr<Variable> node{};
-
-    if (m_ptr->to()->is_a<genny::Struct>()) {
-        auto struct_ = std::make_unique<Struct>(m_process, m_proxy_var.get());
-        struct_->display_self(false);
-        m_ptr_node = std::move(struct_);
-    } else if (m_ptr->to()->is_a<genny::Pointer>()) {
-        m_ptr_node = std::make_unique<Pointer>(m_process, m_proxy_var.get());
-    } else {
-        m_ptr_node = std::make_unique<Variable>(m_process, m_proxy_var.get());
-    }
 }
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
@@ -63,6 +51,22 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     // and the memory ui has been refreshed.
     if (m_mem.empty()) {
         return;
+    }
+
+    // We create the node here right before displaying it to avoid pointer loop crashes. Only nodes that are uncollapsed
+    // get created.
+    if (m_ptr_node == nullptr) {
+        std::unique_ptr<Variable> node{};
+
+        if (m_ptr->to()->is_a<genny::Struct>()) {
+            auto struct_ = std::make_unique<Struct>(m_process, m_proxy_var.get());
+            struct_->display_self(false);
+            m_ptr_node = std::move(struct_);
+        } else if (m_ptr->to()->is_a<genny::Pointer>()) {
+            m_ptr_node = std::make_unique<Pointer>(m_process, m_proxy_var.get());
+        } else {
+            m_ptr_node = std::make_unique<Variable>(m_process, m_proxy_var.get());
+        }
     }
 
     ++indentation_level;
