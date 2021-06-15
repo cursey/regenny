@@ -1504,7 +1504,8 @@ struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
 
 struct StructId : TAO_PEGTL_STRING("struct") {};
 struct StructName : identifier {};
-struct StructParent : identifier {};
+struct StructParentPart : identifier {};
+struct StructParent : list<StructParentPart, one<'.'>> {};
 struct StructParentList : list<StructParent, one<','>, Sep> {};
 struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
 struct StructSize : Num {};
@@ -1553,7 +1554,8 @@ struct State {
 
     genny::Struct* cur_struct{};
     std::string struct_name{};
-    std::vector<std::string> struct_parents{};
+    std::vector<std::string> struct_parent{};
+    std::vector<genny::Struct*> struct_parents{};
     std::optional<size_t> struct_size{};
 
     genny::Type* cur_type{};
@@ -1745,9 +1747,23 @@ template <> struct Action<StructName> {
     }
 };
 
+template <> struct Action<StructParentPart> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.struct_parent.emplace_back(in.string_view());
+    }
+};
+
 template <> struct Action<StructParent> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.struct_parents.emplace_back(in.string_view());
+        // s.struct_parent.emplace_back(in.string_view());
+        auto parent = s.lookup<genny::Struct>(s.struct_parent);
+
+        if (parent == nullptr) {
+            throw parse_error{"Can't find parent struct type with name '" + s.struct_parent.back() + "'", in};
+        }
+
+        s.struct_parents.emplace_back(parent);
+        s.struct_parent.clear();
     }
 };
 
@@ -1761,13 +1777,7 @@ template <> struct Action<StructDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.cur_struct = s.cur_ns->struct_(s.struct_name);
 
-        for (auto&& parent_name : s.struct_parents) {
-            auto parent = s.cur_ns->find<genny::Struct>(parent_name);
-
-            if (parent == nullptr) {
-                throw parse_error{"Parent '" + parent_name + "' does not exist", in};
-            }
-
+        for (auto&& parent : s.struct_parents) {
             s.cur_struct->parent(parent);
         }
 
