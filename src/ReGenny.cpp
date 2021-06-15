@@ -405,7 +405,6 @@ void ReGenny::set_address() {
     switch (addr.index()) {
     case 1:
         m_address = std::get<uintptr_t>(addr);
-        m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
         break;
     case 2: {
         auto& modoffset = std::get<ModuleOffset>(addr);
@@ -420,13 +419,14 @@ void ReGenny::set_address() {
             }
         }
 
-        m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
         break;
     }
     default:
         m_address = 0;
         break;
     }
+
+    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
 }
 
 void ReGenny::set_type() {
