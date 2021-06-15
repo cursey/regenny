@@ -1707,7 +1707,13 @@ template <> struct Action<EnumDecl> {
         }
 
         if (!s.enum_type.empty()) {
-            s.cur_enum->type(s.cur_ns->type(s.enum_type));
+            auto type = s.lookup<Type>({s.enum_type});
+
+            if (type == nullptr) {
+                throw parse_error{"Can't find type for enum with name'" + s.enum_type + "'", in};
+            }
+
+            s.cur_enum->type(type);
         }
 
         s.cur_struct = nullptr;
@@ -1755,7 +1761,6 @@ template <> struct Action<StructParentPart> {
 
 template <> struct Action<StructParent> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        // s.struct_parent.emplace_back(in.string_view());
         auto parent = s.lookup<genny::Struct>(s.struct_parent);
 
         if (parent == nullptr) {
