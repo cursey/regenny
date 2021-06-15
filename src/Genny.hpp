@@ -1070,8 +1070,14 @@ inline Variable* Variable::append() {
 
     if (highest_var != nullptr) {
         offset(highest_var->end());
-    } else if (!struct_->parents().empty()) {
-        offset(struct_->size());
+    } else if (auto parents = struct_->parents(); !parents.empty()) {
+        size_t size{};
+
+        for (auto&& parent : parents) {
+            size += parent->size();
+        }
+
+        offset(size);
     } else {
         offset(0);
     }
