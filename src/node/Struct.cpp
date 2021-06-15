@@ -8,7 +8,7 @@
 
 namespace node {
 Struct::Struct(Process& process, genny::Variable* var)
-    : Variable{process, var}, m_struct{dynamic_cast<genny::Struct*>(var->type())}, m_size{var->size()} {
+    : Variable{process, var}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
     assert(m_struct != nullptr);
 
     // Build the node map.
@@ -82,14 +82,19 @@ Struct::Struct(Process& process, genny::Variable* var)
         }
     };
 
-    for (uintptr_t offset = 0; offset < m_struct->size();) {
+    for (uintptr_t offset = 0; offset < m_size;) {
         auto delta = offset - last_offset;
 
         if (auto search = m_nodes.find(offset); search != m_nodes.end()) {
             auto& node = search->second;
             fill_space(delta);
             last_offset = offset + node->size();
-            offset = last_offset;
+
+            if (offset == last_offset) { // A type with 0 size was encountered.
+                ++offset;
+            } else {
+                offset = last_offset;
+            }
         } else if (delta > 0 && offset % sizeof(uintptr_t) == 0) {
             fill_space(delta);
             last_offset = offset;
@@ -99,7 +104,7 @@ Struct::Struct(Process& process, genny::Variable* var)
         }
     }
 
-    fill_space(m_struct->size() - last_offset);
+    fill_space(m_size - last_offset);
 }
 
 void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
@@ -122,7 +127,7 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
     }
 
-    for (uintptr_t offset = 0; offset < m_struct->size();) {
+    for (uintptr_t offset = 0; offset < m_size;) {
         if (auto search = m_nodes.find(offset); search != m_nodes.end()) {
             auto& node = search->second;
 
@@ -143,9 +148,5 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             ++offset;
         }
     }
-}
-
-size_t Struct::size() {
-    return m_size;
 }
 } // namespace node

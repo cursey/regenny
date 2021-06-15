@@ -10,7 +10,7 @@ template <typename T> void display_as(std::string& s, std::byte* mem) {
     fmt::format_to(std::back_inserter(s), "{} ", *(T*)mem);
 }
 
-Variable::Variable(Process& process, genny::Variable* var) : Base{process}, m_var{var} {
+Variable::Variable(Process& process, genny::Variable* var) : Base{process}, m_var{var}, m_size{var->size()} {
 }
 
 void Variable::display_type() {
@@ -77,6 +77,6 @@ void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 size_t Variable::size() {
-    return m_var->size();
+    return m_size;
 }
 } // namespace node

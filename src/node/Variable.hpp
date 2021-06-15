@@ -15,5 +15,6 @@ public:
 
 protected:
     genny::Variable* m_var{};
+    size_t m_size{};
 };
 } // namespace node
