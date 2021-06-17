@@ -2,13 +2,16 @@
 
 #include <map>
 #include <memory>
+#include <mutex>
 #include <string>
 #include <unordered_map>
 
 #include <SFML/Graphics/RenderWindow.hpp>
+#include <imgui.h>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
+#include "LoggerUi.hpp"
 #include "MemoryUi.hpp"
 #include "Process.hpp"
 
@@ -42,11 +45,15 @@ private:
 
         std::string editor_text{};
         std::string editor_error_msg{};
+        bool editor_has_saved{};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
 
     std::string m_open_filename{};
+
+    LoggerUi m_logger{};
+    bool m_log_parse_errors{};
 
     void ui();
     void menu_ui();

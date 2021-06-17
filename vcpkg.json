@@ -8,6 +8,7 @@
     "imgui-sfml",
     "fmt",
     "pegtl",
-    "nativefiledialog"
+    "nativefiledialog",
+    "spdlog"
   ]
 }

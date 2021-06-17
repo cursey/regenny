@@ -8,6 +8,7 @@ find_package(ImGui-SFML CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(pegtl CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
+find_package(spdlog CONFIG REQUIRED)
 
 add_executable(regenny 
     "src/Genny.hpp" 
@@ -36,7 +37,9 @@ add_executable(regenny
     "src/node/Pointer.hpp" 
     "src/node/Pointer.cpp" 
     "src/node/Undefined.hpp" 
-    "src/node/Undefined.cpp")
+    "src/node/Undefined.cpp" 
+    "src/LoggerUi.hpp" 
+    "src/LoggerUi.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 
@@ -45,5 +48,7 @@ target_link_libraries(regenny PRIVATE
     ImGui-SFML::ImGui-SFML
     fmt::fmt
     taocpp::pegtl
-    unofficial::nativefiledialog::nfd)
+    unofficial::nativefiledialog::nfd
+    spdlog::spdlog
+    spdlog::spdlog_header_only)
 target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER)

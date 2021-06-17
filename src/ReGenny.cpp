@@ -9,6 +9,7 @@
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
+#include <spdlog/spdlog.h>
 
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
@@ -96,6 +97,8 @@ struct Baz : Bar {
 #include <poppack.h>
 
 ReGenny::ReGenny() {
+    spdlog::set_default_logger(m_logger.logger());
+    spdlog::info("Hello, world!");
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
 
@@ -226,17 +229,23 @@ void ReGenny::ui() {
 
     menu_ui();
 
+    auto h = ImGui::GetContentRegionAvail().y * (1.61f * 0.5f);
+
     if (m_process == nullptr) {
+        ImGui::BeginChild("attach", ImVec2{0.0f, h});
         attach_ui();
+        ImGui::EndChild();
     } else {
-        ImGui::BeginChild("memview", ImVec2{ImGui::GetWindowContentRegionWidth() * 0.66f, 0});
+        ImGui::BeginChild("memview", ImVec2{ImGui::GetWindowContentRegionWidth() / 1.61f, h});
         memory_ui();
         ImGui::EndChild();
         ImGui::SameLine();
-        ImGui::BeginChild("editor");
+        ImGui::BeginChild("editor", ImVec2{0.0f, h});
         editor_ui();
         ImGui::EndChild();
     }
+
+    m_logger.ui();
 
     // ImGui::ShowDemoWindow();
 
@@ -260,7 +269,7 @@ void ReGenny::menu_ui() {
                 file_open();
             }
 
-            if (ImGui::MenuItem("Save")) {
+            if (ImGui::MenuItem("Save", "Ctrl+S")) {
                 file_save();
             }
 
@@ -268,7 +277,7 @@ void ReGenny::menu_ui() {
                 file_save_as();
             }
 
-            if (ImGui::MenuItem("Exit")) {
+            if (ImGui::MenuItem("Exit", "Alt+F4")) {
                 m_window.close();
             }
 
@@ -298,6 +307,8 @@ void ReGenny::file_open() {
         return;
     }
 
+    spdlog::info("Opening {}...", out_path);
+
     std::ifstream f{out_path, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
 
     m_ui.editor_text.resize(f.tellg());
@@ -306,13 +317,22 @@ void ReGenny::file_open() {
 
     m_open_filename = out_path;
     free(out_path);
+
+    m_log_parse_errors = true;
     parse_editor_text();
+    m_log_parse_errors = false;
 }
 
 void ReGenny::file_save() {
     if (m_open_filename.empty()) {
         return;
     }
+
+    spdlog::info("Saving {}...", m_open_filename);
+
+    m_log_parse_errors = true;
+    parse_editor_text();
+    m_log_parse_errors = false;
 
     std::ofstream f{m_open_filename, std::ofstream::out | std::ofstream::binary};
 
@@ -326,6 +346,8 @@ void ReGenny::file_save_as() {
         return;
     }
 
+    spdlog::info("Saving as {}...", save_path);
+
     m_open_filename = save_path;
 
     file_save();
@@ -333,6 +355,7 @@ void ReGenny::file_save_as() {
 }
 
 void ReGenny::action_detach() {
+    spdlog::info("Detatching...");
     m_process.reset();
     m_window.setTitle("ReGenny");
 }
@@ -348,6 +371,7 @@ void ReGenny::action_generate_sdk() {
         return;
     }
 
+    spdlog::info("Generating SDK at {}...", sdk_path);
     m_sdk->generate(sdk_path);
     free(sdk_path);
 }
@@ -379,6 +403,8 @@ void ReGenny::attach() {
     if (m_ui.process_id == 0) {
         return;
     }
+
+    spdlog::info("Attatching to {} PID: {}...", m_ui.process_name, m_ui.process_id);
 
     m_process = arch::open_process(m_ui.process_id);
 
@@ -483,6 +509,15 @@ void ReGenny::set_type() {
 }
 
 void ReGenny::editor_ui() {
+    if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl) || sf::Keyboard::isKeyPressed(sf::Keyboard::RControl)) {
+        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) && !m_ui.editor_has_saved) {
+            file_save();
+            m_ui.editor_has_saved = true;
+        }
+    } else {
+        m_ui.editor_has_saved = false;
+    }
+
     if (ImGui::InputTextMultiline(
             "##source", &m_ui.editor_text, ImGui::GetWindowContentRegionMax(), ImGuiInputTextFlags_AllowTabInput)) {
         parse_editor_text();
@@ -511,7 +546,9 @@ void ReGenny::parse_editor_text() {
             set_type();
         }
     } catch (const tao::pegtl::parse_error& e) {
-        m_ui.editor_error_msg = e.what();
+        if (m_log_parse_errors) {
+            spdlog::error(e.what());
+        }
         return;
     }
 }
