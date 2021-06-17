@@ -9,6 +9,7 @@
     "fmt",
     "pegtl",
     "nativefiledialog",
-    "spdlog"
+    "spdlog",
+    "thor"
   ]
 }

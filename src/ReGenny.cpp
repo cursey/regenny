@@ -97,6 +97,16 @@ struct Baz : Bar {
 #include <poppack.h>
 
 ReGenny::ReGenny() {
+    m_actions[Action::OPEN] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
+                              thor::Action(sf::Keyboard::O, thor::Action::PressOnce);
+    m_actions[Action::SAVE] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
+                              thor::Action(sf::Keyboard::S, thor::Action::PressOnce);
+    m_actions[Action::QUIT] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
+                              thor::Action(sf::Keyboard::Q, thor::Action::PressOnce);
+    m_actions_system.connect(Action::OPEN, [this](auto _) { file_open(); });
+    m_actions_system.connect(Action::SAVE, [this](auto _) { file_save(); });
+    m_actions_system.connect(Action::QUIT, [this](auto _) { m_window.close(); });
+
     spdlog::set_default_logger(m_logger.logger());
     spdlog::info("Hello, world!");
     m_window.setFramerateLimit(60);
@@ -192,6 +202,9 @@ void ReGenny::run() {
     sf::Clock delta_clock{};
 
     while (m_window.isOpen()) {
+        m_actions.update(m_window);
+        m_actions.invokeCallbacks(m_actions_system, &m_window);
+
         sf::Event evt{};
 
         while (m_window.pollEvent(evt)) {
@@ -265,7 +278,7 @@ void ReGenny::ui() {
 void ReGenny::menu_ui() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
-            if (ImGui::MenuItem("Open")) {
+            if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 file_open();
             }
 
@@ -277,7 +290,7 @@ void ReGenny::menu_ui() {
                 file_save_as();
             }
 
-            if (ImGui::MenuItem("Exit", "Alt+F4")) {
+            if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
                 m_window.close();
             }
 

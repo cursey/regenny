@@ -2,12 +2,11 @@
 
 #include <map>
 #include <memory>
-#include <mutex>
 #include <string>
 #include <unordered_map>
 
 #include <SFML/Graphics/RenderWindow.hpp>
-#include <imgui.h>
+#include <Thor/Input.hpp>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
@@ -54,6 +53,11 @@ private:
 
     LoggerUi m_logger{};
     bool m_log_parse_errors{};
+
+    enum class Action { OPEN, SAVE, QUIT };
+
+    thor::ActionMap<Action> m_actions{};
+    thor::ActionMap<Action>::CallbackSystem m_actions_system{};
 
     void ui();
     void menu_ui();

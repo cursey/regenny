@@ -2,6 +2,9 @@ cmake_minimum_required(VERSION 3.5)
 
 project(ReGenny)
 
+#include(cmake/FindThor.cmake)
+set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/modules)
+
 find_package(imgui CONFIG REQUIRED)
 find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
 find_package(ImGui-SFML CONFIG REQUIRED)
@@ -9,6 +12,7 @@ find_package(fmt CONFIG REQUIRED)
 find_package(pegtl CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
+find_package(Thor 2 REQUIRED)
 
 add_executable(regenny 
     "src/Genny.hpp" 
@@ -41,7 +45,7 @@ add_executable(regenny
     "src/LoggerUi.hpp" 
     "src/LoggerUi.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
-target_include_directories(regenny PRIVATE "src/")
+target_include_directories(regenny PRIVATE "src/" ${THOR_INCLUDE_DIR})
 target_link_libraries(regenny PRIVATE 
     imgui::imgui 
     sfml-system sfml-network sfml-graphics sfml-window sfml-main
@@ -50,5 +54,6 @@ target_link_libraries(regenny PRIVATE
     taocpp::pegtl
     unofficial::nativefiledialog::nfd
     spdlog::spdlog
-    spdlog::spdlog_header_only)
+    spdlog::spdlog_header_only
+    ${THOR_LIBRARY})
 target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER)
