@@ -116,10 +116,10 @@ ReGenny::ReGenny() {
     m_ui.processes = m_helpers->processes();
 
     // Defaults for testing.
-    m_ui.editor_text = DEFAULT_EDITOR_TEXT;
-    m_ui.type_name = DEFAULT_EDITOR_TYPE;
-    m_ui.process_id = GetCurrentProcessId();
-    m_ui.process_name = "ReGenny.exe";
+    // m_ui.editor_text = DEFAULT_EDITOR_TEXT;
+    // m_ui.type_name = DEFAULT_EDITOR_TYPE;
+    // m_ui.process_id = GetCurrentProcessId();
+    // m_ui.process_name = "ReGenny.exe";
     // m_ui.address = "<ReGenny.exe>+0x0";
 
     auto foo = new Foo{};
@@ -202,12 +202,12 @@ void ReGenny::run() {
     sf::Clock delta_clock{};
 
     while (m_window.isOpen()) {
-        m_actions.update(m_window);
-        m_actions.invokeCallbacks(m_actions_system, &m_window);
+        m_actions.clearEvents();
 
         sf::Event evt{};
 
         while (m_window.pollEvent(evt)) {
+            m_actions.pushEvent(evt);
             ImGui::SFML::ProcessEvent(evt);
 
             if (evt.type == sf::Event::Closed) {
@@ -215,6 +215,7 @@ void ReGenny::run() {
             }
         }
 
+        m_actions.invokeCallbacks(m_actions_system, &m_window);
         ImGui::SFML::Update(m_window, delta_clock.restart());
         ui();
 
