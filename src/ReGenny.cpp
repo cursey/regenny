@@ -325,7 +325,7 @@ void ReGenny::ui() {
 
         ImGui::SameLine();
         ImGui::TextUnformatted(m_ui.font_to_load.c_str());
-        ImGui::SliderFloat("Size", &m_ui.font_size, 6.0f, 32.0f, "%.1f");
+        ImGui::SliderFloat("Size", &m_ui.font_size, 6.0f, 32.0f, "%.0f");
 
         if (ImGui::Button("OK")) {
             ImGui::CloseCurrentPopup();
@@ -572,7 +572,8 @@ void ReGenny::set_address() {
         inherited_props = m_mem_ui->props();
     }
 
-    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
+    m_mem_ui = std::make_unique<MemoryUi>(
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
 }
 
 void ReGenny::set_type() {
@@ -606,7 +607,8 @@ void ReGenny::set_type() {
         inherited_props = m_mem_ui->props();
     }
 
-    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
+    m_mem_ui = std::make_unique<MemoryUi>(
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
 }
 
 void ReGenny::editor_ui() {

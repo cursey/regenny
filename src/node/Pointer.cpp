@@ -8,8 +8,7 @@
 using namespace std::literals;
 
 namespace node {
-Pointer::Pointer(Process& process, genny::Variable* var, Property& props)
-    : Variable{process, var, props} {
+Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Variable{process, var, props} {
     m_ptr = dynamic_cast<genny::Pointer*>(m_var->type());
     assert(m_ptr != nullptr);
 

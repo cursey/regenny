@@ -12,7 +12,8 @@
 
 class MemoryUi {
 public:
-    MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address, node::Property& inherited_props);
+    MemoryUi(
+        genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address, node::Property& inherited_props);
 
     void display();
 

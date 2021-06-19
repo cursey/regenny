@@ -1,7 +1,7 @@
 #pragma once
 
-#include <unordered_map>
 #include <string>
+#include <unordered_map>
 #include <variant>
 
 namespace node {
@@ -19,4 +19,4 @@ struct Property {
 
     Property& operator[](const std::string& s) { return props[s]; }
 };
-}
+} // namespace node

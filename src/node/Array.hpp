@@ -10,7 +10,7 @@ public:
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
-    auto start_element(int start_element) { 
+    auto start_element(int start_element) {
         m_props["__start"].value = start_element;
         return this;
     }
@@ -21,7 +21,6 @@ public:
         return this;
     }
     auto& num_elements_displayed() { return std::get<int>(m_props["__count"].value); }
-
 
 protected:
     genny::Array* m_arr{};
