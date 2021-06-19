@@ -154,6 +154,10 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    if (m_is_collapsed) {
+        return;
+    }
+
     for (auto&& [node_offset, node] : m_nodes) {
         node->on_refresh(address + node_offset, offset + node_offset, &mem[node_offset]);
     }

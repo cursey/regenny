@@ -71,6 +71,7 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             if (m_ptr->to()->is_a<genny::Struct>()) {
                 auto struct_ = std::make_unique<Struct>(m_process, m_proxy_var.get());
                 struct_->display_self(false);
+                struct_->collapse(false);
                 m_ptr_node = std::move(struct_);
             } else if (m_ptr->to()->is_a<genny::Pointer>()) {
                 m_ptr_node = std::make_unique<Pointer>(m_process, m_proxy_var.get());
@@ -96,6 +97,10 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Pointer::refresh_memory() {
+    if (m_is_collapsed) {
+        return;
+    }
+
     if (auto now = std::chrono::steady_clock::now(); now >= m_mem_refresh_time) {
         m_mem_refresh_time = now + 500ms;
 
