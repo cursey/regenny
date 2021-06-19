@@ -48,7 +48,8 @@ add_executable(regenny
     "src/LoggerUi.hpp" 
     "src/LoggerUi.cpp" 
     "src/node/Bitfield.hpp" 
-    "src/node/Bitfield.cpp")
+    "src/node/Bitfield.cpp" 
+    "src/node/Property.hpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/" "thirdparty/imgui/" ${THOR_INCLUDE_DIR})
 target_link_libraries(regenny PRIVATE 

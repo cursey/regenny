@@ -7,7 +7,7 @@
 namespace node {
 class Bitfield : public Variable {
 public:
-    Bitfield(Process& process, genny::Bitfield* bf);
+    Bitfield(Process& process, genny::Bitfield* bf, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;

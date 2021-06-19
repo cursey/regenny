@@ -566,12 +566,16 @@ void ReGenny::set_address() {
         break;
     }
 
-    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
+    node::Property inherited_props{};
+
+    if (m_mem_ui != nullptr) {
+        inherited_props = m_mem_ui->props();
+    }
+
+    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
 }
 
 void ReGenny::set_type() {
-    m_mem_ui.reset();
-
     if (m_sdk == nullptr) {
         return;
     }
@@ -596,7 +600,13 @@ void ReGenny::set_type() {
         return;
     }
 
-    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address);
+    node::Property inherited_props{};
+
+    if (m_mem_ui != nullptr) {
+        inherited_props = m_mem_ui->props();
+    }
+
+    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
 }
 
 void ReGenny::editor_ui() {

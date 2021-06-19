@@ -2,6 +2,7 @@
 
 #include <cstddef>
 #include <cstdint>
+#include <unordered_map>
 
 #include "../Process.hpp"
 
@@ -21,4 +22,5 @@ protected:
     static int indentation_level;
     Process& m_process;
 };
+
 } // namespace node

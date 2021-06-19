@@ -8,12 +8,15 @@
 #include "Genny.hpp"
 #include "Process.hpp"
 #include "node/Base.hpp"
+#include "node/Property.hpp"
 
 class MemoryUi {
 public:
-    MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address);
+    MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address, node::Property& inherited_props);
 
     void display();
+
+    auto&& props() { return m_props; }
 
 private:
     genny::Sdk& m_sdk;
@@ -23,4 +26,6 @@ private:
 
     std::unique_ptr<genny::Variable> m_proxy_variable{};
     std::unique_ptr<node::Base> m_root{};
+
+    node::Property m_props;
 };

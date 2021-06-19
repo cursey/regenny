@@ -8,8 +8,8 @@
 
 #include "MemoryUi.hpp"
 
-MemoryUi::MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address)
-    : m_sdk{sdk}, m_struct{struct_}, m_process{process}, m_address{address} {
+MemoryUi::MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address, node::Property& inherited_props)
+    : m_sdk{sdk}, m_struct{struct_}, m_process{process}, m_address{address}, m_props{inherited_props} {
     if (m_struct == nullptr) {
         return;
     }
@@ -17,8 +17,8 @@ MemoryUi::MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, ui
     m_proxy_variable = std::make_unique<genny::Variable>("");
     m_proxy_variable->type(m_struct->ptr());
 
-    auto root = std::make_unique<node::Pointer>(m_process, m_proxy_variable.get());
-    root->collapse(false);
+    auto root = std::make_unique<node::Pointer>(m_process, m_proxy_variable.get(), m_props);
+    root->is_collapsed(false);
 
     m_root = std::move(root);
 }

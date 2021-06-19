@@ -8,22 +8,28 @@
 #include "Struct.hpp"
 
 namespace node {
-Struct::Struct(Process& process, genny::Variable* var)
-    : Variable{process, var}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
+Struct::Struct(Process& process, genny::Variable* var, Property& props)
+    : Variable{process, var, props}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
     assert(m_struct != nullptr);
+
+    if (m_props["__collapsed"].value.index() == 0) {
+        is_collapsed(true);
+    }
 
     // Build the node map.
     auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {
+        auto&& props = m_props[var->name()];
+
         if (var->type()->is_a<genny::Array>()) {
-            return std::make_unique<Array>(m_process, var);
+            return std::make_unique<Array>(m_process, var, props);
         } else if (var->type()->is_a<genny::Struct>()) {
-            return std::make_unique<Struct>(m_process, var);
+            return std::make_unique<Struct>(m_process, var, props);
         } else if (var->type()->is_a<genny::Pointer>()) {
-            return std::make_unique<Pointer>(m_process, var);
+            return std::make_unique<Pointer>(m_process, var, props);
         } else if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
-            return std::make_unique<Bitfield>(m_process, bf);
+            return std::make_unique<Bitfield>(m_process, bf, props);
         } else {
-            return std::make_unique<Variable>(m_process, var);
+            return std::make_unique<Variable>(m_process, var, props);
         }
     };
     std::function<void(genny::Struct*)> add_vars = [&](genny::Struct* s) {
@@ -121,11 +127,11 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         ImGui::EndGroup();
 
         if (ImGui::BeginPopupContextItem("ArrayNode")) {
-            ImGui::Checkbox("Collpase", &m_is_collapsed);
+            ImGui::Checkbox("Collpase", &is_collapsed());
             ImGui::EndPopup();
         }
 
-        if (m_is_collapsed) {
+        if (is_collapsed()) {
             return;
         }
     }
@@ -154,7 +160,7 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    if (m_is_collapsed) {
+    if (is_collapsed()) {
         return;
     }
 

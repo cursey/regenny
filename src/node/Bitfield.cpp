@@ -39,7 +39,8 @@ template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t
     fmt::format_to(std::back_inserter(s), " {}", data);
 }
 
-Bitfield::Bitfield(Process& process, genny::Bitfield* bf) : Variable{process, bf}, m_bf{bf} {
+Bitfield::Bitfield(Process& process, genny::Bitfield* bf, Property& props)
+    : Variable{process, bf, props}, m_bf{bf} {
     for (auto&& field : bf->get_all<genny::Bitfield::Field>()) {
         m_fields[field->offset()] = std::make_unique<Field>(m_process, field);
     }
