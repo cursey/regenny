@@ -13,7 +13,10 @@ void Base::display_address_offset(uintptr_t address, uintptr_t offset) {
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", address);
     ImGui::SameLine();
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%8X", offset);
+    apply_indentation();
+}
 
+void Base::apply_indentation() {
     if (indentation_level > 0) {
         auto g = ImGui::GetCurrentContext();
         ImGui::SameLine(0.0f, 0.0f);

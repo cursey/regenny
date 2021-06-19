@@ -72,6 +72,10 @@ public:
     virtual ~Object() = default;
 
     const auto& name() const { return m_name; }
+    auto name(std::string name) {
+        m_name = std::move(name);
+        return this;
+    }
 
     const auto& metadata() const { return m_metadata; }
     auto& metadata() { return m_metadata; }
@@ -420,8 +424,8 @@ public:
         return this;
     }
 
-    auto offset() const { return m_offset; }
-    auto offset(uintptr_t offset) {
+    virtual uintptr_t offset() const { return m_offset; }
+    virtual Variable* offset(uintptr_t offset) {
         m_offset = offset;
         return this;
     }
@@ -472,10 +476,31 @@ public:
 
         auto end() const { return offset() + size(); }
 
+        auto append() {
+            auto var = owner<Variable>();
+            uintptr_t highest_offset{};
+            Field* highest_field{};
+
+            for (auto&& field : var->get_all<Field>()) {
+                if (field->offset() >= highest_offset && field != this) {
+                    highest_offset = field->offset();
+                    highest_field = field;
+                }
+            }
+
+            if (highest_field != nullptr) {
+                offset(highest_field->end());
+            } else {
+                offset(0);
+            }
+
+            return this;
+        }
+
         void generate(std::ostream& os) const {
             generate_metadata(os);
             owner<Variable>()->type()->generate_typename_for(os, this);
-            os << " " << m_name << " : " << m_size << ";\n";
+            os << " " << m_name << " : " << std::dec << m_size << ";\n";
         }
 
     protected:
@@ -486,6 +511,12 @@ public:
     Bitfield(uintptr_t offset) : Variable{"bitfield_" + std::to_string(offset)} { m_offset = offset; }
 
     auto field(std::string_view name) { return find_or_add<Field>(name); }
+
+    uintptr_t offset() const override { return Variable::offset(); }
+    Variable* offset(uintptr_t offset) override {
+        name("bitfield_" + std::to_string(offset));
+        return Variable::offset(offset);
+    }
 
     size_t size() const override {
         if (m_type == nullptr) {
@@ -1525,6 +1556,19 @@ struct VarOffset : Num {};
 struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
 struct VarDecl : seq<VarType, Seps, VarName, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>> {};
 
+struct BitfieldId : TAO_PEGTL_STRING("bitfield") {};
+struct BitfieldType : identifier {};
+struct BitfieldSize : Num {};
+struct BitfieldSizeDecl : seq<one<':'>, Seps, BitfieldSize> {};
+struct BitfieldOffset : Num {};
+struct BitfieldOffsetDecl : seq<one<'@'>, Seps, BitfieldOffset> {};
+struct BitfieldDecl : seq<BitfieldId, Seps, BitfieldType, Seps, opt<BitfieldOffsetDecl>> {};
+
+struct BitfieldVarName : identifier {};
+struct BitfieldVarSize : Num {};
+struct BitfieldVarOffset : Num {};
+struct BitfieldVarDecl : seq<BitfieldVarName, Seps, one<':'>, Seps, BitfieldVarSize, Seps, opt<BitfieldVarOffset>> {};
+
 struct FnRetType : VarType {};
 struct FnName : identifier {};
 struct FnParamType : VarType {};
@@ -1532,7 +1576,10 @@ struct FnParamName : identifier {};
 struct FnParam : seq<FnParamType, Seps, FnParamName> {};
 struct FnDecl : seq<FnRetType, Seps, FnName, one<'('>, opt<list<FnParam, one<','>, Sep>>, one<')'>> {};
 
-struct Decl : must<Seps, sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, FnDecl, VarDecl>, Seps> {};
+struct Decl
+    : must<Seps,
+          sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, BitfieldDecl, BitfieldVarDecl, FnDecl, VarDecl>,
+          Seps> {};
 struct Grammar : until<eof, sor<eolf, Decl>> {};
 
 struct State {
@@ -1567,6 +1614,14 @@ struct State {
     std::vector<size_t> var_type_array_counts{};
     std::string var_name{};
     std::optional<uintptr_t> var_offset{};
+
+    genny::Bitfield* cur_bitfield{};
+    std::string bitfield_type{};
+    std::optional<uintptr_t> bitfield_offset{};
+
+    std::string bitfield_var_name{};
+    size_t bitfield_var_size{};
+    std::optional<size_t> bitfield_var_offset{};
 
     genny::Type* fn_ret_type{};
     std::string fn_name{};
@@ -1797,6 +1852,7 @@ template <> struct Action<StructDecl> {
         s.struct_parents.clear();
         s.struct_size = std::nullopt;
         s.cur_enum = nullptr;
+        s.cur_bitfield = nullptr;
     }
 };
 
@@ -1875,6 +1931,12 @@ template <> struct Action<VarOffset> {
     }
 };
 
+template <> struct Action<BitfieldSize> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_size = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
 template <> struct Action<VarDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         if (s.cur_struct == nullptr) {
@@ -1898,6 +1960,84 @@ template <> struct Action<VarDecl> {
         s.var_name.clear();
         s.var_offset = std::nullopt;
         s.cur_type = nullptr;
+        s.cur_bitfield = nullptr;
+    }
+};
+
+template <> struct Action<BitfieldType> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_type = in.string_view();
+    }
+};
+
+template <> struct Action<BitfieldOffset> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_offset = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
+template <> struct Action<BitfieldDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_struct == nullptr) {
+            throw parse_error{"Can't declare a bitfield outside of a struct", in};
+        }
+
+        s.cur_bitfield = s.cur_struct->bitfield((uintptr_t)-1);
+
+        auto type = s.lookup<Type>({s.bitfield_type});
+
+        if (type == nullptr) {
+            throw parse_error{"Can't find type for bitfield with name'" + s.bitfield_type + "'", in};
+        }
+
+        s.cur_bitfield->type(type);
+
+        if (s.bitfield_offset) {
+            s.cur_bitfield->offset(*s.bitfield_offset);
+        } else {
+            s.cur_bitfield->append();
+        }
+
+        s.bitfield_offset = std::nullopt;
+        s.bitfield_type.clear();
+    }
+};
+
+template <> struct Action<BitfieldVarName> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_var_name = in.string_view();
+    }
+};
+
+template <> struct Action<BitfieldVarSize> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_var_size = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
+template <> struct Action<BitfieldVarOffset> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.bitfield_var_offset = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
+template <> struct Action<BitfieldVarDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_bitfield == nullptr) {
+            throw parse_error{"Can't declare a bitfield variable without first declaring a bitfield", in};
+        }
+
+        auto bf = s.cur_bitfield->field(s.bitfield_var_name)->size(s.bitfield_var_size);
+
+        if (s.bitfield_var_offset) {
+            bf->offset(*s.bitfield_var_offset);
+        } else {
+            bf->append();
+        }
+
+        s.bitfield_var_name.clear();
+        s.bitfield_var_size = 0;
+        s.bitfield_var_offset = std::nullopt;
     }
 };
 
@@ -1942,6 +2082,7 @@ template <> struct Action<FnDecl> {
         s.fn_name.clear();
         s.fn_ret_type = nullptr;
         s.fn_params.clear();
+        s.cur_bitfield = nullptr;
     }
 };
 } // namespace parser

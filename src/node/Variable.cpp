@@ -38,8 +38,8 @@ void Variable::display_name() {
     ImGui::TextUnformatted(m_var->name().c_str());
 }
 
-void Variable::display(uintptr_t addresm_value_str, uintptr_t offset, std::byte* mem) {
-    display_address_offset(addresm_value_str, offset);
+void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    display_address_offset(address, offset);
     ImGui::SameLine();
     display_type();
     ImGui::SameLine();

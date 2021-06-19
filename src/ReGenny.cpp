@@ -48,11 +48,20 @@ constexpr auto DEFAULT_EDITOR_TYPE = "IMAGE_DOS_HEADER";
 constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type int 4 [[i32]]
 type float 4 [[f32]]
+type ushort 2 [[u16]]
 
 enum Place
     EARTH = 1
     MOON = 2
     MARS = 3
+
+struct Date
+    bitfield ushort
+        nWeekDay : 3
+        nMonthDay : 6
+        nMonth : 5
+    bitfield ushort
+        nYear : 8
 
 struct Foo
     int a
@@ -64,6 +73,7 @@ struct Bar
     int d
     Foo* foo
     int[4][3] m
+    Date date
 
 struct Baz : Bar
     int e
@@ -76,6 +86,13 @@ constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
 #include <pshpack1.h>
 enum Place { EARTH = 1, MOON = 2, MARS = 3 };
 
+struct Date {
+    unsigned short nWeekDay : 3;
+    unsigned short nMonthDay : 6;
+    unsigned short nMonth : 5;
+    unsigned short nYear : 8;
+};
+
 struct Foo {
     int a{};
     int b{};
@@ -87,6 +104,10 @@ struct Bar {
     int d{};
     Foo* foo{};
     int m[4][3];
+    union {
+        Date date;
+        unsigned int date_int{};
+    };
 };
 
 struct Baz : Bar {
@@ -103,9 +124,9 @@ ReGenny::ReGenny() {
                               thor::Action(sf::Keyboard::S, thor::Action::PressOnce);
     m_actions[Action::QUIT] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
                               thor::Action(sf::Keyboard::Q, thor::Action::PressOnce);
-    m_actions_system.connect(Action::OPEN, [this](auto _) { file_open(); });
-    m_actions_system.connect(Action::SAVE, [this](auto _) { file_save(); });
-    m_actions_system.connect(Action::QUIT, [this](auto _) { m_window.close(); });
+    m_actions_system.connect0(Action::OPEN, [this] { file_open(); });
+    m_actions_system.connect0(Action::SAVE, [this] { file_save(); });
+    m_actions_system.connect0(Action::QUIT, [this] { m_window.close(); });
 
     spdlog::set_default_logger(m_logger.logger());
     spdlog::info("Hello, world!");
@@ -116,10 +137,10 @@ ReGenny::ReGenny() {
     m_ui.processes = m_helpers->processes();
 
     // Defaults for testing.
-    // m_ui.editor_text = DEFAULT_EDITOR_TEXT;
-    // m_ui.type_name = DEFAULT_EDITOR_TYPE;
-    // m_ui.process_id = GetCurrentProcessId();
-    // m_ui.process_name = "ReGenny.exe";
+    m_ui.editor_text = DEFAULT_EDITOR_TEXT;
+    m_ui.type_name = DEFAULT_EDITOR_TYPE;
+    m_ui.process_id = GetCurrentProcessId();
+    m_ui.process_name = "ReGenny.exe";
     // m_ui.address = "<ReGenny.exe>+0x0";
 
     auto foo = new Foo{};
@@ -136,6 +157,10 @@ ReGenny::ReGenny() {
             baz->m[i][j] = i + j;
         }
     }
+    baz->date.nWeekDay = 1;
+    baz->date.nMonthDay = 2;
+    baz->date.nMonth = 3;
+    baz->date.nYear = 4;
     baz->e = 666;
     baz->f = new int[10];
     for (auto i = 0; i < 10; ++i) {

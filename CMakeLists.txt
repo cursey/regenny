@@ -43,7 +43,9 @@ add_executable(regenny
     "src/node/Undefined.hpp" 
     "src/node/Undefined.cpp" 
     "src/LoggerUi.hpp" 
-    "src/LoggerUi.cpp")
+    "src/LoggerUi.cpp" 
+    "src/node/Bitfield.hpp" 
+    "src/node/Bitfield.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/" ${THOR_INCLUDE_DIR})
 target_link_libraries(regenny PRIVATE 

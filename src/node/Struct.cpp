@@ -1,6 +1,7 @@
 #include <imgui.h>
 
 #include "Array.hpp"
+#include "Bitfield.hpp"
 #include "Pointer.hpp"
 #include "Undefined.hpp"
 
@@ -19,6 +20,8 @@ Struct::Struct(Process& process, genny::Variable* var)
             return std::make_unique<Struct>(m_process, var);
         } else if (var->type()->is_a<genny::Pointer>()) {
             return std::make_unique<Pointer>(m_process, var);
+        } else if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
+            return std::make_unique<Bitfield>(m_process, bf);
         } else {
             return std::make_unique<Variable>(m_process, var);
         }

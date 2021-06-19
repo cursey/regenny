@@ -11,6 +11,8 @@ public:
     Base(Process& process);
 
     void display_address_offset(uintptr_t address, uintptr_t offset);
+    void apply_indentation();
+
     virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
     virtual size_t size() = 0;
     virtual void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {}
