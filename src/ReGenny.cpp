@@ -413,6 +413,7 @@ void ReGenny::file_open() {
 
 void ReGenny::file_save() {
     if (m_open_filename.empty()) {
+        file_save_as();
         return;
     }
 
