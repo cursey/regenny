@@ -10,52 +10,24 @@ namespace node {
 template <typename T> void display_bits(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem) {
     s += "0b";
 
-    static std::string bit_str{};
-
-    bit_str.clear();
-
     auto data = *(T*)mem;
-    auto start = offset;
-    auto end = offset + num_bits;
+    auto start = (int)offset;
+    auto end = (int)(offset + num_bits);
 
-    // This check is for detecting if the bitfield stradles a boundry. Bitfields that stradle a boundry are aligned to
-    // that boundry. I'm not sure if I want to handle this here or just have users maintain bitfield boundries
-    // themselves.
-    /*if (end > sizeof(T) * CHAR_BIT) {
-        data = *((T*)mem + 1);
-        start = 0;
-        end = num_bits;
-    }*/
-
-    for (auto i = start; i < end; ++i) {
+    for (auto i = end - 1; i >= start; --i) {
         if (data >> i & 1) {
-            bit_str += "1";
+            s += "1";
         } else {
-            bit_str += "0";
+            s += "0";
         }
     }
-
-    std::reverse(bit_str.begin(), bit_str.end());
-
-    s += bit_str;
 }
 
 template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem) {
-    T head{};
-    T tail{};
     T mask{};
     auto data = *(T*)mem;
     auto start = offset;
     auto end = offset + num_bits;
-
-    // This check is for detecting if the bitfield stradles a boundry. Bitfields that stradle a boundry are aligned to
-    // that boundry. I'm not sure if I want to handle this here or just have users maintain bitfield boundries
-    // themselves.
-    /*if (end > sizeof(T) * CHAR_BIT) {
-        data = *((T*)mem + 1);
-        start = 0;
-        end = num_bits;
-    }*/
 
     for (auto i = start; i < end; ++i) {
         mask |= 1ull << i;
@@ -63,7 +35,6 @@ template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t
 
     data &= mask;
     data >>= start;
-    head = data;
 
     fmt::format_to(std::back_inserter(s), " {}", data);
 }
