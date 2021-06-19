@@ -318,11 +318,9 @@ void ReGenny::ui() {
         if (ImGui::Button("Browse")) {
             nfdchar_t* out_path{};
 
-            if (NFD_OpenDialog("ttf", nullptr, &out_path) != NFD_OKAY) {
-                return;
+            if (NFD_OpenDialog("ttf", nullptr, &out_path) == NFD_OKAY) {
+                m_ui.font_to_load = out_path;
             }
-
-            m_ui.font_to_load = out_path;
         }
 
         ImGui::SameLine();
