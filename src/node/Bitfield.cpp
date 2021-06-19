@@ -106,7 +106,7 @@ void Bitfield::Field::display(uintptr_t address, uintptr_t offset, std::byte* me
     ImGui::SameLine();
     ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_field->owner<genny::Bitfield>()->type()->name().c_str());
     ImGui::SameLine();
-    ImGui::TextUnformatted(m_field->name().c_str());
+    ImGui::Text("%s : %d", m_field->name().c_str(), m_field->size());
     ImGui::SameLine();
     ImGui::TextUnformatted(m_display_str.c_str());
 }
