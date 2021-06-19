@@ -2,7 +2,6 @@
 
 void LoggerUi::ui() {
     ImGui::BeginChild("logger");
-
     ImGui::TextUnformatted(m_buf.begin());
 
     if (m_scroll_to_bottom) {

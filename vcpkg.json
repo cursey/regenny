@@ -3,6 +3,7 @@
   "name": "regenny",
   "version": "0.1.0",
   "dependencies": [
+    "freetype",
     "imgui",
     "sfml",
     "imgui-sfml",

@@ -5,6 +5,7 @@ project(ReGenny)
 #include(cmake/FindThor.cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/modules)
 
+find_package(freetype CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
 find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
 find_package(ImGui-SFML CONFIG REQUIRED)
@@ -15,6 +16,8 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(Thor 2 REQUIRED)
 
 add_executable(regenny 
+    "thirdparty/imgui/imgui_freetype.cpp"
+    "thirdparty/imgui/imgui_freetype.h"
     "src/Genny.hpp" 
     "src/Main.cpp" 
     "src/ReGenny.hpp" 
@@ -47,8 +50,9 @@ add_executable(regenny
     "src/node/Bitfield.hpp" 
     "src/node/Bitfield.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
-target_include_directories(regenny PRIVATE "src/" ${THOR_INCLUDE_DIR})
+target_include_directories(regenny PRIVATE "src/" "thirdparty/imgui/" ${THOR_INCLUDE_DIR})
 target_link_libraries(regenny PRIVATE 
+    freetype
     imgui::imgui 
     sfml-system sfml-network sfml-graphics sfml-window sfml-main
     ImGui-SFML::ImGui-SFML

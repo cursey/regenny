@@ -38,6 +38,7 @@ private:
         std::string process_name{};
         uint32_t process_id{};
         std::string error_msg{};
+        ImGuiID error_popup{};
 
         std::string address{};
         std::string type_name{};
@@ -45,6 +46,10 @@ private:
         std::string editor_text{};
         std::string editor_error_msg{};
         bool editor_has_saved{};
+
+        std::string font_to_load{};
+        float font_size{16.0f};
+        ImGuiID font_popup{};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
@@ -58,6 +63,8 @@ private:
 
     thor::ActionMap<Action> m_actions{};
     thor::ActionMap<Action>::CallbackSystem m_actions_system{};
+
+    bool m_load_font{};
 
     void ui();
     void menu_ui();

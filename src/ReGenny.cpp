@@ -13,6 +13,7 @@
 
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
+#include "imgui_freetype.h"
 
 #include "ReGenny.hpp"
 
@@ -129,6 +130,7 @@ ReGenny::ReGenny() {
     m_actions_system.connect0(Action::QUIT, [this] { m_window.close(); });
 
     spdlog::set_default_logger(m_logger.logger());
+    spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Hello, world!");
     m_window.setFramerateLimit(60);
     ImGui::SFML::Init(m_window);
@@ -241,6 +243,18 @@ void ReGenny::run() {
         }
 
         m_actions.invokeCallbacks(m_actions_system, &m_window);
+
+        if (m_load_font) {
+            spdlog::info("Setting font {}...", m_ui.font_to_load);
+
+            auto& io = ImGui::GetIO();
+            io.Fonts->Clear();
+            io.Fonts->AddFontFromFileTTF(m_ui.font_to_load.c_str(), m_ui.font_size);
+            ImGuiFreeType::BuildFontAtlas(io.Fonts, 0);
+            ImGui::SFML::UpdateFontTexture();
+            m_load_font = false;
+        }
+
         ImGui::SFML::Update(m_window, delta_clock.restart());
         ui();
 
@@ -288,8 +302,7 @@ void ReGenny::ui() {
 
     // ImGui::ShowDemoWindow();
 
-    ImGui::End();
-
+    m_ui.error_popup = ImGui::GetID("Error");
     if (ImGui::BeginPopupModal("Error")) {
         ImGui::Text(m_ui.error_msg.c_str());
 
@@ -299,6 +312,35 @@ void ReGenny::ui() {
 
         ImGui::EndPopup();
     }
+
+    m_ui.font_popup = ImGui::GetID("Set Font");
+    if (ImGui::BeginPopupModal("Set Font")) {
+        if (ImGui::Button("Browse")) {
+            nfdchar_t* out_path{};
+
+            if (NFD_OpenDialog("ttf", nullptr, &out_path) != NFD_OKAY) {
+                return;
+            }
+
+            m_ui.font_to_load = out_path;
+        }
+
+        ImGui::SameLine();
+        ImGui::TextUnformatted(m_ui.font_to_load.c_str());
+        ImGui::SliderFloat("Size", &m_ui.font_size, 6.0f, 32.0f, "%.1f");
+
+        if (ImGui::Button("OK")) {
+            ImGui::CloseCurrentPopup();
+
+            if (!m_ui.font_to_load.empty()) {
+                m_load_font = true;
+            }
+        }
+
+        ImGui::EndPopup();
+    }
+
+    ImGui::End();
 }
 
 void ReGenny::menu_ui() {
@@ -330,6 +372,15 @@ void ReGenny::menu_ui() {
 
             if (ImGui::MenuItem("Generate SDK")) {
                 action_generate_sdk();
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Options")) {
+            if (ImGui::MenuItem("Set Font")) {
+                // options_set_font();
+                ImGui::OpenPopup(m_ui.font_popup);
             }
 
             ImGui::EndMenu();
@@ -396,6 +447,7 @@ void ReGenny::file_save_as() {
 void ReGenny::action_detach() {
     spdlog::info("Detatching...");
     m_process.reset();
+    m_mem_ui.reset();
     m_window.setTitle("ReGenny");
 }
 
@@ -449,7 +501,8 @@ void ReGenny::attach() {
 
     if (!m_process->ok()) {
         m_ui.error_msg = "Couldn't open the process!";
-        ImGui::OpenPopup("Error");
+        ImGui::OpenPopup(m_ui.error_popup);
+        m_process.reset();
         return;
     }
 
