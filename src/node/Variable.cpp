@@ -113,6 +113,12 @@ void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
                 m_utf16.resize(256);
                 m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(wchar_t));
                 display_str(m_value_str, utf8::utf16to8(m_utf16));
+            } else if (md == "bool") {
+                if (*(bool*)mem) {
+                    m_value_str += " true";
+                } else {
+                    m_value_str += " false";
+                }
             }
         }
     }

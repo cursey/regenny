@@ -52,6 +52,7 @@ type float 4 [[f32]]
 type ushort 2 [[u16]]
 type str 8 [[utf8*]]
 type wstr 8 [[utf16*]]
+type bool 1 [[bool]]
 
 enum Place
     EARTH = 1
@@ -86,6 +87,9 @@ struct Baz : Bar
     Thing* things
     str hello
     wstr wide_hello
+    bool im_true
+    bool im_false
+    bool im_also_true
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
@@ -128,6 +132,9 @@ struct Baz : Bar {
     Thing* things{};
     char* hello{};
     wchar_t* wide_hello{};
+    bool im_true{true};
+    bool im_false{false};
+    char im_also_true{7};
 };
 #include <poppack.h>
 
