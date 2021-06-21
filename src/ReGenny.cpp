@@ -646,6 +646,7 @@ void ReGenny::parse_editor_text() {
     try {
         if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
             m_sdk = std::move(sdk);
+            m_mem_ui.reset();
             set_type();
         }
     } catch (const tao::pegtl::parse_error& e) {
