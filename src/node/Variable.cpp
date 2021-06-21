@@ -106,12 +106,12 @@ void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
             } else if (md == "f64") {
                 display_as<double>(m_value_str, mem);
             } else if (md == "utf8*") {
-                m_utf8.resize(64);
-                m_process.read(*(uintptr_t*)mem, m_utf8.data(), 63 * sizeof(char));
+                m_utf8.resize(256);
+                m_process.read(*(uintptr_t*)mem, m_utf8.data(), 255 * sizeof(char));
                 display_str(m_value_str, m_utf8);
             } else if (md == "utf16*") {
-                m_utf16.resize(64);
-                m_process.read(*(uintptr_t*)mem, m_utf16.data(), 63 * sizeof(wchar_t));
+                m_utf16.resize(256);
+                m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(wchar_t));
                 display_str(m_value_str, utf8::utf16to8(m_utf16));
             }
         }
