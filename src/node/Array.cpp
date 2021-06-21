@@ -18,6 +18,13 @@ Array::Array(Process& process, genny::Variable* var, Property& props)
     if (m_props["__count"].value.index() == 0) {
         num_elements_displayed(0);
     }
+
+    // Make sure inherited props are within acceptable ranges.
+    start_element() = std::clamp(start_element(), 0, (int)m_arr->count());
+    num_elements_displayed() = std::clamp(num_elements_displayed(), 0, (int)m_arr->count());
+
+    // Create the initial nodes.
+    create_nodes();
 }
 
 void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
@@ -47,10 +54,6 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto num_elements = num_elements_displayed();
 
     for (auto i = 0; i < num_elements; ++i) {
-        if (start + i >= (int)m_arr->count()) {
-            break;
-        }
-
         auto cur_element = start + i;
         auto& cur_node = m_elements[i];
         auto cur_offset = cur_element * m_arr->of()->size();
@@ -68,10 +71,6 @@ void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto start = start_element();
 
     for (auto i = 0; i < num_elements; ++i) {
-        if (start + i >= (int)m_arr->count()) {
-            break;
-        }
-
         auto cur_element = start + i;
         auto& cur_node = m_elements[i];
         auto cur_offset = cur_element * m_arr->of()->size();
@@ -101,7 +100,7 @@ void Array::create_nodes() {
             node = std::make_unique<Array>(m_process, proxy_variable.get(), proxy_props);
         } else if (proxy_variable->type()->is_a<genny::Struct>()) {
             auto struct_ = std::make_unique<Struct>(m_process, proxy_variable.get(), proxy_props);
-            struct_->display_self(false)->is_collapsed(false);
+            struct_->is_collapsed(false);
             node = std::move(struct_);
         } else if (proxy_variable->type()->is_a<genny::Pointer>()) {
             node = std::make_unique<Pointer>(m_process, proxy_variable.get(), proxy_props);
