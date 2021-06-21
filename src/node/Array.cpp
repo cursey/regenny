@@ -18,8 +18,76 @@ Array::Array(Process& process, genny::Variable* var, Property& props)
     if (m_props["__count"].value.index() == 0) {
         num_elements_displayed(0);
     }
+}
 
-    for (auto i = 0; i < m_arr->count(); ++i) {
+void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    ImGui::BeginGroup();
+    display_address_offset(address, offset);
+    ImGui::SameLine();
+    display_type();
+    ImGui::SameLine();
+    display_name();
+    ImGui::EndGroup();
+
+    if (ImGui::BeginPopupContextItem("ArrayNode")) {
+        if (ImGui::InputInt("Start element", &start_element())) {
+            start_element() = std::clamp(start_element(), 0, (int)m_arr->count());
+            create_nodes();
+        }
+
+        if (ImGui::InputInt("# Elements displayed", &num_elements_displayed())) {
+            num_elements_displayed() = std::clamp(num_elements_displayed(), 0, (int)m_arr->count());
+            create_nodes();
+        }
+
+        ImGui::EndPopup();
+    }
+
+    auto start = start_element();
+    auto num_elements = num_elements_displayed();
+
+    for (auto i = 0; i < num_elements; ++i) {
+        if (start + i >= (int)m_arr->count()) {
+            break;
+        }
+
+        auto cur_element = start + i;
+        auto& cur_node = m_elements[i];
+        auto cur_offset = cur_element * m_arr->of()->size();
+
+        ++indentation_level;
+        ImGui::PushID(cur_node.get());
+        cur_node->display(address + cur_offset, offset + cur_offset, mem + cur_offset);
+        ImGui::PopID();
+        --indentation_level;
+    }
+}
+
+void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    auto num_elements = num_elements_displayed();
+    auto start = start_element();
+
+    for (auto i = 0; i < num_elements; ++i) {
+        if (start + i >= (int)m_arr->count()) {
+            break;
+        }
+
+        auto cur_element = start + i;
+        auto& cur_node = m_elements[i];
+        auto cur_offset = cur_element * m_arr->of()->size();
+
+        cur_node->on_refresh(address + cur_offset, offset + cur_offset, mem + cur_offset);
+    }
+}
+void Array::create_nodes() {
+    m_proxy_variables.clear();
+    m_elements.clear();
+
+    auto num_elements = num_elements_displayed();
+    auto start = start_element();
+    auto end = start + num_elements;
+
+    for (auto i = start; i < end; ++i) {
         auto proxy_variable = std::make_unique<genny::Variable>(fmt::format("{}[{}]", m_var->name(), i));
         auto&& proxy_props = m_props[proxy_variable->name()];
 
@@ -42,64 +110,6 @@ Array::Array(Process& process, genny::Variable* var, Property& props)
 
         m_proxy_variables.emplace_back(std::move(proxy_variable));
         m_elements.emplace_back(std::move(node));
-    }
-}
-
-void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    ImGui::BeginGroup();
-    display_address_offset(address, offset);
-    ImGui::SameLine();
-    display_type();
-    ImGui::SameLine();
-    display_name();
-    ImGui::EndGroup();
-
-    if (ImGui::BeginPopupContextItem("ArrayNode")) {
-        if (ImGui::InputInt("Start element", &start_element())) {
-            start_element() = std::clamp(start_element(), 0, (int)m_elements.size() - 1);
-        }
-
-        if (ImGui::InputInt("# Elements displayed", &num_elements_displayed())) {
-            num_elements_displayed() = std::clamp(num_elements_displayed(), 0, (int)m_elements.size());
-        }
-
-        ImGui::EndPopup();
-    }
-
-    auto start = start_element();
-    auto num_elements = num_elements_displayed();
-
-    for (auto i = 0; i < num_elements; ++i) {
-        if (start + i >= (int)m_arr->count()) {
-            break;
-        }
-
-        auto cur_element = start + i;
-        auto& cur_node = m_elements[cur_element];
-        auto cur_offset = cur_element * m_arr->of()->size();
-
-        ++indentation_level;
-        ImGui::PushID(cur_node.get());
-        cur_node->display(address + cur_offset, offset + cur_offset, mem + cur_offset);
-        ImGui::PopID();
-        --indentation_level;
-    }
-}
-
-void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    auto start = start_element();
-    auto num_elements = num_elements_displayed();
-
-    for (auto i = 0; i < num_elements; ++i) {
-        if (start + i >= (int)m_arr->count()) {
-            break;
-        }
-
-        auto cur_element = start + i;
-        auto& cur_node = m_elements[cur_element];
-        auto cur_offset = cur_element * m_arr->of()->size();
-
-        cur_node->on_refresh(address + cur_offset, offset + cur_offset, mem + cur_offset);
     }
 }
 } // namespace node
