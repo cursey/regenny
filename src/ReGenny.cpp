@@ -579,14 +579,12 @@ void ReGenny::set_address() {
         break;
     }
 
-    node::Property inherited_props{};
-
     if (m_mem_ui != nullptr) {
-        inherited_props = m_mem_ui->props();
+        m_inherited_props = m_mem_ui->props();
     }
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, m_inherited_props);
 }
 
 void ReGenny::set_type() {
@@ -614,14 +612,12 @@ void ReGenny::set_type() {
         return;
     }
 
-    node::Property inherited_props{};
-
     if (m_mem_ui != nullptr) {
-        inherited_props = m_mem_ui->props();
+        m_inherited_props = m_mem_ui->props();
     }
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, inherited_props);
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, m_inherited_props);
 }
 
 void ReGenny::editor_ui() {
@@ -659,6 +655,11 @@ void ReGenny::parse_editor_text() {
     try {
         if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
             m_sdk = std::move(sdk);
+
+            if (m_mem_ui != nullptr) {
+                m_inherited_props = m_mem_ui->props();
+            }
+
             m_mem_ui.reset();
             set_type();
         }

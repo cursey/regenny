@@ -13,6 +13,7 @@
 #include "LoggerUi.hpp"
 #include "MemoryUi.hpp"
 #include "Process.hpp"
+#include "node/Property.hpp"
 
 class ReGenny {
 public:
@@ -53,6 +54,7 @@ private:
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
+    node::Property m_inherited_props{};
 
     std::string m_open_filename{};
 
