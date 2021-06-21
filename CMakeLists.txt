@@ -5,20 +5,15 @@ project(ReGenny)
 #include(cmake/FindThor.cmake)
 set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/modules)
 
-find_package(freetype CONFIG REQUIRED)
+#find_package(freetype CONFIG REQUIRED)
 find_package(imgui CONFIG REQUIRED)
-find_package(SFML COMPONENTS system window graphics CONFIG REQUIRED)
-find_package(ImGui-SFML CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(pegtl CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
-find_package(Thor 2 REQUIRED)
 find_package(utf8cpp CONFIG REQUIRED)
 
-add_executable(regenny 
-    "thirdparty/imgui/imgui_freetype.cpp"
-    "thirdparty/imgui/imgui_freetype.h"
+add_executable(regenny
     "src/Genny.hpp" 
     "src/Main.cpp" 
     "src/ReGenny.hpp" 
@@ -52,17 +47,13 @@ add_executable(regenny
     "src/node/Bitfield.cpp" 
     "src/node/Property.hpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
-target_include_directories(regenny PRIVATE "src/" "thirdparty/imgui/" ${THOR_INCLUDE_DIR})
+target_include_directories(regenny PRIVATE "src/")
 target_link_libraries(regenny PRIVATE 
-    freetype
     imgui::imgui 
-    sfml-system sfml-network sfml-graphics sfml-window sfml-main
-    ImGui-SFML::ImGui-SFML
     fmt::fmt
     taocpp::pegtl
     unofficial::nativefiledialog::nfd
     spdlog::spdlog
     spdlog::spdlog_header_only
-    ${THOR_LIBRARY}
     utf8cpp)
-target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER UTF_CPP_CPLUSPLUS=201103L)
+target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER SDL_MAIN_HANDLED UTF_CPP_CPLUSPLUS=201103L)

@@ -3,8 +3,10 @@
   "name": "regenny",
   "version": "0.1.0",
   "dependencies": [
-    "freetype",
-    "imgui",
+    {
+        "name": "imgui",
+        "features": ["freetype", "sdl2-binding", "opengl3-glad-binding"]
+    },
     "sfml",
     "imgui-sfml",
     "fmt",

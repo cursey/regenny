@@ -8,12 +8,13 @@
 #include <imgui-SFML.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
+#include <imgui_impl_opengl3.h>
+#include <imgui_impl_sdl.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
-#include "imgui_freetype.h"
 
 #include "ReGenny.hpp"
 
@@ -138,22 +139,10 @@ struct Baz : Bar {
 };
 #include <poppack.h>
 
-ReGenny::ReGenny() {
-    m_actions[Action::OPEN] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
-                              thor::Action(sf::Keyboard::O, thor::Action::PressOnce);
-    m_actions[Action::SAVE] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
-                              thor::Action(sf::Keyboard::S, thor::Action::PressOnce);
-    m_actions[Action::QUIT] = (thor::Action(sf::Keyboard::LControl) || thor::Action(sf::Keyboard::RControl)) &&
-                              thor::Action(sf::Keyboard::Q, thor::Action::PressOnce);
-    m_actions_system.connect0(Action::OPEN, [this] { file_open(); });
-    m_actions_system.connect0(Action::SAVE, [this] { file_save(); });
-    m_actions_system.connect0(Action::QUIT, [this] { m_window.close(); });
-
+ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     spdlog::set_default_logger(m_logger.logger());
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Hello, world!");
-    m_window.setFramerateLimit(60);
-    ImGui::SFML::Init(m_window);
 
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
@@ -248,62 +237,38 @@ ReGenny::ReGenny() {
 }
 
 ReGenny::~ReGenny() {
-    ImGui::SFML::Shutdown();
 }
 
-void ReGenny::run() {
-    sf::Clock delta_clock{};
 
-    while (m_window.isOpen()) {
-        m_actions.clearEvents();
+void ReGenny::update() {
+    if (m_load_font) {
+        spdlog::info("Setting font {}...", m_ui.font_to_load);
 
-        sf::Event evt{};
-
-        while (m_window.pollEvent(evt)) {
-            m_actions.pushEvent(evt);
-            ImGui::SFML::ProcessEvent(evt);
-
-            if (evt.type == sf::Event::Closed) {
-                m_window.close();
-            }
-        }
-
-        m_actions.invokeCallbacks(m_actions_system, &m_window);
-
-        if (m_load_font) {
-            spdlog::info("Setting font {}...", m_ui.font_to_load);
-
-            auto& io = ImGui::GetIO();
-            io.Fonts->Clear();
-            io.Fonts->AddFontFromFileTTF(m_ui.font_to_load.c_str(), m_ui.font_size);
-            ImGuiFreeType::BuildFontAtlas(io.Fonts, 0);
-            ImGui::SFML::UpdateFontTexture();
-            m_load_font = false;
-        }
-
-        ImGui::SFML::Update(m_window, delta_clock.restart());
-        ui();
-
-        m_window.clear();
-        ImGui::SFML::Render(m_window);
-        m_window.display();
+        auto& io = ImGui::GetIO();
+        io.Fonts->Clear();
+        io.Fonts->AddFontFromFileTTF(m_ui.font_to_load.c_str(), m_ui.font_size);
+        ImGui_ImplOpenGL3_DestroyFontsTexture();
+        ImGui_ImplOpenGL3_CreateFontsTexture();
+        m_load_font = false;
     }
 }
 
 void ReGenny::ui() {
+    SDL_GetWindowSize(m_window, &m_window_w, &m_window_h);
     ImGui::SetNextWindowPos({0, 0}, ImGuiCond_Always);
-    ImGui::SetNextWindowSize({(float)m_window.getSize().x, (float)m_window.getSize().y}, ImGuiCond_Always);
+    ImGui::SetNextWindowSize({(float)m_window_w, (float)m_window_h}, ImGuiCond_Always);
     ImGui::Begin("ReGenny", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar);
 
     // Resizing gets kinda wonky because the ImGui window will try to resize more often than the actual window (atleast
     // on Windows 10). If we add the ImGuiWindowFlags_NoResize option to the window flags above, the window becomes even
     // harder to resize for some reason. So we fix that by letting the ImGui resize normally and then just setting the
     // actual window size to whatever the ImGui window size is.
-    sf::Vector2u winsize{(unsigned int)ImGui::GetWindowWidth(), (unsigned int)ImGui::GetWindowHeight()};
+    auto win_w = (int)ImGui::GetWindowWidth();
+    auto win_h = (int)ImGui::GetWindowHeight();
 
-    if (winsize != m_window_size) {
-        m_window.setSize(winsize);
-        m_window_size = m_window.getSize();
+    if (win_w != m_window_w || win_h != m_window_h) {
+        SDL_SetWindowSize(m_window, win_w, win_h);
+        SDL_GetWindowSize(m_window, &m_window_w, &m_window_h);
     }
 
     menu_ui();
@@ -383,7 +348,12 @@ void ReGenny::menu_ui() {
             }
 
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
-                m_window.close();
+                SDL_QuitEvent event{};
+
+                event.timestamp = SDL_GetTicks();
+                event.type = SDL_QUIT;
+
+                SDL_PushEvent((SDL_Event*)&event);
             }
 
             ImGui::EndMenu();
@@ -473,7 +443,7 @@ void ReGenny::action_detach() {
     spdlog::info("Detatching...");
     m_process.reset();
     m_mem_ui.reset();
-    m_window.setTitle("ReGenny");
+    SDL_SetWindowTitle(m_window, "ReGenny");
 }
 
 void ReGenny::action_generate_sdk() {
@@ -537,7 +507,7 @@ void ReGenny::attach() {
     set_address();
     set_type();
 
-    m_window.setTitle(fmt::format("ReGenny - {} PID: {}", m_ui.process_name, m_ui.process_id));
+    SDL_SetWindowTitle(m_window, fmt::format("ReGenny - {} PID: {}", m_ui.process_name, m_ui.process_id).c_str());
 }
 
 void ReGenny::memory_ui() {
@@ -634,15 +604,6 @@ void ReGenny::set_type() {
 }
 
 void ReGenny::editor_ui() {
-    if (sf::Keyboard::isKeyPressed(sf::Keyboard::LControl) || sf::Keyboard::isKeyPressed(sf::Keyboard::RControl)) {
-        if (sf::Keyboard::isKeyPressed(sf::Keyboard::S) && !m_ui.editor_has_saved) {
-            file_save();
-            m_ui.editor_has_saved = true;
-        }
-    } else {
-        m_ui.editor_has_saved = false;
-    }
-
     if (ImGui::InputTextMultiline(
             "##source", &m_ui.editor_text, ImGui::GetWindowContentRegionMax(), ImGuiInputTextFlags_AllowTabInput)) {
         parse_editor_text();

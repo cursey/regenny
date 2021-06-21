@@ -5,8 +5,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <SFML/Graphics/RenderWindow.hpp>
-#include <Thor/Input.hpp>
+#include <SDL.h>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
@@ -17,14 +16,18 @@
 
 class ReGenny {
 public:
-    ReGenny();
+    ReGenny(SDL_Window* window);
     virtual ~ReGenny();
 
-    void run();
+    void update();
+    void ui();
+
+    auto&& window() const { return m_window; }
 
 private:
-    sf::RenderWindow m_window{sf::VideoMode{1024, 768}, "ReGenny"};
-    sf::Vector2u m_window_size{m_window.getSize()};
+    int m_window_w{};
+    int m_window_h{};
+    SDL_Window* m_window{};
 
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
@@ -61,14 +64,8 @@ private:
     LoggerUi m_logger{};
     bool m_log_parse_errors{};
 
-    enum class Action { OPEN, SAVE, QUIT };
-
-    thor::ActionMap<Action> m_actions{};
-    thor::ActionMap<Action>::CallbackSystem m_actions_system{};
-
     bool m_load_font{};
 
-    void ui();
     void menu_ui();
 
     void file_open();
