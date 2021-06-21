@@ -111,8 +111,12 @@ void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
                 display_str(m_value_str, m_utf8);
             } else if (md == "utf16*") {
                 m_utf16.resize(256);
-                m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(wchar_t));
+                m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(char16_t));
                 display_str(m_value_str, utf8::utf16to8(m_utf16));
+            } else if (md == "utf32*") {
+                m_utf32.resize(256);
+                m_process.read(*(uintptr_t*)mem, m_utf32.data(), 255 * sizeof(char32_t));
+                display_str(m_value_str, utf8::utf32to8(m_utf32));
             } else if (md == "bool") {
                 if (*(bool*)mem) {
                     m_value_str += " true";

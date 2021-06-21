@@ -24,5 +24,6 @@ protected:
     Property& m_props;
     std::string m_utf8{};
     std::u16string m_utf16{};
+    std::u32string m_utf32{};
 };
 } // namespace node
