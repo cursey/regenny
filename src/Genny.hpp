@@ -1475,7 +1475,9 @@ protected:
 namespace parser {
 using namespace tao::pegtl;
 
-struct Comment : disable<one<'#'>, until<eolf>> {};
+struct ShortComment : disable<two<'/'>, until<eolf>> {};
+struct LongComment : disable<one<'/'>, one<'*'>, until<seq<one<'*'>, one<'/'>>>> {};
+struct Comment : sor<ShortComment, LongComment> {};
 struct Sep : sor<one<' ', '\t'>, Comment> {};
 struct Seps : star<Sep> {};
 
@@ -1485,23 +1487,23 @@ struct Num : sor<HexNum, DecNum> {};
 
 // plus<printable characters not-including comma or closing square bracket>
 struct Metadata : plus<sor<range<32, 43>, range<45, 92>, range<94, 126>>> {};
-struct MetadataDecl : seq<two<'['>, list<Metadata, one<','>, Sep>, two<']'>> {};
+struct MetadataDecl : if_must<two<'['>, Seps, list<Metadata, one<','>, Sep>, Seps, two<']'>> {};
 
 struct NsId : TAO_PEGTL_STRING("namespace") {};
 struct NsName : identifier {};
-struct NsNameList : list<NsName, one<'.'>, Sep> {};
-struct NsDecl : seq<NsId, Seps, opt<NsNameList>> {};
+struct NsNameList : list_must<NsName, one<'.'>, Sep> {};
+struct NsDecl : if_must<NsId, Seps, opt<NsNameList>> {};
 
 struct TypeId : TAO_PEGTL_STRING("type") {};
 struct TypeName : identifier {};
 struct TypeSize : Num {};
-struct TypeDecl : seq<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>> {};
+struct TypeDecl : if_must<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>> {};
 
 struct EnumId : TAO_PEGTL_STRING("enum") {};
 struct EnumClassId : TAO_PEGTL_STRING("class") {};
 struct EnumName : identifier {};
 struct EnumType : identifier {};
-struct EnumDecl : seq<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
+struct EnumDecl : if_must<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
 struct EnumVal : Num {};
 struct EnumValName : identifier {};
 struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
@@ -1509,37 +1511,37 @@ struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
 struct StructId : TAO_PEGTL_STRING("struct") {};
 struct StructName : identifier {};
 struct StructParentPart : identifier {};
-struct StructParent : list<StructParentPart, one<'.'>> {};
+struct StructParent : list_must<StructParentPart, one<'.'>> {};
 struct StructParentList : list<StructParent, one<','>, Sep> {};
 struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
 struct StructSize : Num {};
-struct StructDecl : seq<StructId, Seps, StructName, Seps, opt<StructParentListDecl>, Seps, opt<StructSize>> {};
+struct StructDecl : if_must<StructId, Seps, StructName, Seps, opt<StructParentListDecl>, Seps, opt<StructSize>> {};
 
 struct VarTypeNamePart : identifier {};
-struct VarTypeName : list<VarTypeNamePart, one<'.'>> {};
+struct VarTypeName : list_must<VarTypeNamePart, one<'.'>> {};
 struct VarTypePtr : one<'*'> {};
 struct VarTypeArrayCount : Num {};
-struct VarTypeArray : seq<one<'['>, VarTypeArrayCount, one<']'>> {};
+struct VarTypeArray : if_must<one<'['>, VarTypeArrayCount, one<']'>> {};
 struct VarType : seq<VarTypeName, star<VarTypePtr>, star<VarTypeArray>> {};
 struct VarName : identifier {};
 struct VarOffset : Num {};
 struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
 struct VarBitSize : Num {};
 struct VarBitSizeDecl : seq<one<':'>, Seps, VarBitSize> {};
-struct VarDecl : seq<VarType, Seps, VarName, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>> {};
+struct VarDecl
+    : seq<VarType, Seps, VarName, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>> {};
 
 struct FnRetType : VarType {};
 struct FnName : identifier {};
 struct FnParamType : VarType {};
 struct FnParamName : identifier {};
 struct FnParam : seq<FnParamType, Seps, FnParamName> {};
-struct FnDecl : seq<FnRetType, Seps, FnName, one<'('>, opt<list<FnParam, one<','>, Sep>>, one<')'>> {};
+struct FnParamList : list_must<FnParam, one<','>, Sep> {};
+struct FnParams : if_must<one<'('>, Seps, opt<FnParamList>, Seps, one<')'>> {};
+struct FnDecl : seq<FnRetType, Seps, FnName, Seps, FnParams> {};
 
-struct Decl
-    : must<Seps,
-          sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, FnDecl, VarDecl>,
-          Seps> {};
-struct Grammar : until<eof, sor<eolf, Decl>> {};
+struct Decl : sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, FnDecl, VarDecl> {};
+struct Grammar : until<eof, sor<eolf, Sep, Decl>> {};
 
 struct State {
     genny::Namespace* global_ns{};
