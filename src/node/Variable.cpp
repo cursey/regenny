@@ -2,12 +2,27 @@
 
 #include <fmt/format.h>
 #include <imgui.h>
+#include <utf8.h>
 
 #include "Variable.hpp"
 
 namespace node {
 template <typename T> void display_as(std::string& s, std::byte* mem) {
     fmt::format_to(std::back_inserter(s), " {}", *(T*)mem);
+}
+
+void display_str(std::string& s, const std::string& str) {
+    s += " \"";
+
+    for (auto&& c : str) {
+        if (c == 0) {
+            break;
+        }
+
+        s += c;
+    }
+
+    s += "\"";
 }
 
 template <typename T> void display_enum(std::string& s, std::byte* mem, genny::Enum* enum_) {
@@ -53,7 +68,7 @@ size_t Variable::size() {
     return m_size;
 }
 
-void Variable::on_refresh(uintptr_t addresm_value_str, uintptr_t offset, std::byte* mem) {
+void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
     m_value_str.clear();
 
     auto end = (int)std::min(m_var->size(), sizeof(uintptr_t));
@@ -90,6 +105,14 @@ void Variable::on_refresh(uintptr_t addresm_value_str, uintptr_t offset, std::by
                 display_as<float>(m_value_str, mem);
             } else if (md == "f64") {
                 display_as<double>(m_value_str, mem);
+            } else if (md == "utf8*") {
+                m_utf8.resize(64);
+                m_process.read(*(uintptr_t*)mem, m_utf8.data(), 64 * sizeof(char));
+                display_str(m_value_str, m_utf8);
+            } else if (md == "utf16*") {
+                m_utf16.resize(64);
+                m_process.read(*(uintptr_t*)mem, m_utf16.data(), 64 * sizeof(wchar_t));
+                display_str(m_value_str, utf8::utf16to8(m_utf16));
             }
         }
     }

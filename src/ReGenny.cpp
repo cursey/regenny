@@ -50,6 +50,8 @@ constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type int 4 [[i32]]
 type float 4 [[f32]]
 type ushort 2 [[u16]]
+type str 8 [[utf8*]]
+type wstr 8 [[utf16*]]
 
 enum Place
     EARTH = 1
@@ -84,6 +86,8 @@ struct Baz : Bar
     int* f
     Foo g
     Thing* things
+    str hello
+    wstr wide_hello
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
@@ -124,6 +128,8 @@ struct Baz : Bar {
     int* f{};
     Foo g{};
     Thing* things{};
+    char* hello{};
+    wchar_t* wide_hello{};
 };
 #include <poppack.h>
 
@@ -186,6 +192,8 @@ ReGenny::ReGenny() {
     for (auto i = 0; i < 10; ++i) {
         baz->things[i].abc = i * 2;
     }
+    baz->hello = "Hello, world!";
+    baz->wide_hello = L"Hello, wide world!";
 
     m_ui.address = fmt::format("0x{:X}", (uintptr_t)baz);
 

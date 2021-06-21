@@ -14,6 +14,7 @@ find_package(pegtl CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(Thor 2 REQUIRED)
+find_package(utf8cpp CONFIG REQUIRED)
 
 add_executable(regenny 
     "thirdparty/imgui/imgui_freetype.cpp"
@@ -62,5 +63,6 @@ target_link_libraries(regenny PRIVATE
     unofficial::nativefiledialog::nfd
     spdlog::spdlog
     spdlog::spdlog_header_only
-    ${THOR_LIBRARY})
-target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER)
+    ${THOR_LIBRARY}
+    utf8cpp)
+target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER UTF_CPP_CPLUSPLUS=201103L)

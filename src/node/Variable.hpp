@@ -22,5 +22,7 @@ protected:
     size_t m_size{};
     std::string m_value_str{};
     Property& m_props;
+    std::string m_utf8{};
+    std::u16string m_utf16{};
 };
 } // namespace node
