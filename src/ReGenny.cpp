@@ -76,10 +76,14 @@ struct Bar
     int[4][3] m
     Date date
 
+struct Thing 
+    int abc
+
 struct Baz : Bar
     int e
     int* f
     Foo g
+    Thing* things
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
@@ -111,10 +115,15 @@ struct Bar {
     };
 };
 
+struct Thing {
+    int abc{};
+};
+
 struct Baz : Bar {
     int e{};
     int* f{};
     Foo g{};
+    Thing* things{};
 };
 #include <poppack.h>
 
@@ -173,6 +182,10 @@ ReGenny::ReGenny() {
     ++baz->g.b;
     ++baz->g.c;
     baz->g.p = Place::MOON;
+    baz->things = new Thing[10];
+    for (auto i = 0; i < 10; ++i) {
+        baz->things[i].abc = i * 2;
+    }
 
     m_ui.address = fmt::format("0x{:X}", (uintptr_t)baz);
 

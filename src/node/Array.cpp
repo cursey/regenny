@@ -79,6 +79,7 @@ void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
         cur_node->on_refresh(address + cur_offset, offset + cur_offset, mem + cur_offset);
     }
 }
+
 void Array::create_nodes() {
     m_proxy_variables.clear();
     m_elements.clear();
@@ -100,7 +101,7 @@ void Array::create_nodes() {
             node = std::make_unique<Array>(m_process, proxy_variable.get(), proxy_props);
         } else if (proxy_variable->type()->is_a<genny::Struct>()) {
             auto struct_ = std::make_unique<Struct>(m_process, proxy_variable.get(), proxy_props);
-            struct_->display_self(false);
+            struct_->display_self(false)->is_collapsed(false);
             node = std::move(struct_);
         } else if (proxy_variable->type()->is_a<genny::Pointer>()) {
             node = std::make_unique<Pointer>(m_process, proxy_variable.get(), proxy_props);
