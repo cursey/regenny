@@ -56,9 +56,9 @@ size_t Variable::size() {
 void Variable::on_refresh(uintptr_t addresm_value_str, uintptr_t offset, std::byte* mem) {
     m_value_str.clear();
 
-    auto end = std::min(m_var->size(), sizeof(uintptr_t));
+    auto end = (int)std::min(m_var->size(), sizeof(uintptr_t));
 
-    for (auto i = 0; i < end; ++i) {
+    for (auto i = end - 1; i >= 0; --i) {
         fmt::format_to(std::back_inserter(m_value_str), "{:02X}", *(uint8_t*)&mem[i]);
     }
 
