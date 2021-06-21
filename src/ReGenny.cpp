@@ -2,10 +2,7 @@
 #include <cassert>
 #include <cstdlib>
 
-#include <SFML/System/Clock.hpp>
-#include <SFML/Window/Event.hpp>
 #include <fmt/format.h>
-#include <imgui-SFML.h>
 #include <imgui.h>
 #include <imgui_stdlib.h>
 #include <imgui_impl_opengl3.h>

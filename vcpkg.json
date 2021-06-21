@@ -7,13 +7,10 @@
         "name": "imgui",
         "features": ["freetype", "sdl2-binding", "opengl3-glad-binding"]
     },
-    "sfml",
-    "imgui-sfml",
     "fmt",
     "pegtl",
     "nativefiledialog",
     "spdlog",
-    "thor",
     "utfcpp"
   ]
 }
