@@ -26,8 +26,8 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
             return std::make_unique<Struct>(m_process, var, props);
         } else if (var->type()->is_a<genny::Pointer>()) {
             return std::make_unique<Pointer>(m_process, var, props);
-        } else if (auto bf = dynamic_cast<genny::Bitfield*>(var)) {
-            return std::make_unique<Bitfield>(m_process, bf, props);
+        } else if (var->is_bitfield()) {
+            return std::make_unique<Bitfield>(m_process, var, props);
         } else {
             return std::make_unique<Variable>(m_process, var, props);
         }
@@ -38,7 +38,7 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
         }
 
         for (auto&& var : s->get_all<genny::Variable>()) {
-            m_nodes[var->offset()] = make_node(var);
+            m_nodes.emplace(var->offset(), make_node(var));
         }
     };
 
@@ -50,40 +50,40 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
     auto fill_space = [&](int delta) {
         switch (delta) {
         case 8:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 8);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 8));
             break;
 
         case 7:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 4);
-            m_nodes[last_offset + 4] = std::make_unique<Undefined>(m_process, 2);
-            m_nodes[last_offset + 6] = std::make_unique<Undefined>(m_process, 1);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
+            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 2));
+            m_nodes.emplace(last_offset + 6, std::make_unique<Undefined>(m_process, 1));
             break;
 
         case 6:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 4);
-            m_nodes[last_offset + 4] = std::make_unique<Undefined>(m_process, 2);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
+            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 2));
             break;
 
         case 5:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 4);
-            m_nodes[last_offset + 4] = std::make_unique<Undefined>(m_process, 1);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
+            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 1));
             break;
 
         case 4:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 4);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
             break;
 
         case 3:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 2);
-            m_nodes[last_offset + 2] = std::make_unique<Undefined>(m_process, 1);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 2));
+            m_nodes.emplace(last_offset + 2, std::make_unique<Undefined>(m_process, 1));
             break;
 
         case 2:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 2);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 2));
             break;
 
         case 1:
-            m_nodes[last_offset] = std::make_unique<Undefined>(m_process, 1);
+            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 1));
             break;
 
         default:
@@ -136,25 +136,17 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
     }
 
-    for (uintptr_t node_offset = 0; node_offset < m_size;) {
-        if (auto search = m_nodes.find(node_offset); search != m_nodes.end()) {
-            auto& node = search->second;
+    for (auto&& [node_offset, node] : m_nodes) {
+        if (m_display_self) {
+            ++indentation_level;
+        }
 
-            if (m_display_self) {
-                ++indentation_level;
-            }
+        ImGui::PushID(node.get());
+        node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
+        ImGui::PopID();
 
-            ImGui::PushID(node.get());
-            node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
-            ImGui::PopID();
-
-            if (m_display_self) {
-                --indentation_level;
-            }
-
-            node_offset += node->size();
-        } else {
-            ++node_offset;
+        if (m_display_self) {
+            --indentation_level;
         }
     }
 }

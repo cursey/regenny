@@ -27,7 +27,7 @@ public:
 private:
     bool m_display_self{true};
     genny::Struct* m_struct{};
-    std::map<uintptr_t, std::unique_ptr<Base>> m_nodes{};
+    std::multimap<uintptr_t, std::unique_ptr<Base>> m_nodes{};
 };
 
 } // namespace node

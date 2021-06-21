@@ -39,94 +39,60 @@ template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t
     fmt::format_to(std::back_inserter(s), " {}", data);
 }
 
-Bitfield::Bitfield(Process& process, genny::Bitfield* bf, Property& props) : Variable{process, bf, props}, m_bf{bf} {
-    for (auto&& field : bf->get_all<genny::Bitfield::Field>()) {
-        m_fields[field->offset()] = std::make_unique<Field>(m_process, field);
-    }
+Bitfield::Bitfield(Process& process, genny::Variable* var, Property& props) : Variable{process, var, props} {
+    assert(var->is_bitfield());
 }
 
 void Bitfield::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    auto type_size = m_bf->type()->size() * CHAR_BIT;
-
-    for (auto&& [_, field] : m_fields) {
-        auto genny_field = field->field();
-        auto field_offset = genny_field->offset();
-        auto mem_offset = field_offset / type_size * type_size;
-
-        field->display(address + mem_offset, offset + mem_offset, mem + mem_offset);
-    }
-}
-
-void Bitfield::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    auto type_size = m_bf->type()->size() * CHAR_BIT;
-
-    for (auto&& [_, field] : m_fields) {
-        auto genny_field = field->field();
-        auto field_offset = genny_field->offset();
-        auto mem_offset = field_offset / type_size * type_size;
-
-        field->on_refresh(address + mem_offset, offset + mem_offset, mem + mem_offset);
-    }
-}
-
-Bitfield::Field::Field(Process& process, genny::Bitfield::Field* field) : Base{process}, m_field{field} {
-}
-
-void Bitfield::Field::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     display_address_offset(address, offset);
     ImGui::SameLine();
-    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_field->owner<genny::Bitfield>()->type()->name().c_str());
+    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
     ImGui::SameLine();
-    ImGui::Text("%s : %d", m_field->name().c_str(), m_field->size());
+    ImGui::Text("%s : %d", m_var->name().c_str(), m_var->bit_size());
     ImGui::SameLine();
     ImGui::TextUnformatted(m_display_str.c_str());
 }
 
-size_t Bitfield::Field::size() {
-    return m_field->size();
-}
-
-void Bitfield::Field::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+void Bitfield::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
     m_display_str.clear();
 
-    switch (m_field->owner<genny::Bitfield>()->type()->size()) {
+    switch (m_var->type()->size()) {
     case 1:
-        display_bits<uint8_t>(m_display_str, size(), m_field->offset(), mem);
+        display_bits<uint8_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
         break;
     case 2:
-        display_bits<uint16_t>(m_display_str, size(), m_field->offset(), mem);
+        display_bits<uint16_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
         break;
     case 4:
-        display_bits<uint32_t>(m_display_str, size(), m_field->offset(), mem);
+        display_bits<uint32_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
         break;
     case 8:
-        display_bits<uint64_t>(m_display_str, size(), m_field->offset(), mem);
+        display_bits<uint64_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
         break;
     default:
         assert(0);
     }
 
-    auto bf = m_field->owner<genny::Bitfield>();
-    std::array<std::vector<std::string>*, 2> metadatas{&bf->metadata(), &bf->type()->metadata()};
+    std::array<std::vector<std::string>*, 2> metadatas{&m_var->metadata(), &m_var->type()->metadata()};
 
     for (auto&& metadata : metadatas) {
         for (auto&& md : *metadata) {
             if (md == "u8") {
-                display_as<uint8_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<uint8_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "u16") {
-                display_as<uint16_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<uint16_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "u32") {
-                display_as<uint32_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<uint32_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "u64") {
-                display_as<uint64_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<uint64_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "i8") {
-                display_as<int8_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<int8_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "i16") {
-                display_as<int16_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<int16_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "i32") {
-                display_as<int32_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<int32_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             } else if (md == "i64") {
-                display_as<int64_t>(m_display_str, size(), m_field->offset(), mem);
+                display_as<int64_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem);
             }
         }
     }

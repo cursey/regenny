@@ -59,12 +59,10 @@ enum Place
     MARS = 3
 
 struct Date
-    bitfield ushort
-        nWeekDay : 3
-        nMonthDay : 6
-        nMonth : 5
-    bitfield ushort
-        nYear : 8
+    ushort nWeekDay : 3
+    ushort nMonthDay : 6
+    ushort nMonth : 5
+    ushort nYear : 8
 
 struct Foo
     int a
