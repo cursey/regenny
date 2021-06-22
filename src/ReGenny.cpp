@@ -498,9 +498,15 @@ void ReGenny::memory_ui() {
 
     if (ImGui::BeginCombo("Typename", m_ui.type_name.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
-            if (ImGui::Selectable(type_name.c_str())) {
+            auto is_selected = type_name == m_ui.type_name;
+
+            if (ImGui::Selectable(type_name.c_str(), is_selected)) {
                 m_ui.type_name = type_name;
                 set_type();
+            }
+
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
             }
         }
 
