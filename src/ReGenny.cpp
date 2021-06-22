@@ -492,8 +492,19 @@ void ReGenny::memory_ui() {
         ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
     }
 
-    if (ImGui::InputText("Typename", &m_ui.type_name)) {
+    /*if (ImGui::InputText("Typename", &m_ui.type_name)) {
         set_type();
+    }*/
+
+    if (ImGui::BeginCombo("Typename", m_ui.type_name.c_str())) {
+        for (auto&& type_name : m_ui.type_names) {
+            if (ImGui::Selectable(type_name.c_str())) {
+                m_ui.type_name = type_name;
+                set_type();
+            }
+        }
+
+        ImGui::EndCombo();
     }
 
     if (m_mem_ui != nullptr) {
@@ -601,6 +612,34 @@ void ReGenny::parse_editor_text() {
             }
 
             m_mem_ui.reset();
+
+            // Build the list of selectable types for the type selector.
+            m_ui.type_names.clear();
+
+            std::unordered_set<genny::Struct*> structs{};
+            m_sdk->global_ns()->get_all_in_children<genny::Struct>(structs);
+
+            for (auto&& struct_ : structs) {
+                std::vector<std::string> parent_names{};
+
+                for (auto p = struct_->owner<genny::Object>(); p != nullptr; p = p->owner<genny::Object>()) {
+                    if (auto& name = p->name(); !name.empty()) {
+                        parent_names.emplace_back(name);
+                    }
+                }
+
+                std::reverse(parent_names.begin(), parent_names.end());
+                std::string name{};
+
+                for (auto p : parent_names) {
+                    name += p + '.';
+                }
+
+                name += struct_->name();
+
+                m_ui.type_names.emplace(std::move(name));
+            }
+
             set_type();
         }
     } catch (const tao::pegtl::parse_error& e) {

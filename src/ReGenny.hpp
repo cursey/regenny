@@ -49,6 +49,7 @@ private:
 
         std::string address{};
         std::string type_name{};
+        std::set<std::string> type_names{};
 
         std::string editor_text{};
         std::string editor_error_msg{};
