@@ -14,6 +14,7 @@
 #include <ostream>
 #include <set>
 #include <sstream>
+#include <stack>
 #include <string>
 #include <string_view>
 #include <unordered_map>
@@ -1478,7 +1479,7 @@ using namespace tao::pegtl;
 struct ShortComment : disable<two<'/'>, until<eolf>> {};
 struct LongComment : disable<one<'/'>, one<'*'>, until<seq<one<'*'>, one<'/'>>>> {};
 struct Comment : sor<ShortComment, LongComment> {};
-struct Sep : sor<one<' ', '\t'>, Comment> {};
+struct Sep : sor<space, Comment> {};
 struct Seps : star<Sep> {};
 
 struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
@@ -1493,20 +1494,27 @@ struct NsId : TAO_PEGTL_STRING("namespace") {};
 struct NsName : identifier {};
 struct NsNameList : list_must<NsName, one<'.'>, Sep> {};
 struct NsDecl : if_must<NsId, Seps, opt<NsNameList>> {};
+struct NsExpr;
+struct EnumExpr;
+struct StructExpr;
+struct NsExprs : list<sor<Sep, NsExpr, EnumExpr, StructExpr>, Seps> {};
+struct NsExpr : if_must<NsDecl, Seps, one<'{'>, Seps, opt<NsExprs>, Seps, one<'}'>> {};
 
 struct TypeId : TAO_PEGTL_STRING("type") {};
 struct TypeName : identifier {};
 struct TypeSize : Num {};
 struct TypeDecl : if_must<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>> {};
 
+struct EnumVal : Num {};
+struct EnumValName : identifier {};
+struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
+struct EnumVals : seq<list<EnumValDecl, one<','>, Sep>, opt<one<','>>> {};
 struct EnumId : TAO_PEGTL_STRING("enum") {};
 struct EnumClassId : TAO_PEGTL_STRING("class") {};
 struct EnumName : identifier {};
 struct EnumType : identifier {};
 struct EnumDecl : if_must<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
-struct EnumVal : Num {};
-struct EnumValName : identifier {};
-struct EnumValDecl : seq<EnumValName, Seps, one<'='>, Seps, EnumVal> {};
+struct EnumExpr : if_must<EnumDecl, Seps, one<'{'>, Seps, EnumVals, Seps, one<'}'>> {};
 
 struct StructId : TAO_PEGTL_STRING("struct") {};
 struct StructName : identifier {};
@@ -1516,6 +1524,11 @@ struct StructParentList : list<StructParent, one<','>, Sep> {};
 struct StructParentListDecl : seq<one<':'>, Seps, StructParentList> {};
 struct StructSize : Num {};
 struct StructDecl : if_must<StructId, Seps, StructName, Seps, opt<StructParentListDecl>, Seps, opt<StructSize>> {};
+struct StructExpr;
+struct FnDecl;
+struct VarDecl;
+struct StructExprs : list<sor<EnumExpr, StructExpr, FnDecl, VarDecl>, Seps, Sep> {};
+struct StructExpr : if_must<StructDecl, Seps, one<'{'>, Seps, opt<StructExprs>, Seps, one<'}'>> {};
 
 struct VarTypeNamePart : identifier {};
 struct VarTypeName : list_must<VarTypeNamePart, one<'.'>> {};
@@ -1540,12 +1553,12 @@ struct FnParamList : list_must<FnParam, one<','>, Sep> {};
 struct FnParams : if_must<one<'('>, Seps, opt<FnParamList>, Seps, one<')'>> {};
 struct FnDecl : seq<FnRetType, Seps, FnName, Seps, FnParams> {};
 
-struct Decl : sor<NsDecl, TypeDecl, EnumDecl, EnumValDecl, StructDecl, FnDecl, VarDecl> {};
+struct Decl : sor<TypeDecl, NsExpr, EnumExpr, StructExpr> {};
 struct Grammar : until<eof, sor<eolf, Sep, Decl>> {};
 
 struct State {
-    genny::Namespace* global_ns{};
-    genny::Namespace* cur_ns{};
+    std::vector<Object*> parents{};
+    std::stack<int> namespace_depth{};
 
     std::vector<std::string> metadata_parts{};
     std::vector<std::string> metadata{};
@@ -1556,14 +1569,13 @@ struct State {
     std::string type_name{};
     int type_size{};
 
-    genny::Enum* cur_enum{};
     std::string enum_name{};
     std::string enum_type{};
     bool enum_class{};
     std::string enum_val_name{};
     uint32_t enum_val{};
+    std::vector<std::tuple<std::string, uint64_t>> enum_vals{};
 
-    genny::Struct* cur_struct{};
     std::string struct_name{};
     std::vector<std::string> struct_parent{};
     std::vector<genny::Struct*> struct_parents{};
@@ -1613,20 +1625,13 @@ struct State {
             return search(child, ++i);
         };
 
-        // First search the current struct.
-        if (cur_struct != nullptr) {
-            if (auto type = search(cur_struct, 0)) {
+        for (auto it = parents.rbegin(); it != parents.rend(); ++it) {
+            if (auto type = search(*it, 0)) {
                 return type;
             }
         }
 
-        // Then search the local namespace.
-        if (auto type = search(cur_ns, 0)) {
-            return type;
-        }
-
-        // Otherwise search the global namespace.
-        return search(global_ns, 0);
+        return nullptr;
     }
 };
 
@@ -1656,16 +1661,32 @@ template <> struct Action<NsNameList> {
 
 template <> struct Action<NsDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        auto cur_ns = s.global_ns;
+        if (auto cur_ns = dynamic_cast<Namespace*>(s.parents.back())) {
+            auto depth = 0;
 
-        for (auto&& ns : s.ns) {
-            cur_ns = cur_ns->namespace_(ns);
+            for (auto&& ns : s.ns) {
+                cur_ns = cur_ns->namespace_(ns);
+                s.parents.push_back(cur_ns);
+                ++depth;
+            }
+
+            s.namespace_depth.push(depth);
+            s.ns.clear();
+        } else {
+            throw parse_error{"Can only declare a namespace within the context of another namespace", in};
         }
+    }
+};
 
-        s.cur_ns = cur_ns;
-        s.cur_enum = nullptr;
-        s.cur_struct = nullptr;
-        s.ns.clear();
+template <> struct Action<NsExpr> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        auto depth = s.namespace_depth.top();
+
+        s.namespace_depth.pop();
+
+        for (auto i = 0; i < depth; ++i) {
+            s.parents.pop_back();
+        }
     }
 };
 
@@ -1683,15 +1704,20 @@ template <> struct Action<TypeName> {
 
 template <> struct Action<TypeDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        auto type = s.cur_ns->type(s.type_name);
-        type->size(s.type_size);
+        if (auto ns = dynamic_cast<Namespace*>(s.parents.back())) {
+            auto type = ns->type(s.type_name);
 
-        if (!s.metadata.empty()) {
-            type->metadata() = std::move(s.metadata);
+            type->size(s.type_size);
+
+            if (!s.metadata.empty()) {
+                type->metadata() = std::move(s.metadata);
+            }
+
+            s.type_name.clear();
+            s.type_size = -1;
+        } else {
+            throw parse_error{"Can only declare a type within the context of a namespace", in};
         }
-
-        s.type_name.clear();
-        s.type_size = -1;
     }
 };
 
@@ -1711,25 +1737,31 @@ template <> struct Action<EnumClassId> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.enum_class = true; }
 };
 
-template <> struct Action<EnumDecl> {
+template <> struct Action<EnumExpr> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.enum_class) {
-            s.cur_enum = s.cur_ns->enum_class(s.enum_name);
-        } else {
-            s.cur_enum = s.cur_ns->enum_(s.enum_name);
-        }
+        Enum* enum_{};
 
-        if (!s.enum_type.empty()) {
-            auto type = s.lookup<Type>({s.enum_type});
-
-            if (type == nullptr) {
-                throw parse_error{"Can't find type for enum with name'" + s.enum_type + "'", in};
+        if (auto p = dynamic_cast<Namespace*>(s.parents.back())) {
+            if (s.enum_class) {
+                enum_ = p->enum_class(s.enum_name);
+            } else {
+                enum_ = p->enum_(s.enum_name);
             }
-
-            s.cur_enum->type(type);
+        } else if (auto p = dynamic_cast<Struct*>(s.parents.back())) {
+            if (s.enum_class) {
+                enum_ = p->enum_class(s.enum_name);
+            } else {
+                enum_ = p->enum_(s.enum_name);
+            }
+        } else {
+            throw parse_error{"Cannot create an enum here. Parent must be a namespace or a struct.", in};
         }
 
-        s.cur_struct = nullptr;
+        for (auto&& [name, val] : s.enum_vals) {
+            enum_->value(name, val);
+        }
+
+        s.enum_vals.clear();
         s.enum_name.clear();
         s.enum_type.clear();
         s.enum_class = false;
@@ -1750,13 +1782,7 @@ template <> struct Action<EnumValName> {
 
 template <> struct Action<EnumValDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.cur_enum == nullptr) {
-            throw parse_error{"Cannot declare an enum value outside of an enum", in};
-        }
-
-        s.cur_enum->value(s.enum_val_name, s.enum_val);
-        s.enum_val_name.clear();
-        s.enum_val = 0;
+        s.enum_vals.emplace_back(s.enum_val_name, s.enum_val);
     }
 };
 
@@ -1793,21 +1819,33 @@ template <> struct Action<StructSize> {
 
 template <> struct Action<StructDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        s.cur_struct = s.cur_ns->struct_(s.struct_name);
+        Struct* struct_{};
+
+        if (auto p = dynamic_cast<Namespace*>(s.parents.back())) {
+            struct_ = p->struct_(s.struct_name);
+        } else if (auto p = dynamic_cast<Struct*>(s.parents.back())) {
+            struct_ = p->struct_(s.struct_name);
+        } else {
+            throw parse_error{"Structs can only be declared within the context of a namespace or another struct", in};
+        }
 
         for (auto&& parent : s.struct_parents) {
-            s.cur_struct->parent(parent);
+            struct_->parent(parent);
         }
 
         if (s.struct_size) {
-            s.cur_struct->size(*s.struct_size);
+            struct_->size(*s.struct_size);
         }
 
+        s.parents.push_back(struct_);
         s.struct_name.clear();
         s.struct_parents.clear();
         s.struct_size = std::nullopt;
-        s.cur_enum = nullptr;
     }
+};
+
+template <> struct Action<StructExpr> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.parents.pop_back(); }
 };
 
 template <> struct Action<VarTypeNamePart> {
@@ -1893,37 +1931,37 @@ template <> struct Action<VarBitSize> {
 
 template <> struct Action<VarDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.cur_struct == nullptr) {
+        if (auto struct_ = dynamic_cast<Struct*>(s.parents.back())) {
+            auto var = struct_->variable(s.var_name);
+
+            var->type(s.cur_type);
+
+            if (s.var_bit_size) {
+                var->bit_size(*s.var_bit_size);
+            }
+
+            if (s.var_offset) {
+                var->offset(*s.var_offset);
+            } else {
+                var->append();
+            }
+
+            if (var->is_bitfield()) {
+                var->bit_append();
+            }
+
+            if (!s.metadata.empty()) {
+                var->metadata() = std::move(s.metadata);
+            }
+
+            s.var_name.clear();
+            s.cur_type = nullptr;
+            s.var_offset = std::nullopt;
+            s.var_bit_size = std::nullopt;
+            s.var_bit_offset = std::nullopt;
+        } else {
             throw parse_error{"Can't declare a variable outside of a struct", in};
         }
-
-        auto var = s.cur_struct->variable(s.var_name);
-
-        var->type(s.cur_type);
-
-        if (s.var_bit_size) {
-            var->bit_size(*s.var_bit_size);
-        }
-
-        if (s.var_offset) {
-            var->offset(*s.var_offset);
-        } else {
-            var->append();
-        }
-
-        if (var->is_bitfield()) {
-            var->bit_append();
-        }
-
-        if (!s.metadata.empty()) {
-            var->metadata() = std::move(s.metadata);
-        }
-
-        s.var_name.clear();
-        s.cur_type = nullptr;
-        s.var_offset = std::nullopt;
-        s.var_bit_size = std::nullopt;
-        s.var_bit_offset = std::nullopt;
     }
 };
 
@@ -1955,19 +1993,19 @@ template <> struct Action<FnParam> {
 
 template <> struct Action<FnDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.cur_struct == nullptr) {
+        if (auto struct_ = dynamic_cast<Struct*>(s.parents.back())) {
+            auto fn = struct_->function(s.fn_name)->returns(s.fn_ret_type)->defined(false);
+
+            for (auto&& param : s.fn_params) {
+                fn->param(param.name)->type(param.type);
+            }
+
+            s.fn_name.clear();
+            s.fn_ret_type = nullptr;
+            s.fn_params.clear();
+        } else {
             throw parse_error{"Can't declare a function outside of a struct", in};
         }
-
-        auto fn = s.cur_struct->function(s.fn_name)->returns(s.fn_ret_type)->defined(false);
-
-        for (auto&& param : s.fn_params) {
-            fn->param(param.name)->type(param.type);
-        }
-
-        s.fn_name.clear();
-        s.fn_ret_type = nullptr;
-        s.fn_params.clear();
     }
 };
 } // namespace parser

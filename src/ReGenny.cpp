@@ -15,35 +15,6 @@
 
 #include "ReGenny.hpp"
 
-/*constexpr auto DEFAULT_EDITOR_TEXT = R"(
-type USHORT 2 [[u16]]
-type LONG 4   [[i32]]
-
-struct IMAGE_DOS_HEADER
-    USHORT e_magic
-    USHORT e_cblp
-    USHORT e_cp
-    USHORT e_crlc
-    USHORT e_cparhdr
-    USHORT e_minalloc
-    USHORT e_maxalloc
-    USHORT e_ss
-    USHORT e_sp
-    USHORT e_csum
-    USHORT e_ip
-    USHORT e_cs
-    USHORT e_lfarlc
-    USHORT e_ovno
-    USHORT[4] e_res
-    USHORT e_oemid
-    USHORT e_oeminfo
-    USHORT[10] e_res2
-    LONG e_lfanew
-)";
-
-constexpr auto DEFAULT_EDITOR_TYPE = "IMAGE_DOS_HEADER";
-*/
-
 constexpr auto DEFAULT_EDITOR_TEXT = R"(
 type int 4 [[i32]]
 type float 4 [[f32]]
@@ -52,33 +23,38 @@ type str 8 [[utf8*]]
 type wstr 8 [[utf16*]]
 type bool 1 [[bool]]
 
-enum Place
-    EARTH = 1
-    MOON = 2
-    MARS = 3
+enum Place {
+    EARTH = 1,
+    MOON = 2,
+    MARS = 3,
+}
 
-struct Date
+struct Date {
     ushort nWeekDay : 3
     ushort nMonthDay : 6
     ushort nMonth : 5
     ushort nYear : 8
+}
 
-struct Foo
+struct Foo {
     int a
     int b
     float c
     Place p
+}
 
-struct Bar
+struct Bar {
     int d
     Foo* foo
     int[4][3] m
     Date date
+}
 
-struct Thing 
+struct Thing {
     int abc
+}
 
-struct Baz : Bar
+struct Baz : Bar {
     int e
     int* f
     Foo g
@@ -88,6 +64,7 @@ struct Baz : Bar
     bool im_true
     bool im_false
     bool im_also_true
+}
 )";
 
 constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
@@ -149,7 +126,6 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     m_ui.type_name = DEFAULT_EDITOR_TYPE;
     m_ui.process_id = GetCurrentProcessId();
     m_ui.process_name = "ReGenny.exe";
-    // m_ui.address = "<ReGenny.exe>+0x0";
 
     auto foo = new Foo{};
     foo->a = 42;
@@ -191,45 +167,7 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     attach();
     set_address();
     parse_editor_text();
-
-    // Just for testing...
-    /*auto ns = m_sdk.global_ns();
-
-    ns->type("USHORT")->size(2);
-    ns->type("LONG")->size(4);
-
-    auto dos = ns->struct_("IMAGE_DOS_HEADER");
-
-    dos->variable("e_magic")->offset(0)->type("USHORT");
-    dos->variable("e_cblp")->offset(2)->type("USHORT");
-    dos->variable("e_cp")->offset(4)->type("USHORT");
-    dos->variable("e_crlc")->offset(6)->type("USHORT");
-    dos->variable("e_cparhdr")->offset(8)->type("USHORT");
-    dos->variable("e_minalloc")->offset(10)->type("USHORT");
-    dos->variable("e_maxalloc")->offset(12)->type("USHORT");
-    dos->variable("e_ss")->offset(14)->type("USHORT");
-    dos->variable("e_sp")->offset(16)->type("USHORT");
-    dos->variable("e_csum")->offset(18)->type("USHORT");
-    dos->variable("e_ip")->offset(20)->type("USHORT");
-    dos->variable("e_cs")->offset(22)->type("USHORT");
-    dos->variable("e_lfarlc")->offset(24)->type("USHORT");
-    dos->variable("e_ovno")->offset(26)->type("USHORT");
-    dos->array_("e_res")->count(4)->offset(28)->type("USHORT");
-    dos->variable("e_oemid")->offset(36)->type("USHORT");
-    dos->variable("e_oeminfo")->offset(38)->type("USHORT");
-    dos->array_("e_res2")->count(10)->offset(40)->type("USHORT");
-    dos->variable("e_lfanew")->offset(60)->type("LONG");
-
-    auto bf = dos->bitfield(64);
-
-    bf->type("USHORT");
-    bf->field("nWeekDay")->offset(0)->size(3);
-    bf->field("nMonthDay")->offset(3)->size(6);
-    bf->field("nMonth")->offset(bf->field("nMonthDay")->end())->size(5);
-    bf->field("nYear")->offset(16)->size(8);
-
-    m_type = dos;*/
-
+   
     set_type();
 }
 
@@ -619,7 +557,7 @@ void ReGenny::parse_editor_text() {
     auto sdk = std::make_unique<genny::Sdk>();
 
     genny::parser::State s{};
-    s.global_ns = s.cur_ns = sdk->global_ns();
+    s.parents.push_back(sdk->global_ns());
 
     tao::pegtl::memory_input in{m_ui.editor_text, "editor"};
 
