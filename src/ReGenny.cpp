@@ -283,6 +283,20 @@ void ReGenny::menu_ui() {
                 file_open();
             }
 
+            if (ImGui::BeginMenu("Open Recent...")) {
+                if (m_file_history.empty()) {
+                    ImGui::TextUnformatted("No files have been open recently");
+                } 
+
+                for (auto&& path : m_file_history) {
+                    if (ImGui::MenuItem(path.string().c_str())) {
+                        file_open(path);
+                    }
+                }
+
+                ImGui::EndMenu();
+            }
+
             if (ImGui::MenuItem("Save", "Ctrl+S")) {
                 file_save();
             }
@@ -328,56 +342,64 @@ void ReGenny::menu_ui() {
     }
 }
 
-void ReGenny::file_open() {
-    nfdchar_t* out_path{};
+void ReGenny::file_open(const std::filesystem::path& filepath) {
+    if (filepath.empty()) {
+        nfdchar_t* out_path{};
 
-    if (NFD_OpenDialog("genny", nullptr, &out_path) != NFD_OKAY) {
-        return;
+        if (NFD_OpenDialog("genny", nullptr, &out_path) != NFD_OKAY) {
+            return;
+        }
+
+        m_open_filepath = out_path;
+        free(out_path);
+    } else {
+        m_open_filepath = filepath;
     }
 
-    spdlog::info("Opening {}...", out_path);
+    spdlog::info("Opening {}...", m_open_filepath.string());
 
-    std::ifstream f{out_path, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
+    std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
 
     m_ui.editor_text.resize(f.tellg());
     f.seekg(0, std::ifstream::beg);
     f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
 
-    m_open_filename = out_path;
-    free(out_path);
-
     m_log_parse_errors = true;
     parse_editor_text();
     m_log_parse_errors = false;
+
+    remember_file();
 }
 
 void ReGenny::file_save() {
-    if (m_open_filename.empty()) {
+    if (m_open_filepath.empty()) {
         file_save_as();
         return;
     }
 
-    spdlog::info("Saving {}...", m_open_filename);
+    spdlog::info("Saving {}...", m_open_filepath.string());
 
     m_log_parse_errors = true;
     parse_editor_text();
     m_log_parse_errors = false;
 
-    std::ofstream f{m_open_filename, std::ofstream::out | std::ofstream::binary};
+    std::ofstream f{m_open_filepath, std::ofstream::out | std::ofstream::binary};
 
     f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
+
+    remember_file();
 }
 
 void ReGenny::file_save_as() {
     nfdchar_t* save_path{};
 
-    if (NFD_SaveDialog("genny", m_open_filename.c_str(), &save_path) != NFD_OKAY) {
+    if (NFD_SaveDialog("genny", m_open_filepath.string().c_str(), &save_path) != NFD_OKAY) {
         return;
     }
 
     spdlog::info("Saving as {}...", save_path);
 
-    m_open_filename = save_path;
+    m_open_filepath = save_path;
 
     file_save();
     free(save_path);
@@ -589,6 +611,15 @@ void ReGenny::parse_editor_text() {
     }
 }
 
+constexpr auto DEFAULT_CFG = R"(
+[font]
+file = '' 
+size = 16
+
+[history]
+files = []
+)";
+
 void ReGenny::load_cfg() {
     try {
         auto cfg_path = (m_app_path / "cfg.toml").string();
@@ -597,13 +628,23 @@ void ReGenny::load_cfg() {
         m_ui.font_to_load = m_cfg["font"]["file"].value_or("");
         m_ui.font_size = m_cfg["font"]["size"].value_or(16);
 
+        if (auto files = m_cfg["history"]["files"].as_array()) {
+            for (auto&& file : *files) {
+                file.visit([this](auto&& file) noexcept {
+                    if constexpr (toml::is_string<decltype(file)>) {
+                        m_file_history.emplace_back(*file);
+                    }
+                });
+            }
+        }
+
         if (!m_ui.font_to_load.empty()) {
             m_load_font = true;
         }
     } catch (const toml::parse_error& e) {
         spdlog::warn(e.what());
 
-        m_cfg = toml::table{{{"font", toml::table{{{"file", ""}, {"size", 16}}}}}};
+        m_cfg = toml::parse(DEFAULT_CFG);
     }
 }
 
@@ -615,4 +656,30 @@ void ReGenny::save_cfg() {
     std::ofstream f{cfg_path};
 
     f << m_cfg;
+}
+
+void ReGenny::remember_file() {
+    for (auto it = m_file_history.begin(); it != m_file_history.end();) {
+        if (*it == m_open_filepath) {
+            it = m_file_history.erase(it);
+        } else {
+            ++it;
+        }
+    }
+
+    m_file_history.emplace_front(m_open_filepath);
+
+    if (m_file_history.size() > 10) {
+        m_file_history.resize(10);
+    }
+
+    if (auto files = m_cfg["history"]["files"].as_array()) {
+        files->clear();
+
+        for (auto&& path : m_file_history) {
+            files->push_back(path.string());
+        }
+    }
+
+    save_cfg();
 }

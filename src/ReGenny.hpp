@@ -1,5 +1,6 @@
 #pragma once
 
+#include <deque>
 #include <filesystem>
 #include <map>
 #include <memory>
@@ -61,7 +62,7 @@ private:
     std::unique_ptr<MemoryUi> m_mem_ui{};
     node::Property m_inherited_props{};
 
-    std::string m_open_filename{};
+    std::filesystem::path m_open_filepath{};
 
     LoggerUi m_logger{};
     bool m_log_parse_errors{};
@@ -70,11 +71,11 @@ private:
 
     toml::table m_cfg{};
     std::filesystem::path m_app_path{};
-    std::string m_imgui_ini_path{};
+    std::deque<std::filesystem::path> m_file_history{};
 
     void menu_ui();
 
-    void file_open();
+    void file_open(const std::filesystem::path& filepath = {});
     void file_save();
     void file_save_as();
 
@@ -93,4 +94,6 @@ private:
 
     void load_cfg();
     void save_cfg();
+
+    void remember_file();
 };
