@@ -4,9 +4,9 @@
 
 #include <fmt/format.h>
 #include <imgui.h>
-#include <imgui_stdlib.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl.h>
+#include <imgui_stdlib.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
@@ -118,6 +118,12 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Hello, world!");
 
+    auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
+    m_app_path = path_str;
+    SDL_free(path_str);
+
+    load_cfg();
+
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
 
@@ -167,13 +173,12 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     attach();
     set_address();
     parse_editor_text();
-   
+
     set_type();
 }
 
 ReGenny::~ReGenny() {
 }
-
 
 void ReGenny::update() {
     if (m_load_font) {
@@ -259,6 +264,10 @@ void ReGenny::ui() {
             if (!m_ui.font_to_load.empty()) {
                 m_load_font = true;
             }
+
+            m_cfg["font"]["file"].ref<std::string>() = m_ui.font_to_load;
+            m_cfg["font"]["size"].ref<int64_t>() = m_ui.font_size;
+            save_cfg();
         }
 
         ImGui::EndPopup();
@@ -578,4 +587,32 @@ void ReGenny::parse_editor_text() {
         }
         return;
     }
+}
+
+void ReGenny::load_cfg() {
+    try {
+        auto cfg_path = (m_app_path / "cfg.toml").string();
+        spdlog::info("Loading config {}...", cfg_path);
+        m_cfg = toml::parse_file(cfg_path);
+        m_ui.font_to_load = m_cfg["font"]["file"].value_or("");
+        m_ui.font_size = m_cfg["font"]["size"].value_or(16);
+
+        if (!m_ui.font_to_load.empty()) {
+            m_load_font = true;
+        }
+    } catch (const toml::parse_error& e) {
+        spdlog::warn(e.what());
+
+        m_cfg = toml::table{{{"font", toml::table{{{"file", ""}, {"size", 16}}}}}};
+    }
+}
+
+void ReGenny::save_cfg() {
+    auto cfg_path = m_app_path / "cfg.toml";
+
+    spdlog::info("Saving config {}...", cfg_path.string());
+
+    std::ofstream f{cfg_path};
+
+    f << m_cfg;
 }

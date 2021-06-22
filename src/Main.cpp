@@ -1,9 +1,13 @@
+#include <cstdio>
+#include <filesystem>
+
 #include <SDL.h>
 #include <glad/glad.h> // Initialize with gladLoadGL()
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl.h>
-#include <stdio.h>
+
+#include "scope_guard.hpp"
 
 #include "ReGenny.hpp"
 
@@ -18,6 +22,8 @@ int main(int, char**) {
         return -1;
     }
 
+    auto cleanup_sdl = sg::make_scope_guard([] { SDL_Quit(); });
+
     // GL 3.0 + GLSL 130
     const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
@@ -29,10 +35,17 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_DOUBLEBUFFER, 1);
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
-    SDL_WindowFlags window_flags = (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
-    SDL_Window* window = SDL_CreateWindow("ReGenny", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+    SDL_WindowFlags window_flags =
+        (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+    SDL_Window* window =
+        SDL_CreateWindow("ReGenny", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
+
+    auto cleanup_window = sg::make_scope_guard([window, gl_context] {
+        SDL_GL_DeleteContext(gl_context);
+        SDL_DestroyWindow(window);
+    });
 
     // Initialize OpenGL loader
     if (gladLoadGL() == 0) {
@@ -43,7 +56,15 @@ int main(int, char**) {
     // Setup Dear ImGui context
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
-    auto io = ImGui::GetIO();
+
+    auto app_path_str = SDL_GetPrefPath("cursey", "ReGenny");
+    std::filesystem::path app_path{app_path_str};
+    SDL_free(app_path_str);
+
+    auto imgui_ini_filename = (app_path / "imgui.ini").string();
+    auto& io = ImGui::GetIO();
+
+    io.IniFilename = imgui_ini_filename.c_str();
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -53,8 +74,14 @@ int main(int, char**) {
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
+    auto cleanup_imgui = sg::make_scope_guard([] {
+        ImGui_ImplOpenGL3_Shutdown();
+        ImGui_ImplSDL2_Shutdown();
+        ImGui::DestroyContext();
+    });
+
     // Our state
-    auto regenny = std::make_unique<ReGenny>(window);
+    ReGenny regenny{window};
     ImVec4 clear_color = ImVec4(0.45f, 0.55f, 0.60f, 1.00f);
 
     // Main loop
@@ -81,14 +108,14 @@ int main(int, char**) {
             }
         }
 
-        regenny->update();
+        regenny.update();
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
         ImGui_ImplSDL2_NewFrame(window);
         ImGui::NewFrame();
 
-        regenny->ui();
+        regenny.ui();
 
         // Rendering
         ImGui::Render();
@@ -99,16 +126,6 @@ int main(int, char**) {
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
     }
-
-    // Cleanup
-    regenny.reset();
-    ImGui_ImplOpenGL3_Shutdown();
-    ImGui_ImplSDL2_Shutdown();
-    ImGui::DestroyContext();
-
-    SDL_GL_DeleteContext(gl_context);
-    SDL_DestroyWindow(window);
-    SDL_Quit();
 
     return 0;
 }

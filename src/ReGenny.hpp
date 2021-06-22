@@ -1,11 +1,13 @@
 #pragma once
 
+#include <filesystem>
 #include <map>
 #include <memory>
 #include <string>
 #include <unordered_map>
 
 #include <SDL.h>
+#include <toml++/toml.h>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
@@ -66,6 +68,10 @@ private:
 
     bool m_load_font{};
 
+    toml::table m_cfg{};
+    std::filesystem::path m_app_path{};
+    std::string m_imgui_ini_path{};
+
     void menu_ui();
 
     void file_open();
@@ -84,4 +90,7 @@ private:
 
     void editor_ui();
     void parse_editor_text();
+
+    void load_cfg();
+    void save_cfg();
 };

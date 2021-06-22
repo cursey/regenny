@@ -2,8 +2,7 @@ cmake_minimum_required(VERSION 3.5)
 
 project(ReGenny)
 
-#include(cmake/FindThor.cmake)
-set(CMAKE_MODULE_PATH ${CMAKE_MODULE_PATH} ${CMAKE_SOURCE_DIR}/cmake/modules)
+option(ADD_ICON_WIN32 "Run ResourceHacker.exe to add an icon to the compiled executable" OFF)
 
 find_package(imgui CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
@@ -11,8 +10,10 @@ find_package(pegtl CONFIG REQUIRED)
 find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(utf8cpp CONFIG REQUIRED)
+find_package(SDL2 CONFIG REQUIRED)
+find_package(tomlplusplus CONFIG REQUIRED)
 
-add_executable(regenny
+add_executable(regenny WIN32
     "src/Genny.hpp" 
     "src/Main.cpp" 
     "src/ReGenny.hpp" 
@@ -46,7 +47,7 @@ add_executable(regenny
     "src/node/Bitfield.cpp" 
     "src/node/Property.hpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
-target_include_directories(regenny PRIVATE "src/")
+target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/")
 target_link_libraries(regenny PRIVATE 
     imgui::imgui 
     fmt::fmt
@@ -54,5 +55,25 @@ target_link_libraries(regenny PRIVATE
     unofficial::nativefiledialog::nfd
     spdlog::spdlog
     spdlog::spdlog_header_only
-    utf8cpp)
-target_compile_definitions(regenny PRIVATE GENNY_INCLUDE_PARSER SDL_MAIN_HANDLED UTF_CPP_CPLUSPLUS=201103L)
+    utf8cpp
+    SDL2::SDL2
+    SDL2::SDL2main
+    tomlplusplus::tomlplusplus)
+target_compile_definitions(regenny PRIVATE 
+    GENNY_INCLUDE_PARSER # The SdkGenny parser is required
+    UTF_CPP_CPLUSPLUS=201103L # utf8cpp doesn't properly recognize modern msvc
+    TOML_WINDOWS_COMPAT=0 # toml++ linker errors when compiled w/ compatability enabled
+    )
+set_target_properties(regenny 
+    PROPERTIES 
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+if(ADD_ICON_WIN32)
+add_custom_command(
+    TARGET regenny
+    POST_BUILD
+    COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/icon.ico -mask ICONGROUP,MAINICON,
+    )
+endif()

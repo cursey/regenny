@@ -11,6 +11,7 @@
     "pegtl",
     "nativefiledialog",
     "spdlog",
-    "utfcpp"
+    "utfcpp",
+    "tomlplusplus"
   ]
 }
