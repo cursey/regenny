@@ -1,5 +1,7 @@
 #include <imgui.h>
 #include <imgui_internal.h>
+#include <SDL.h>
+#include <fmt/format.h>
 
 #include "Base.hpp"
 
@@ -16,8 +18,26 @@ void Base::display_address_offset(uintptr_t address, uintptr_t offset) {
         ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%08X", address);
     }
 
+    if (ImGui::BeginPopupContextItem("Address")) {
+        if (ImGui::Button("Copy Address")) {
+            SDL_SetClipboardText(fmt::format("0x{:X}", address).c_str());
+            ImGui::CloseCurrentPopup();
+        }
+        ImGui::EndPopup();
+    }
+
     ImGui::SameLine();
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%08X", offset);
+
+    if (ImGui::BeginPopupContextItem("Offset")) {
+        if (ImGui::Button("Copy Offset")) {
+            SDL_SetClipboardText(fmt::format("0x{:X}", offset).c_str());
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     apply_indentation();
 }
 

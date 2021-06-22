@@ -118,9 +118,9 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
 
 void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     if (m_display_self) {
-        ImGui::BeginGroup();
         display_address_offset(address, offset);
         ImGui::SameLine();
+        ImGui::BeginGroup();
         display_type();
         ImGui::SameLine();
         display_name();

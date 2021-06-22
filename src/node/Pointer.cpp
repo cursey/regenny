@@ -27,9 +27,9 @@ Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Vari
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     if (indentation_level >= 0) {
-        ImGui::BeginGroup();
         display_address_offset(address, offset);
         ImGui::SameLine();
+        ImGui::BeginGroup();
         display_type();
         ImGui::SameLine();
         display_name();
