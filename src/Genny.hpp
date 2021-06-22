@@ -1516,7 +1516,7 @@ struct EnumType : identifier {};
 struct EnumDecl : if_must<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
 struct EnumExpr : if_must<EnumDecl, Seps, one<'{'>, Seps, EnumVals, Seps, one<'}'>> {};
 
-struct StructId : TAO_PEGTL_STRING("struct") {};
+struct StructId : sor<TAO_PEGTL_STRING("struct"), TAO_PEGTL_STRING("class")> {};
 struct StructName : identifier {};
 struct StructParentPart : identifier {};
 struct StructParent : list_must<StructParentPart, one<'.'>> {};
@@ -1580,6 +1580,7 @@ struct State {
     std::vector<std::string> struct_parent{};
     std::vector<genny::Struct*> struct_parents{};
     std::optional<size_t> struct_size{};
+    bool struct_is_class{};
 
     genny::Type* cur_type{};
     std::vector<std::string> var_type{};
@@ -1786,6 +1787,12 @@ template <> struct Action<EnumValDecl> {
     }
 };
 
+template <> struct Action<StructId> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.struct_is_class = in.string_view() == "class";
+    }
+};
+
 template <> struct Action<StructName> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.struct_name = in.string_view();
@@ -1822,9 +1829,17 @@ template <> struct Action<StructDecl> {
         Struct* struct_{};
 
         if (auto p = dynamic_cast<Namespace*>(s.parents.back())) {
-            struct_ = p->struct_(s.struct_name);
+            if (s.struct_is_class) {
+                struct_ = p->class_(s.struct_name);
+            } else {
+                struct_ = p->struct_(s.struct_name);
+            }
         } else if (auto p = dynamic_cast<Struct*>(s.parents.back())) {
-            struct_ = p->struct_(s.struct_name);
+            if (s.struct_is_class) {
+                struct_ = p->class_(s.struct_name);
+            } else {
+                struct_ = p->struct_(s.struct_name);
+            }
         } else {
             throw parse_error{"Structs can only be declared within the context of a namespace or another struct", in};
         }
@@ -1841,6 +1856,7 @@ template <> struct Action<StructDecl> {
         s.struct_name.clear();
         s.struct_parents.clear();
         s.struct_size = std::nullopt;
+        s.struct_is_class = false;
     }
 };
 
