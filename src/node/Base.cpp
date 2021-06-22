@@ -10,9 +10,14 @@ Base::Base(Process& process) : m_process{process} {
 }
 
 void Base::display_address_offset(uintptr_t address, uintptr_t offset) {
-    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", address);
+    if constexpr (sizeof(void*) == 8) {
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%016llX", address);
+    } else {
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%08X", address);
+    }
+
     ImGui::SameLine();
-    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%8X", offset);
+    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%08X", offset);
     apply_indentation();
 }
 

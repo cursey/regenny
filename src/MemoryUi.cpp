@@ -25,6 +25,15 @@ MemoryUi::MemoryUi(
 }
 
 void MemoryUi::display() {
+    if constexpr (sizeof(void*) == 8) {
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 16s", "Address");
+    } else {
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Address");
+    }
+
+    ImGui::SameLine();
+    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Offset");
+
     if (m_root != nullptr) {
         m_root->display(m_address, 0, (std::byte*)&m_address);
     }
