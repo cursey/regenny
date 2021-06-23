@@ -35,6 +35,8 @@ void MemoryUi::display() {
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Offset");
 
     if (m_root != nullptr) {
+        ImGui::BeginChild("MemoryUiRoot", ImGui::GetContentRegionAvail());
         m_root->display(m_address, 0, (std::byte*)&m_address);
+        ImGui::EndChild();
     }
 }
