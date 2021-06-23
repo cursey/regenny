@@ -47,9 +47,10 @@ add_executable(regenny WIN32
     "src/node/Bitfield.cpp" 
     "src/node/Property.hpp" 
     "src/AboutUi.hpp" 
-    "src/AboutUi.cpp")
+    "src/AboutUi.cpp" 
+    "thirdparty/SDL_Trigger/sdl_trigger.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
-target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/")
+target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/" "thirdparty/SDL_Trigger/")
 target_link_libraries(regenny PRIVATE 
     imgui::imgui 
     fmt::fmt

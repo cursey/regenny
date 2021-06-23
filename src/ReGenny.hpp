@@ -16,12 +16,14 @@
 #include "MemoryUi.hpp"
 #include "Process.hpp"
 #include "node/Property.hpp"
+#include "sdl_trigger.h"
 
 class ReGenny {
 public:
     ReGenny(SDL_Window* window);
     virtual ~ReGenny();
 
+    void process_event(SDL_Event& e);
     void update();
     void ui();
 
@@ -75,12 +77,14 @@ private:
     toml::table m_cfg{};
     std::filesystem::path m_app_path{};
     std::deque<std::filesystem::path> m_file_history{};
+    Trigger::Group m_triggers{};
 
     void menu_ui();
 
     void file_open(const std::filesystem::path& filepath = {});
     void file_save();
     void file_save_as();
+    void file_quit();
 
     void action_detach();
     void action_generate_sdk();

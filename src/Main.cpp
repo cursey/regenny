@@ -97,15 +97,16 @@ int main(int, char**) {
         // - When io.WantCaptureKeyboard is true, do not dispatch keyboard input data to your main application.
         // Generally you may always pass all inputs to dear imgui, and hide them from your application based on those
         // two flags.
-        SDL_Event event{};
+        SDL_Event e{};
 
-        while (SDL_PollEvent(&event)) {
-            ImGui_ImplSDL2_ProcessEvent(&event);
+        while (SDL_PollEvent(&e)) {
+            ImGui_ImplSDL2_ProcessEvent(&e);
+            regenny.process_event(e);
 
-            if (event.type == SDL_QUIT) {
+            if (e.type == SDL_QUIT) {
                 done = true;
-            } else if (event.type == SDL_WINDOWEVENT && event.window.event == SDL_WINDOWEVENT_CLOSE &&
-                       event.window.windowID == SDL_GetWindowID(window)) {
+            } else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE &&
+                       e.window.windowID == SDL_GetWindowID(window)) {
                 done = true;
             }
         }

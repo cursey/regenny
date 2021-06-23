@@ -125,6 +125,10 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
 
     load_cfg();
 
+    m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
+
     m_helpers = arch::make_helpers();
     m_ui.processes = m_helpers->processes();
 
@@ -179,6 +183,10 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
 }
 
 ReGenny::~ReGenny() {
+}
+
+void ReGenny::process_event(SDL_Event& e) {
+    m_triggers.processEvent(e);
 }
 
 void ReGenny::update() {
@@ -313,12 +321,7 @@ void ReGenny::menu_ui() {
             }
 
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
-                SDL_QuitEvent event{};
-
-                event.timestamp = SDL_GetTicks();
-                event.type = SDL_QUIT;
-
-                SDL_PushEvent((SDL_Event*)&event);
+                file_quit();
             }
 
             ImGui::EndMenu();
@@ -418,6 +421,15 @@ void ReGenny::file_save_as() {
 
     file_save();
     free(save_path);
+}
+
+void ReGenny::file_quit() {
+    SDL_QuitEvent event{};
+
+    event.timestamp = SDL_GetTicks();
+    event.type = SDL_QUIT;
+
+    SDL_PushEvent((SDL_Event*)&event);
 }
 
 void ReGenny::action_detach() {
