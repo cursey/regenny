@@ -111,7 +111,7 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Pointer::refresh_memory() {
-    if (is_collapsed()) {
+    if (is_collapsed() || m_ptr->to()->size() == 0) {
         return;
     }
 
