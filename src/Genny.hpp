@@ -1482,6 +1482,8 @@ struct Comment : sor<ShortComment, LongComment> {};
 struct Sep : sor<space, Comment> {};
 struct Seps : star<Sep> {};
 
+struct Endl : star<one<';'>> {};
+
 struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
@@ -1498,12 +1500,12 @@ struct NsExpr;
 struct EnumExpr;
 struct StructExpr;
 struct NsExprs : list<sor<Sep, NsExpr, EnumExpr, StructExpr>, Seps> {};
-struct NsExpr : if_must<NsDecl, Seps, one<'{'>, Seps, opt<NsExprs>, Seps, one<'}'>> {};
+struct NsExpr : if_must<NsDecl, Seps, one<'{'>, Seps, opt<NsExprs>, Seps, one<'}'>, Endl> {};
 
 struct TypeId : TAO_PEGTL_STRING("type") {};
 struct TypeName : identifier {};
 struct TypeSize : Num {};
-struct TypeDecl : if_must<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>> {};
+struct TypeDecl : if_must<TypeId, Seps, TypeName, Seps, TypeSize, Seps, opt<MetadataDecl>, Endl> {};
 
 struct EnumVal : Num {};
 struct EnumValName : identifier {};
@@ -1514,7 +1516,7 @@ struct EnumClassId : TAO_PEGTL_STRING("class") {};
 struct EnumName : identifier {};
 struct EnumType : identifier {};
 struct EnumDecl : if_must<EnumId, Seps, opt<EnumClassId>, Seps, EnumName, Seps, opt<one<':'>, Seps, EnumType>> {};
-struct EnumExpr : if_must<EnumDecl, Seps, one<'{'>, Seps, EnumVals, Seps, one<'}'>> {};
+struct EnumExpr : if_must<EnumDecl, Seps, one<'{'>, Seps, EnumVals, Seps, one<'}'>, Endl> {};
 
 struct StructId : sor<TAO_PEGTL_STRING("struct"), TAO_PEGTL_STRING("class")> {};
 struct StructName : identifier {};
@@ -1527,8 +1529,8 @@ struct StructDecl : if_must<StructId, Seps, StructName, Seps, opt<StructParentLi
 struct StructExpr;
 struct FnDecl;
 struct VarDecl;
-struct StructExprs : list<sor<EnumExpr, StructExpr, FnDecl, VarDecl>, Seps, Sep> {};
-struct StructExpr : if_must<StructDecl, Seps, one<'{'>, Seps, opt<StructExprs>, Seps, one<'}'>> {};
+struct StructExprs : list<sor<EnumExpr, StructExpr, FnDecl, VarDecl>, Seps> {};
+struct StructExpr : if_must<StructDecl, Seps, one<'{'>, Seps, opt<StructExprs>, Seps, one<'}'>, Endl> {};
 
 struct VarTypeNamePart : identifier {};
 struct VarTypeName : list_must<VarTypeNamePart, one<'.'>> {};
@@ -1542,7 +1544,7 @@ struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
 struct VarBitSize : Num {};
 struct VarBitSizeDecl : seq<one<':'>, Seps, VarBitSize> {};
 struct VarDecl
-    : seq<VarType, Seps, VarName, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>> {};
+    : seq<VarType, Seps, VarName, star<VarTypeArray>, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>, Endl> {};
 
 struct FnRetType : VarType {};
 struct FnName : identifier {};
@@ -1551,7 +1553,7 @@ struct FnParamName : identifier {};
 struct FnParam : seq<FnParamType, Seps, FnParamName> {};
 struct FnParamList : list_must<FnParam, one<','>, Sep> {};
 struct FnParams : if_must<one<'('>, Seps, opt<FnParamList>, Seps, one<')'>> {};
-struct FnDecl : seq<FnRetType, Seps, FnName, Seps, FnParams> {};
+struct FnDecl : seq<FnRetType, Seps, FnName, Seps, FnParams, Endl> {};
 
 struct Decl : sor<TypeDecl, NsExpr, EnumExpr, StructExpr> {};
 struct Grammar : until<eof, sor<eolf, Sep, Decl>> {};
@@ -1910,23 +1912,6 @@ template <> struct Action<VarTypeArray> {
     }
 };
 
-template <> struct Action<VarType> {
-    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
-        if (s.cur_type == nullptr) {
-            throw parse_error{"The current type is null", in};
-        }
-
-        // Reverse the order because we want to adhear to how multi-dimensional arrays are declared in C/C++.
-        std::reverse(s.var_type_array_counts.begin(), s.var_type_array_counts.end());
-
-        for (auto&& count : s.var_type_array_counts) {
-            s.cur_type = s.cur_type->array_(count);
-        }
-
-        s.var_type_array_counts.clear();
-    }
-};
-
 template <> struct Action<VarName> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.var_name = in.string_view();
@@ -1947,6 +1932,19 @@ template <> struct Action<VarBitSize> {
 
 template <> struct Action<VarDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (s.cur_type == nullptr) {
+            throw parse_error{"The current type is null", in};
+        }
+
+        // Reverse the order because we want to adhear to how multi-dimensional arrays are declared in C/C++.
+        std::reverse(s.var_type_array_counts.begin(), s.var_type_array_counts.end());
+
+        for (auto&& count : s.var_type_array_counts) {
+            s.cur_type = s.cur_type->array_(count);
+        }
+
+        s.var_type_array_counts.clear();
+
         if (auto struct_ = dynamic_cast<Struct*>(s.parents.back())) {
             auto var = struct_->variable(s.var_name);
 

@@ -178,8 +178,7 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     attach();
     set_address();
     parse_editor_text();
-
-    set_type();
+    //set_type();
 }
 
 ReGenny::~ReGenny() {
