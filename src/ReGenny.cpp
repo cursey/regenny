@@ -11,6 +11,7 @@
 #include <spdlog/spdlog.h>
 
 #include "Utility.hpp"
+#include "AboutUi.hpp"
 #include "arch/Arch.hpp"
 
 #include "ReGenny.hpp"
@@ -273,6 +274,12 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
+    m_ui.about_popup = ImGui::GetID("About");
+    if (ImGui::BeginPopup("About")) {
+        about_ui();
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
 }
 
@@ -333,6 +340,14 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Set Font")) {
                 // options_set_font();
                 ImGui::OpenPopup(m_ui.font_popup);
+            }
+
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("Help")) {
+            if (ImGui::MenuItem("About")) {
+                ImGui::OpenPopup(m_ui.about_popup);
             }
 
             ImGui::EndMenu();

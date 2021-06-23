@@ -45,7 +45,9 @@ add_executable(regenny WIN32
     "src/LoggerUi.cpp" 
     "src/node/Bitfield.hpp" 
     "src/node/Bitfield.cpp" 
-    "src/node/Property.hpp")
+    "src/node/Property.hpp" 
+    "src/AboutUi.hpp" 
+    "src/AboutUi.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/")
 target_link_libraries(regenny PRIVATE 
@@ -80,7 +82,7 @@ if(REGENNY_ADD_ICON)
     add_custom_command(
         TARGET regenny
         POST_BUILD
-        COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/icon.ico -mask ICONGROUP,MAINICON,
+        COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/resources/bottle.ico -mask ICONGROUP,MAINICON,
         )
 endif()
 

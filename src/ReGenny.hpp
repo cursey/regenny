@@ -58,6 +58,8 @@ private:
         std::string font_to_load{};
         float font_size{16.0f};
         ImGuiID font_popup{};
+
+        ImGuiID about_popup{};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
