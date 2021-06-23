@@ -1,8 +1,8 @@
-cmake_minimum_required(VERSION 3.5)
+cmake_minimum_required(VERSION 3.16)
 
 project(ReGenny)
 
-option(ADD_ICON_WIN32 "Run ResourceHacker.exe to add an icon to the compiled executable" OFF)
+option(REGENNY_ADD_ICON "Run ResourceHacker.exe to add an icon to the compiled executable" OFF)
 
 find_package(imgui CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
@@ -70,10 +70,17 @@ set_target_properties(regenny
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if(ADD_ICON_WIN32)
-add_custom_command(
-    TARGET regenny
-    POST_BUILD
-    COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/icon.ico -mask ICONGROUP,MAINICON,
-    )
+if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
+    set_target_properties(regenny
+        PROPERTIES
+        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
 endif()
+
+if(REGENNY_ADD_ICON)
+    add_custom_command(
+        TARGET regenny
+        POST_BUILD
+        COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/icon.ico -mask ICONGROUP,MAINICON,
+        )
+endif()
+
