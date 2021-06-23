@@ -88,6 +88,8 @@ int main(int, char**) {
     bool done = false;
 
     while (!done) {
+        auto start_time = SDL_GetPerformanceCounter();
+
         // Poll and handle events (inputs, window resize, etc.)
         // You can read the io.WantCaptureMouse, io.WantCaptureKeyboard flags to tell if dear imgui wants to use your
         // inputs.
@@ -125,6 +127,12 @@ int main(int, char**) {
         glClear(GL_COLOR_BUFFER_BIT);
         ImGui_ImplOpenGL3_RenderDrawData(ImGui::GetDrawData());
         SDL_GL_SwapWindow(window);
+
+        auto end_time = SDL_GetPerformanceCounter();
+        auto elapsed_ms = (end_time - start_time) / (float)SDL_GetPerformanceFrequency() * 1000.0f;
+        constexpr auto fps_cap = 1000.0f / 60.0f;
+
+        SDL_Delay((Uint32)std::max(fps_cap - elapsed_ms, 0.0f));
     }
 
     return 0;
