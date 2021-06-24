@@ -37,6 +37,6 @@ private:
 
 class WindowsHelpers : public Helpers {
 public:
-    std::map<std::string, uint32_t> processes() override;
+    std::map<uint32_t, std::string> processes() override;
 };
 } // namespace arch

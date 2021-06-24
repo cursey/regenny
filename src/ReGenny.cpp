@@ -130,7 +130,6 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
 
     m_helpers = arch::make_helpers();
-    m_ui.processes = m_helpers->processes();
 
     // Defaults for testing.
     m_ui.editor_text = DEFAULT_EDITOR_TEXT;
@@ -435,6 +434,7 @@ void ReGenny::action_detach() {
     spdlog::info("Detatching...");
     m_process.reset();
     m_mem_ui.reset();
+    m_ui.processes.clear();
     SDL_SetWindowTitle(m_window, "ReGenny");
 }
 
@@ -455,11 +455,21 @@ void ReGenny::action_generate_sdk() {
 }
 
 void ReGenny::attach_ui() {
+    if (m_ui.processes.empty()) {
+        m_ui.processes = m_helpers->processes();
+    }
+
     if (ImGui::BeginListBox("Processes")) {
-        for (auto&& [name, pid] : m_ui.processes) {
-            if (ImGui::Selectable(fmt::format("{} - {}", pid, name).c_str(), pid == m_ui.process_id)) {
+        for (auto&& [pid, name] : m_ui.processes) {
+            auto is_selected = pid == m_ui.process_id;
+
+            if (ImGui::Selectable(fmt::format("{} - {}", pid, name).c_str(), is_selected)) {
                 m_ui.process_name = name;
                 m_ui.process_id = pid;
+            }
+
+            if (is_selected) {
+                ImGui::SetItemDefaultFocus();
             }
         }
 
@@ -467,7 +477,7 @@ void ReGenny::attach_ui() {
     }
 
     if (ImGui::Button("Refresh")) {
-        m_ui.processes = m_helpers->processes();
+        m_ui.processes.clear();
     }
 
     ImGui::SameLine();

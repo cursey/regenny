@@ -6,5 +6,5 @@
 
 class Helpers {
 public:
-    virtual std::map<std::string, uint32_t> processes() = 0;
+    virtual std::map<uint32_t, std::string> processes() = 0;
 };

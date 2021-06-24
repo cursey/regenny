@@ -42,8 +42,8 @@ private:
     uintptr_t m_address{};
 
     struct {
-        // Process name -> process ID.
-        std::map<std::string, uint32_t> processes{};
+        // Process ID -> process name.
+        std::map<uint32_t, std::string> processes{};
         std::string process_name{};
         uint32_t process_id{};
         std::string error_msg{};

@@ -57,21 +57,21 @@ std::vector<std::unique_ptr<Module>> WindowsProcess::modules() {
     return modules;
 }
 
-std::map<std::string, uint32_t> WindowsHelpers::processes() {
+std::map<uint32_t, std::string> WindowsHelpers::processes() {
     auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
     if (snapshot == INVALID_HANDLE_VALUE) {
         return {};
     }
 
-    std::map<std::string, uint32_t> pids{};
+    std::map<uint32_t, std::string> pids{};
     PROCESSENTRY32 entry{};
 
     entry.dwSize = sizeof(entry);
 
     if (Process32First(snapshot, &entry)) {
         do {
-            pids[entry.szExeFile] = entry.th32ProcessID;
+            pids[entry.th32ProcessID] = entry.szExeFile;
         } while (Process32Next(snapshot, &entry));
     }
 
