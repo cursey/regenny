@@ -26,6 +26,8 @@ Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Vari
 }
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    m_is_hovered = false;
+
     if (indentation_level >= 0) {
         display_address_offset(address, offset);
         ImGui::SameLine();
@@ -35,8 +37,9 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         display_name();
         ImGui::SameLine();
         ImGui::Text("%p", *(uintptr_t*)mem);
-
         ImGui::EndGroup();
+
+        m_is_hovered = ImGui::IsItemHovered();
 
         if (ImGui::BeginPopupContextItem("PointerNode")) {
             ImGui::Checkbox("Collpase", &is_collapsed());
@@ -58,8 +61,13 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             ImGui::EndPopup();
         }
 
-        if (is_collapsed()) {
+        if (is_collapsed() && !m_is_hovered) {
             return;
+        } 
+
+        if (m_is_hovered) {
+            static volatile int i = 0;
+            ++i;
         }
     }
 
@@ -103,15 +111,28 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         return;
     }
 
-    ++indentation_level;
+    auto backup_indentation_level = indentation_level;
+
+    if (is_collapsed() && m_is_hovered) {
+        ImGui::BeginTooltip();
+        indentation_level = 0;
+    } else {
+        ++indentation_level;
+    }
+
     ImGui::PushID(m_ptr_node.get());
     m_ptr_node->display(m_address, 0, &m_mem[0]);
     ImGui::PopID();
-    --indentation_level;
+
+    if (is_collapsed() && m_is_hovered) {
+        ImGui::EndTooltip();
+    }
+
+    indentation_level = backup_indentation_level;
 }
 
 void Pointer::refresh_memory() {
-    if (is_collapsed() || m_ptr->to()->size() == 0) {
+    if ((is_collapsed() && !m_is_hovered) || m_ptr->to()->size() == 0) {
         return;
     }
 

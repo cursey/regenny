@@ -39,6 +39,8 @@ protected:
     std::unique_ptr<Base> m_ptr_node{};
     std::unique_ptr<genny::Variable> m_proxy_var{};
 
+    bool m_is_hovered{};
+
     void refresh_memory();
 };
 } // namespace node
