@@ -39,6 +39,7 @@ private:
     std::unique_ptr<genny::Sdk> m_sdk{};
     genny::Type* m_type{};
     uintptr_t m_address{};
+    bool m_is_address_valid{};
 
     struct {
         // Process ID -> process name.

@@ -521,12 +521,12 @@ void ReGenny::memory_ui() {
 
     ImGui::SameLine();
 
-    if (m_address == 0) {
+    if (!m_is_address_valid) {
         ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
         return;
-    } else {
-        ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
-    }
+    } 
+
+    ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
 
     /*if (ImGui::InputText("Typename", &m_ui.type_name)) {
         set_type();
@@ -569,6 +569,7 @@ void ReGenny::set_address() {
             if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
                     [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
                 m_address = mod.start + modoffset.offset;
+                break;
             }
         }
 
@@ -577,6 +578,15 @@ void ReGenny::set_address() {
     default:
         m_address = 0;
         break;
+    }
+
+    m_is_address_valid = false;
+
+    for (auto&& allocation : m_process->allocations()) {
+        if (allocation.start <= m_address && m_address <= allocation.end) {
+            m_is_address_valid = true;
+            break;
+        }
     }
 
     if (m_mem_ui != nullptr) {

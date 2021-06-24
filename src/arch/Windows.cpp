@@ -1,3 +1,5 @@
+#include <limits>
+
 #include <Windows.h>
 
 #include <TlHelp32.h>
@@ -27,13 +29,19 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
         if (Module32First(snapshot, &entry)) {
             do {
                 Module m{};
+                Allocation a{};
 
                 m.name = entry.szModule;
                 m.start = (uintptr_t)entry.modBaseAddr;
                 m.size = entry.modBaseSize;
                 m.end = m.start + m.size;
+                a.start = m.start;
+                a.size = m.size;
+                a.end = m.end;
 
                 m_modules.emplace_back(std::move(m));
+                m_allocations.emplace_back(std::move(a));
+
             } while (Module32Next(snapshot, &entry));
         }
 
