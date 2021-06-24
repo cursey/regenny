@@ -28,6 +28,8 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
 
         if (Module32First(snapshot, &entry)) {
             do {
+                // Create a module and an allocation for that module since, in testing (win10 x64), the iterate memory
+                // step misses the memory allocated for the modules.
                 Module m{};
                 Allocation a{};
 

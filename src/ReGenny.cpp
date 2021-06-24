@@ -524,7 +524,7 @@ void ReGenny::memory_ui() {
     if (!m_is_address_valid) {
         ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
         return;
-    } 
+    }
 
     ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
 

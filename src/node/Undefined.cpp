@@ -121,6 +121,5 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
         }
     } break;
     }
-
 }
 } // namespace node
