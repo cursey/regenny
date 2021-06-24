@@ -1,3 +1,4 @@
+#include <fmt/format.h>
 #include <imgui.h>
 
 #include "Array.hpp"
@@ -26,8 +27,6 @@ Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Vari
 }
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    m_is_hovered = false;
-
     if (indentation_level >= 0) {
         display_address_offset(address, offset);
         ImGui::SameLine();
@@ -36,7 +35,10 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         ImGui::SameLine();
         display_name();
         ImGui::SameLine();
-        ImGui::Text("%p", *(uintptr_t*)mem);
+        // ImGui::Text("%p", *(uintptr_t*)mem);
+        ImGui::PushStyleColor(ImGuiCol_Text, {0.6f, 0.6f, 0.6f, 1.0f});
+        ImGui::TextUnformatted(m_value_str.c_str());
+        ImGui::PopStyleColor();
         ImGui::EndGroup();
 
         m_is_hovered = ImGui::IsItemHovered();
@@ -44,12 +46,12 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         if (ImGui::BeginPopupContextItem("PointerNode")) {
             ImGui::Checkbox("Collpase", &is_collapsed());
 
-            if (ImGui::Checkbox("Is array", &is_array())) {
+            if (ImGui::Checkbox("Is Array", &is_array())) {
                 m_ptr_node = nullptr;
             }
 
             if (is_array()) {
-                if (ImGui::InputInt("Array count", &array_count())) {
+                if (ImGui::InputInt("Array Count", &array_count())) {
                     if (array_count() < 1) {
                         array_count() = 1;
                     }
@@ -63,11 +65,6 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
         if (is_collapsed() && !m_is_hovered) {
             return;
-        } 
-
-        if (m_is_hovered) {
-            static volatile int i = 0;
-            ++i;
         }
     }
 
@@ -111,9 +108,10 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         return;
     }
 
+    auto show_tooltip = is_collapsed() && m_is_hovered;
     auto backup_indentation_level = indentation_level;
 
-    if (is_collapsed() && m_is_hovered) {
+    if (show_tooltip) {
         ImGui::BeginTooltip();
         indentation_level = 0;
     } else {
@@ -124,11 +122,34 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     m_ptr_node->display(m_address, 0, &m_mem[0]);
     ImGui::PopID();
 
-    if (is_collapsed() && m_is_hovered) {
+    if (show_tooltip) {
         ImGui::EndTooltip();
     }
 
     indentation_level = backup_indentation_level;
+}
+
+void Pointer::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::on_refresh(address, offset, mem);
+    m_value_str.clear();
+
+    auto addr = *(uintptr_t*)mem;
+
+    for (auto&& mod : m_process.modules()) {
+        if (mod.start <= addr && addr <= mod.end) {
+            fmt::format_to(std::back_inserter(m_value_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
+            // Bail here so we don't try previewing this pointer as something else.
+            return;
+        }
+    }
+
+    for (auto&& allocation : m_process.allocations()) {
+        if (allocation.start <= addr && addr <= allocation.end) {
+            fmt::format_to(std::back_inserter(m_value_str), "0x{:X}", addr);
+            // Bail here so we don't try previewing this pointer as something else.
+            return;
+        }
+    }
 }
 
 void Pointer::refresh_memory() {

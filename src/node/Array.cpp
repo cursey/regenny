@@ -67,6 +67,8 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::on_refresh(address, offset, mem);
+
     auto num_elements = num_elements_displayed();
     auto start = start_element();
 

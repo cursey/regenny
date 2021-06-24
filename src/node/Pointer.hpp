@@ -11,6 +11,7 @@ public:
     Pointer(Process& process, genny::Variable* var, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
+    void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto is_collapsed(bool is_collapsed) {
         m_props["__collapsed"].value = is_collapsed;
@@ -38,6 +39,8 @@ protected:
 
     std::unique_ptr<Base> m_ptr_node{};
     std::unique_ptr<genny::Variable> m_proxy_var{};
+
+    std::string m_value_str{};
 
     bool m_is_hovered{};
 

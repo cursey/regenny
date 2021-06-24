@@ -26,13 +26,13 @@ MemoryUi::MemoryUi(
 
 void MemoryUi::display() {
     if constexpr (sizeof(void*) == 8) {
-        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 16s", "Address");
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%-16s %-8s %s", "Address", "Offset", "Bytes");
     } else {
-        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Address");
+        ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%-8s %-8s %s", "Address", "Offset", "Bytes");
     }
 
-    ImGui::SameLine();
-    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Offset");
+    /* ImGui::SameLine();
+    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "% 8s", "Offset");*/
 
     if (m_root != nullptr) {
         ImGui::BeginChild("MemoryUiRoot", ImGui::GetContentRegionAvail());

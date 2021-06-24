@@ -17,7 +17,7 @@ public:
 
     virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
     virtual size_t size() = 0;
-    virtual void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {}
+    virtual void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem);
 
     auto& props() { return m_props; }
 
@@ -25,6 +25,8 @@ protected:
     static int indentation_level;
     Process& m_process;
     Property& m_props;
+    std::string m_preamble_str{};
+    std::string m_bytes_str{};
 };
 
 } // namespace node

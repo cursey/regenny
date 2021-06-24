@@ -131,18 +131,30 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         display_name();
         ImGui::EndGroup();
 
+        m_is_hovered = ImGui::IsItemHovered();
+
         if (ImGui::BeginPopupContextItem("ArrayNode")) {
             ImGui::Checkbox("Collpase", &is_collapsed());
             ImGui::EndPopup();
         }
 
-        if (is_collapsed()) {
+        if (is_collapsed() && !m_is_hovered) {
             return;
         }
     }
 
+    auto show_tooltip = is_collapsed() && m_is_hovered;
+
+    if (show_tooltip) {
+        ImGui::BeginTooltip();
+    }
+
     for (auto&& [node_offset, node] : m_nodes) {
-        if (m_display_self) {
+        auto backup_indentation_level = indentation_level;
+
+        if (show_tooltip) {
+            indentation_level = 0;
+        } else if (m_display_self) {
             ++indentation_level;
         }
 
@@ -150,14 +162,18 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
         ImGui::PopID();
 
-        if (m_display_self) {
-            --indentation_level;
-        }
+        indentation_level = backup_indentation_level;
+    }
+
+    if (show_tooltip) {
+        ImGui::EndTooltip();
     }
 }
 
 void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    if (is_collapsed()) {
+    Base::on_refresh(address, offset, mem);
+
+    if (is_collapsed() && !m_is_hovered) {
         return;
     }
 

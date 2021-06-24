@@ -54,6 +54,7 @@ void Bitfield::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Bitfield::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::on_refresh(address, offset, mem);
     m_display_str.clear();
 
     switch (m_var->type()->size()) {

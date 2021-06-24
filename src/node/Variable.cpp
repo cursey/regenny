@@ -8,11 +8,11 @@
 
 namespace node {
 template <typename T> void display_as(std::string& s, std::byte* mem) {
-    fmt::format_to(std::back_inserter(s), " {}", *(T*)mem);
+    fmt::format_to(std::back_inserter(s), "{} ", *(T*)mem);
 }
 
 void display_str(std::string& s, const std::string& str) {
-    s += " \"";
+    s += "\"";
 
     for (auto&& c : str) {
         if (c == 0) {
@@ -22,7 +22,7 @@ void display_str(std::string& s, const std::string& str) {
         s += c;
     }
 
-    s += "\"";
+    s += "\" ";
 }
 
 template <typename T> void display_enum(std::string& s, std::byte* mem, genny::Enum* enum_) {
@@ -61,7 +61,9 @@ void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::SameLine();
     display_name();
     ImGui::SameLine();
+    ImGui::PushStyleColor(ImGuiCol_Text, {181.0f / 255.0f, 206.0f / 255.0f, 168.0f / 255.0f, 1.0f});
     ImGui::TextUnformatted(m_value_str.c_str());
+    ImGui::PopStyleColor();
 }
 
 size_t Variable::size() {
@@ -69,17 +71,9 @@ size_t Variable::size() {
 }
 
 void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::on_refresh(address, offset, mem);
+
     m_value_str.clear();
-
-    auto end = (int)std::min(m_var->size(), sizeof(uintptr_t));
-
-    for (auto i = end - 1; i >= 0; --i) {
-        fmt::format_to(std::back_inserter(m_value_str), "{:02X}", *(uint8_t*)&mem[i]);
-    }
-
-    if (end < m_var->size()) {
-        m_value_str += "...";
-    }
 
     std::array<std::vector<std::string>*, 2> metadatas{&m_var->metadata(), &m_var->type()->metadata()};
 
@@ -119,9 +113,9 @@ void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
                 display_str(m_value_str, utf8::utf32to8(m_utf32));
             } else if (md == "bool") {
                 if (*(bool*)mem) {
-                    m_value_str += " true";
+                    m_value_str += "true ";
                 } else {
-                    m_value_str += " false";
+                    m_value_str += "false ";
                 }
             }
         }

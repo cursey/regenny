@@ -66,6 +66,8 @@ size_t Undefined::size() {
 }
 
 void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::on_refresh(address, offset, mem);
+
     // Split refresh.
     if (m_split0 != nullptr) {
         auto size = m_size / 2;
