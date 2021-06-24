@@ -41,6 +41,7 @@ int main(int, char**) {
         SDL_CreateWindow("ReGenny", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
+    SDL_SetWindowMinimumSize(window, 300, 150);
 
     auto cleanup_window = sg::make_scope_guard([window, gl_context] {
         SDL_GL_DeleteContext(gl_context);

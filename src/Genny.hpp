@@ -1543,8 +1543,8 @@ struct VarOffset : Num {};
 struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
 struct VarBitSize : Num {};
 struct VarBitSizeDecl : seq<one<':'>, Seps, VarBitSize> {};
-struct VarDecl
-    : seq<VarType, Seps, VarName, star<VarTypeArray>, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>, Seps, opt<MetadataDecl>, Endl> {};
+struct VarDecl : seq<VarType, Seps, VarName, star<VarTypeArray>, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>,
+                     Seps, opt<MetadataDecl>, Endl> {};
 
 struct FnRetType : VarType {};
 struct FnName : identifier {};

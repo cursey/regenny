@@ -1,3 +1,4 @@
+#include <fmt/format.h>
 #include <imgui.h>
 
 #include "Array.hpp"
@@ -46,44 +47,48 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
 
     // Fill in the rest of the offsets with undefined nodes.
     uintptr_t last_offset{};
+    auto add_undefined = [this](int offset, int size) {
+        auto& props = m_props[fmt::format("undefined_{:x}", offset)];
+        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
+    };
 
     auto fill_space = [&](int delta) {
         switch (delta) {
         case 8:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 8));
+            add_undefined(last_offset, 8);
             break;
 
         case 7:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
-            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 2));
-            m_nodes.emplace(last_offset + 6, std::make_unique<Undefined>(m_process, 1));
+            add_undefined(last_offset, 4);
+            add_undefined(last_offset + 4, 2);
+            add_undefined(last_offset + 6, 1);
             break;
 
         case 6:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
-            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 2));
+            add_undefined(last_offset, 4);
+            add_undefined(last_offset + 4, 2);
             break;
 
         case 5:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
-            m_nodes.emplace(last_offset + 4, std::make_unique<Undefined>(m_process, 1));
+            add_undefined(last_offset, 4);
+            add_undefined(last_offset + 4, 1);
             break;
 
         case 4:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 4));
+            add_undefined(last_offset, 4);
             break;
 
         case 3:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 2));
-            m_nodes.emplace(last_offset + 2, std::make_unique<Undefined>(m_process, 1));
+            add_undefined(last_offset, 2);
+            add_undefined(last_offset + 2, 1);
             break;
 
         case 2:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 2));
+            add_undefined(last_offset, 2);
             break;
 
         case 1:
-            m_nodes.emplace(last_offset, std::make_unique<Undefined>(m_process, 1));
+            add_undefined(last_offset, 1);
             break;
 
         default:

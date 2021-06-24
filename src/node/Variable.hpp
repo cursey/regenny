@@ -2,7 +2,6 @@
 
 #include "../Genny.hpp"
 #include "Base.hpp"
-#include "Property.hpp"
 
 namespace node {
 class Variable : public Base {
@@ -15,13 +14,10 @@ public:
     size_t size() override;
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
-    auto& props() { return m_props; }
-
 protected:
     genny::Variable* m_var{};
     size_t m_size{};
     std::string m_value_str{};
-    Property& m_props;
     std::string m_utf8{};
     std::u16string m_utf16{};
     std::u32string m_utf32{};

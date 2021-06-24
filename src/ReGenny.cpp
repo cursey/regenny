@@ -10,8 +10,8 @@
 #include <nfd.h>
 #include <spdlog/spdlog.h>
 
-#include "Utility.hpp"
 #include "AboutUi.hpp"
+#include "Utility.hpp"
 #include "arch/Arch.hpp"
 
 #include "ReGenny.hpp"
@@ -177,7 +177,7 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     attach();
     set_address();
     parse_editor_text();
-    //set_type();
+    // set_type();
 }
 
 ReGenny::~ReGenny() {
@@ -299,7 +299,7 @@ void ReGenny::menu_ui() {
             if (ImGui::BeginMenu("Open Recent...")) {
                 if (m_file_history.empty()) {
                     ImGui::TextUnformatted("No files have been open recently");
-                } 
+                }
 
                 for (auto&& path : m_file_history) {
                     if (ImGui::MenuItem(path.string().c_str())) {
