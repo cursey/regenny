@@ -57,6 +57,7 @@ struct Thing {
 
 struct Baz : Bar {
     int e
+    int thing
     int* f
     Foo g
     Thing* things
@@ -103,6 +104,7 @@ struct Thing {
 
 struct Baz : Bar {
     int e{};
+    int thing{};
     int* f{};
     Foo g{};
     Thing* things{};
@@ -503,8 +505,6 @@ void ReGenny::attach() {
         return;
     }
 
-    m_modules = m_process->modules();
-
     parse_editor_text();
     set_address();
     set_type();
@@ -565,12 +565,10 @@ void ReGenny::set_address() {
         auto& modoffset = std::get<ModuleOffset>(addr);
         auto& modname = modoffset.name;
 
-        for (auto&& mod : m_modules) {
-            auto name = mod->name();
-
-            if (std::equal(modname.begin(), modname.end(), name, name + strlen(name),
+        for (auto&& mod : m_process->modules()) {
+            if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
                     [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
-                m_address = mod->address() + modoffset.offset;
+                m_address = mod.start + modoffset.offset;
             }
         }
 

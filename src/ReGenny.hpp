@@ -36,7 +36,6 @@ private:
 
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
-    std::vector<std::unique_ptr<Module>> m_modules{};
     std::unique_ptr<genny::Sdk> m_sdk{};
     genny::Type* m_type{};
     uintptr_t m_address{};

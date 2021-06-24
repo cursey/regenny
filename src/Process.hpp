@@ -1,17 +1,35 @@
 #pragma once
 
 #include <cstdint>
-#include <memory>
 #include <string>
 #include <vector>
 
-#include "Module.hpp"
-
 class Process {
 public:
+    class Module {
+    public:
+        std::string name{};
+        uintptr_t start{};
+        uintptr_t end{};
+        size_t size{};
+    };
+
+    struct Allocation {
+        uintptr_t start{};
+        uintptr_t end{};
+        size_t size{};
+        // TODO: Memory protection?
+    };
+
     virtual bool read(uintptr_t address, void* buffer, size_t size) = 0;
     virtual bool write(uintptr_t address, const void* buffer, size_t size) = 0;
     virtual uint32_t process_id() = 0;
-    virtual std::vector<std::unique_ptr<Module>> modules() = 0;
     virtual bool ok() = 0;
+
+    auto&& modules() const { return m_modules; }
+    auto&& allocations() const { return m_allocations; }
+
+protected:
+    std::vector<Module> m_modules{};
+    std::vector<Allocation> m_allocations{};
 };

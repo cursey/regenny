@@ -24,7 +24,7 @@ add_executable(regenny WIN32
     "src/Helpers.hpp" 
     "src/arch/Arch.hpp" 
     "src/arch/Arch.cpp" 
-    "src/Module.hpp" 
+     
     "src/Utility.hpp" 
     "src/Utility.cpp" 
     "src/MemoryUi.hpp" 

@@ -82,6 +82,26 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
         fmt::format_to(std::back_inserter(m_bytes_str), "{:02X}", *(uint8_t*)&mem[i]);
     }
 
+    if (m_size == sizeof(uintptr_t)) {
+        auto addr = *(uintptr_t*)mem;
+
+        for (auto&& mod : m_process.modules()) {
+            if (mod.start <= addr && addr <= mod.end) {
+                fmt::format_to(std::back_inserter(m_preview_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
+                // Bail here so we don't try previewing this pointer as something else.
+                return;
+            }
+        }
+
+        for (auto&& allocation : m_process.allocations()) {
+            if (allocation.start <= addr && addr <= allocation.end) {
+                fmt::format_to(std::back_inserter(m_preview_str), "heap:0x{:X}", addr);
+                // Bail here so we don't try previewing this pointer as something else.
+                return;
+            }
+        }
+    }
+
     switch (m_size) {
     case 8:
         fmt::format_to(std::back_inserter(m_preview_str), "i64:{} f64:{}", *(int64_t*)mem, *(double*)mem);
@@ -101,5 +121,6 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
         }
     } break;
     }
+
 }
 } // namespace node
