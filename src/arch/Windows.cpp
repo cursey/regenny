@@ -15,21 +15,17 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     }
 
     // Iterate modules.
-    {
-        auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
+    auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
 
-        if (snapshot == INVALID_HANDLE_VALUE) {
-            return;
-        }
-
+    if (snapshot != INVALID_HANDLE_VALUE) {
         MODULEENTRY32 entry{};
 
         entry.dwSize = sizeof(entry);
 
         if (Module32First(snapshot, &entry)) {
             do {
-                // Create a module and an allocation for that module since, in testing (win10 x64), the iterate memory
-                // step misses the memory allocated for the modules.
+                // Create a module and an allocation for that module since, in testing (win10 x64), the iterate
+                // memory step misses the memory allocated for the modules.
                 Module m{};
                 Allocation a{};
 
@@ -51,26 +47,24 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     }
 
     // Iterate memory.
-    {
-        SYSTEM_INFO si{};
-        MEMORY_BASIC_INFORMATION mbi{};
+    SYSTEM_INFO si{};
+    MEMORY_BASIC_INFORMATION mbi{};
 
-        GetSystemInfo(&si);
+    GetSystemInfo(&si);
 
-        for (auto i = (uintptr_t)si.lpMinimumApplicationAddress; i < (uintptr_t)si.lpMaximumApplicationAddress;
-             i = (uintptr_t)mbi.BaseAddress + mbi.RegionSize) {
-            VirtualQueryEx(m_process, (LPCVOID)i, &mbi, sizeof(mbi));
+    for (auto i = (uintptr_t)si.lpMinimumApplicationAddress; i < (uintptr_t)si.lpMaximumApplicationAddress;
+         i = (uintptr_t)mbi.BaseAddress + mbi.RegionSize) {
+        VirtualQueryEx(m_process, (LPCVOID)i, &mbi, sizeof(mbi));
 
-            if (mbi.AllocationProtect & PAGE_READONLY || mbi.AllocationProtect & PAGE_READWRITE ||
-                mbi.AllocationProtect & PAGE_EXECUTE_READWRITE) {
-                Allocation a{};
+        if (mbi.AllocationProtect & PAGE_READONLY || mbi.AllocationProtect & PAGE_READWRITE ||
+            mbi.AllocationProtect & PAGE_EXECUTE_READWRITE) {
+            Allocation a{};
 
-                a.start = (uintptr_t)mbi.BaseAddress;
-                a.size = mbi.RegionSize;
-                a.end = a.start + a.size;
+            a.start = (uintptr_t)mbi.BaseAddress;
+            a.size = mbi.RegionSize;
+            a.end = a.start + a.size;
 
-                m_allocations.emplace_back(std::move(a));
-            }
+            m_allocations.emplace_back(std::move(a));
         }
     }
 }
