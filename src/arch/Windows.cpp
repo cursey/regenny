@@ -56,14 +56,17 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
          i = (uintptr_t)mbi.BaseAddress + mbi.RegionSize) {
         VirtualQueryEx(m_process, (LPCVOID)i, &mbi, sizeof(mbi));
 
-        if (mbi.AllocationProtect & PAGE_READONLY || mbi.AllocationProtect & PAGE_READWRITE ||
-            mbi.AllocationProtect & PAGE_EXECUTE_READWRITE) {
-            Allocation a{};
+        auto protect = mbi.AllocationProtect;
+        Allocation a{};
 
-            a.start = (uintptr_t)mbi.BaseAddress;
-            a.size = mbi.RegionSize;
-            a.end = a.start + a.size;
+        a.start = (uintptr_t)mbi.BaseAddress;
+        a.size = mbi.RegionSize;
+        a.end = a.start + a.size;
+        a.read = protect & PAGE_READONLY || protect & PAGE_READWRITE || protect & PAGE_EXECUTE_READWRITE;
+        a.write = protect & PAGE_READWRITE || protect & PAGE_EXECUTE_READWRITE;
+        a.execute = protect & PAGE_EXECUTE_READ || protect & PAGE_EXECUTE_READWRITE;
 
+        if (a.read) {
             m_allocations.emplace_back(std::move(a));
         }
     }

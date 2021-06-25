@@ -18,7 +18,10 @@ public:
         uintptr_t start{};
         uintptr_t end{};
         size_t size{};
-        // TODO: Memory protection?
+
+        bool read{};
+        bool write{};
+        bool execute{};
     };
 
     virtual bool read(uintptr_t address, void* buffer, size_t size) = 0;
