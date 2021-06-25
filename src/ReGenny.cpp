@@ -274,6 +274,7 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
+    ImGui::SetNextWindowSize(ImVec2{500.0f, 150.0f}, ImGuiCond_Appearing);
     m_ui.font_popup = ImGui::GetID("Set Font");
     if (ImGui::BeginPopupModal("Set Font")) {
         if (ImGui::Button("Browse")) {
