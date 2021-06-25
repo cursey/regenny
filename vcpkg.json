@@ -5,7 +5,7 @@
   "dependencies": [
     {
         "name": "imgui",
-        "features": ["freetype", "sdl2-binding", "opengl3-glad-binding"]
+        "features": ["docking-experimental", "freetype", "sdl2-binding", "opengl3-glad-binding"]
     },
     "fmt",
     "pegtl",

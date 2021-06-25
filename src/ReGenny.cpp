@@ -6,6 +6,7 @@
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
 #include <imgui_impl_sdl.h>
+#include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
@@ -206,7 +207,30 @@ void ReGenny::ui() {
     SDL_GetWindowSize(m_window, &m_window_w, &m_window_h);
     ImGui::SetNextWindowPos({0, 0}, ImGuiCond_Always);
     ImGui::SetNextWindowSize({(float)m_window_w, (float)m_window_h}, ImGuiCond_Always);
-    ImGui::Begin("ReGenny", nullptr, ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar);
+    ImGui::Begin("ReGenny", nullptr,
+        ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
+            ImGuiWindowFlags_NoBringToFrontOnFocus);
+    auto dock = ImGui::GetID("MainDockSpace");
+
+    if (ImGui::DockBuilderGetNode(dock) == nullptr) {
+        ImGui::DockBuilderAddNode(dock, ImGuiDockNodeFlags_DockSpace);
+        ImGui::DockBuilderSetNodeSize(dock, ImGui::GetContentRegionAvail());
+
+        ImGuiID left{}, right{};
+        ImGuiID top{}, bottom{};
+
+        ImGui::DockBuilderSplitNode(dock, ImGuiDir_Up, 1.61f * 0.5f, &top, &bottom);
+        ImGui::DockBuilderSplitNode(top, ImGuiDir_Left, 0.66f, &left, &right);
+
+        ImGui::DockBuilderDockWindow("Attach", left);
+        ImGui::DockBuilderDockWindow("Memory View", left);
+        ImGui::DockBuilderDockWindow("Editor", right);
+        ImGui::DockBuilderDockWindow("Log", bottom);
+
+        ImGui::DockBuilderFinish(dock);
+    }
+
+    ImGui::DockSpace(dock, ImGui::GetContentRegionAvail(), ImGuiDockNodeFlags_AutoHideTabBar);
 
     // Resizing gets kinda wonky because the ImGui window will try to resize more often than the actual window (atleast
     // on Windows 10). If we add the ImGuiWindowFlags_NoResize option to the window flags above, the window becomes even
@@ -222,25 +246,22 @@ void ReGenny::ui() {
 
     menu_ui();
 
-    auto h = ImGui::GetContentRegionAvail().y * (1.61f * 0.5f);
-
     if (m_process == nullptr) {
-        ImGui::BeginChild("attach", ImVec2{0.0f, h});
+        ImGui::Begin("Attach");
         attach_ui();
-        ImGui::EndChild();
+        ImGui::End();
     } else {
-        ImGui::BeginChild("memview", ImVec2{ImGui::GetWindowContentRegionWidth() / 1.61f, h});
+        ImGui::Begin("Memory View");
         memory_ui();
-        ImGui::EndChild();
-        ImGui::SameLine();
-        ImGui::BeginChild("editor", ImVec2{0.0f, h});
+        ImGui::End();
+        ImGui::Begin("Editor");
         editor_ui();
-        ImGui::EndChild();
+        ImGui::End();
     }
 
+    ImGui::Begin("Log");
     m_logger.ui();
-
-    // ImGui::ShowDemoWindow();
+    ImGui::End();
 
     m_ui.error_popup = ImGui::GetID("Error");
     if (ImGui::BeginPopupModal("Error")) {
@@ -632,7 +653,7 @@ void ReGenny::set_type() {
 
 void ReGenny::editor_ui() {
     if (ImGui::InputTextMultiline(
-            "##source", &m_ui.editor_text, ImGui::GetWindowContentRegionMax(), ImGuiInputTextFlags_AllowTabInput)) {
+            "##source", &m_ui.editor_text, ImGui::GetContentRegionAvail(), ImGuiInputTextFlags_AllowTabInput)) {
         parse_editor_text();
     }
 

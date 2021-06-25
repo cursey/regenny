@@ -66,6 +66,7 @@ int main(int, char**) {
     auto& io = ImGui::GetIO();
 
     io.IniFilename = imgui_ini_filename.c_str();
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     // Setup Dear ImGui style
     ImGui::StyleColorsDark();
@@ -120,6 +121,7 @@ int main(int, char**) {
         ImGui::NewFrame();
 
         regenny.ui();
+        // ImGui::ShowDemoWindow();
 
         // Rendering
         ImGui::Render();
