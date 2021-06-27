@@ -79,6 +79,8 @@ private:
     std::deque<std::filesystem::path> m_file_history{};
     Trigger::Group m_triggers{};
 
+    toml::table m_project{};
+
     void menu_ui();
 
     void file_open(const std::filesystem::path& filepath = {});
@@ -103,4 +105,5 @@ private:
     void save_cfg();
 
     void remember_file();
+    void remember_type_and_address();
 };

@@ -409,6 +409,26 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
     m_log_parse_errors = false;
 
     remember_file();
+
+    auto project_filepath = m_open_filepath;
+    project_filepath.replace_extension("toml");
+
+    if (!std::filesystem::exists(project_filepath)) {
+        spdlog::info("No project {} exists. Skipping...", project_filepath.string());
+        return;
+    }
+
+    try {
+        spdlog::info("Opening project {}...", project_filepath.string());
+        m_project = toml::parse_file(project_filepath.string());
+
+        if (auto chosen_type = m_project.get_as<std::string>("chosen_type")) {
+            m_ui.type_name = chosen_type->get();
+            set_type();
+        }
+    } catch (const toml::parse_error& e) {
+        spdlog::warn(e.what());
+    }
 }
 
 void ReGenny::file_save() {
@@ -423,9 +443,24 @@ void ReGenny::file_save() {
     parse_editor_text();
     m_log_parse_errors = false;
 
-    std::ofstream f{m_open_filepath, std::ofstream::out | std::ofstream::binary};
+    {
+        std::ofstream f{m_open_filepath, std::ofstream::out | std::ofstream::binary};
 
-    f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
+        f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
+    }
+
+    {
+        m_project.emplace<std::string>("chosen_type", m_ui.type_name);
+
+        auto proj_filepath = m_open_filepath;
+
+        proj_filepath.replace_extension("toml");
+        spdlog::info("Saving {}...", proj_filepath.string());
+
+        std::ofstream f{proj_filepath, std::ofstream::out};
+
+        f << m_project;
+    }
 
     remember_file();
 }
@@ -537,23 +572,6 @@ void ReGenny::attach() {
 void ReGenny::memory_ui() {
     assert(m_process != nullptr);
 
-    if (ImGui::InputText("Address", &m_ui.address)) {
-        set_address();
-    }
-
-    ImGui::SameLine();
-
-    if (!m_is_address_valid) {
-        ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
-        return;
-    }
-
-    ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
-
-    /*if (ImGui::InputText("Typename", &m_ui.type_name)) {
-        set_type();
-    }*/
-
     if (ImGui::BeginCombo("Typename", m_ui.type_name.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
             auto is_selected = type_name == m_ui.type_name;
@@ -570,6 +588,19 @@ void ReGenny::memory_ui() {
 
         ImGui::EndCombo();
     }
+
+    if (ImGui::InputText("Address", &m_ui.address)) {
+        set_address();
+    }
+
+    ImGui::SameLine();
+
+    if (!m_is_address_valid) {
+        ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
+        return;
+    }
+
+    ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
 
     if (m_mem_ui != nullptr) {
         m_mem_ui->display();
@@ -617,6 +648,8 @@ void ReGenny::set_address() {
 
     m_mem_ui = std::make_unique<MemoryUi>(
         *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, m_inherited_props);
+
+    remember_type_and_address();
 }
 
 void ReGenny::set_type() {
@@ -643,6 +676,14 @@ void ReGenny::set_type() {
     if (m_type == nullptr) {
         return;
     }
+
+    if (auto type_addresses = m_project["type_addresses"].as_table()) {
+        if (auto type_address = type_addresses->get_as<std::string>(m_ui.type_name)) {
+            m_ui.address = type_address->get();
+        }
+    }
+
+    set_address();
 
     if (m_mem_ui != nullptr) {
         m_inherited_props = m_mem_ui->props();
@@ -793,4 +834,18 @@ void ReGenny::remember_file() {
     }
 
     save_cfg();
+}
+
+void ReGenny::remember_type_and_address() {
+    if (m_type == nullptr || !m_is_address_valid) {
+        return;
+    }
+
+    auto type_addresses = m_project["type_addresses"].as_table();
+    
+    if (type_addresses == nullptr) {
+        type_addresses = m_project.emplace<toml::table>("type_addresses").first->second.as_table();
+    }
+
+    type_addresses->emplace<std::string>(m_ui.type_name, m_ui.address);
 }
