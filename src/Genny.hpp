@@ -1540,11 +1540,14 @@ struct VarTypeArray : if_must<one<'['>, VarTypeArrayCount, one<']'>> {};
 struct VarType : seq<VarTypeName, star<VarTypePtr>, star<VarTypeArray>> {};
 struct VarName : identifier {};
 struct VarOffset : Num {};
-struct VarOffsetDecl : seq<one<'@'>, Seps, VarOffset> {};
+struct VarOffsetDecl : if_must<one<'@'>, Seps, VarOffset> {};
+struct VarDelta : Num {};
+struct VarDeltaDecl : if_must<one<'+'>, Seps, VarDelta> {};
+struct VarOffsetDeltaDecl : sor<VarOffsetDecl, VarDeltaDecl> {};
 struct VarBitSize : Num {};
 struct VarBitSizeDecl : seq<one<':'>, Seps, VarBitSize> {};
-struct VarDecl : seq<VarType, Seps, VarName, star<VarTypeArray>, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDecl>,
-                     Seps, opt<MetadataDecl>, Endl> {};
+struct VarDecl
+    : seq<VarType, Seps, VarName, star<VarTypeArray>, Seps, opt<VarBitSizeDecl>, Seps, opt<VarOffsetDeltaDecl>, Seps, opt<MetadataDecl>, Endl> {};
 
 struct FnRetType : VarType {};
 struct FnName : identifier {};
@@ -1590,6 +1593,7 @@ struct State {
     std::vector<size_t> var_type_array_counts{};
     std::string var_name{};
     std::optional<uintptr_t> var_offset{};
+    std::optional<uintptr_t> var_delta{};
     std::optional<uintptr_t> var_bit_offset{};
     std::optional<size_t> var_bit_size{};
 
@@ -1924,6 +1928,12 @@ template <> struct Action<VarOffset> {
     }
 };
 
+template <> struct Action<VarDelta> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.var_delta = std::stoull(in.string(), nullptr, 0);
+    }
+};
+
 template <> struct Action<VarBitSize> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.var_bit_size = std::stoull(in.string(), nullptr, 0);
@@ -1958,6 +1968,10 @@ template <> struct Action<VarDecl> {
                 var->offset(*s.var_offset);
             } else {
                 var->append();
+
+                if (s.var_delta) {
+                    var->offset(var->offset() + *s.var_delta);
+                }
             }
 
             if (var->is_bitfield()) {
@@ -1971,6 +1985,7 @@ template <> struct Action<VarDecl> {
             s.var_name.clear();
             s.cur_type = nullptr;
             s.var_offset = std::nullopt;
+            s.var_delta = std::nullopt;
             s.var_bit_size = std::nullopt;
             s.var_bit_offset = std::nullopt;
         } else {
