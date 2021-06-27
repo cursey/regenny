@@ -13,7 +13,11 @@ find_package(utf8cpp CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
 
-add_executable(regenny WIN32
+if(MSVC)
+    set(EXE_TYPE WIN32)
+endif()
+
+add_executable(regenny ${EXE_TYPE} 
     "src/Genny.hpp" 
     "src/Main.cpp" 
     "src/ReGenny.hpp" 
@@ -73,10 +77,12 @@ set_target_properties(regenny
     LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
     RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
-if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
-    set_target_properties(regenny
-        PROPERTIES
-        MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if(MSVC)
+    if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
+        set_target_properties(regenny
+            PROPERTIES
+            MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+    endif()
 endif()
 
 if(REGENNY_ADD_ICON)
