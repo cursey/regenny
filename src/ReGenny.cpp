@@ -603,7 +603,7 @@ void ReGenny::memory_ui() {
     ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
 
     if (m_mem_ui != nullptr) {
-        m_mem_ui->display();
+        m_mem_ui->display(m_address);
     }
 }
 
@@ -641,13 +641,6 @@ void ReGenny::set_address() {
             break;
         }
     }
-
-    if (m_mem_ui != nullptr) {
-        m_inherited_props = m_mem_ui->props();
-    }
-
-    m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, m_inherited_props);
 
     remember_type_and_address();
 }
@@ -690,7 +683,7 @@ void ReGenny::set_type() {
     }
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_address, m_inherited_props);
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_inherited_props);
 }
 
 void ReGenny::editor_ui() {

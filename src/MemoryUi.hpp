@@ -13,9 +13,9 @@
 class MemoryUi {
 public:
     MemoryUi(
-        genny::Sdk& sdk, genny::Struct* struct_, Process& process, uintptr_t address, node::Property& inherited_props);
+        genny::Sdk& sdk, genny::Struct* struct_, Process& process, node::Property& inherited_props);
 
-    void display();
+    void display(uintptr_t address);
 
     auto&& props() { return m_props; }
 
@@ -23,7 +23,6 @@ private:
     genny::Sdk& m_sdk;
     genny::Struct* m_struct{};
     Process& m_process;
-    uintptr_t m_address{};
 
     std::unique_ptr<genny::Variable> m_proxy_variable{};
     std::unique_ptr<node::Base> m_root{};
