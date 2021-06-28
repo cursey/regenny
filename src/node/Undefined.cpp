@@ -107,7 +107,7 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
         auto addr = *(uintptr_t*)mem;
 
         // RTTI
-        if (auto tn = m_process.get_typename((void*)addr); tn) {
+        if (auto tn = m_process.get_typename(addr); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj:{:s} ", *tn);
         }
 

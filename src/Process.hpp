@@ -36,7 +36,7 @@ public:
     virtual bool ok() = 0;
     
     // RTTI
-    virtual std::optional<std::string> get_typename(const void* ptr) = 0;
+    virtual std::optional<std::string> get_typename(uintptr_t ptr) = 0;
 
     auto&& modules() const { return m_modules; }
     auto&& allocations() const { return m_allocations; }

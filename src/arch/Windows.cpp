@@ -128,12 +128,12 @@ bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {
     return bytes_read == size;
 }
 
-std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(const void* ptr) {
-    if (ptr == nullptr) {
+std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr_t ptr) {
+    if (ptr == 0) {
         return std::nullopt;
     }
 
-    auto vtable = Process::read<uintptr_t>((uintptr_t)ptr);
+    auto vtable = Process::read<uintptr_t>(ptr);
 
     if (!vtable || *vtable == 0) {
         return std::nullopt;
@@ -142,7 +142,7 @@ std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(const v
     return Process::read<uintptr_t>(*vtable - sizeof(void*));
 }
 
-std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_locator(const void* ptr) {
+std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_locator(uintptr_t ptr) {
     auto out_ptr = get_complete_object_locator_ptr(ptr);
 
     if (!out_ptr) {
@@ -152,8 +152,8 @@ std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_
     return Process::read<_s_RTTICompleteObjectLocator>(*out_ptr);
 }
 
-std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::get_typeinfo(const void* ptr) {
-    if (ptr == nullptr) {
+std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::get_typeinfo(uintptr_t ptr) {
+    if (ptr == 0) {
         return std::nullopt;
     }
 
@@ -199,8 +199,8 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 #endif
 }
 
-std::optional<std::string> WindowsProcess::get_typename(const void* ptr) {
-    if (ptr == nullptr) {
+std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
+    if (ptr == 0) {
         return std::nullopt;
     }
 
