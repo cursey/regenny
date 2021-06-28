@@ -1,5 +1,7 @@
 #include <limits>
 
+#include <sstream>
+
 #include <Windows.h>
 
 #include <TlHelp32.h>
@@ -126,6 +128,93 @@ bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {
     return bytes_read == size;
 }
 
+std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(const void* ptr) {
+    if (ptr == nullptr) {
+        return std::nullopt;
+    }
+
+    auto vtable = Process::read<uintptr_t>((uintptr_t)ptr);
+
+    if (!vtable || *vtable == 0) {
+        return std::nullopt;
+    }
+
+    return Process::read<uintptr_t>(*vtable - sizeof(void*));
+}
+
+std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_locator(const void* ptr) {
+    auto out_ptr = get_complete_object_locator_ptr(ptr);
+
+    if (!out_ptr) {
+        return std::nullopt;
+    }
+
+    return Process::read<_s_RTTICompleteObjectLocator>(*out_ptr);
+}
+
+std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::get_typeinfo(const void* ptr) {
+    if (ptr == nullptr) {
+        return std::nullopt;
+    }
+
+    auto locator_ptr = get_complete_object_locator_ptr(ptr);
+
+    if (!locator_ptr || *locator_ptr == 0) {
+        return std::nullopt;
+    }
+
+    auto locator = Process::read<_s_RTTICompleteObjectLocator>(*locator_ptr);
+
+    if (!locator) {
+        return std::nullopt;
+    }
+
+    auto type_desc_pre = locator->pTypeDescriptor;
+
+    // x64 usually
+#if _RTTI_RELATIVE_TYPEINFO
+    if (type_desc_pre == 0) {
+        return std::nullopt;
+    }
+
+    uintptr_t image_base = 0;
+
+    if (locator->signature == COL_SIG_REV0) {
+        auto module_within = get_module_within(*locator_ptr);
+        image_base = module_within->start;
+    }
+    else {
+        image_base = *locator_ptr - locator->pSelf;
+    }
+
+    auto ti = image_base + type_desc_pre;
+
+    return Process::read<std::array<uint8_t, sizeof(std::type_info) + 256>>((uintptr_t)ti);
+#else
+    if (type_desc_pre == nullptr) {
+        return std::nullopt;
+    }
+
+    return Process::read<std::array<uint8_t, sizeof(std::type_info) + 256>>((uintptr_t)type_desc_pre);
+#endif
+}
+
+std::optional<std::string> WindowsProcess::get_typename(const void* ptr) {
+    if (ptr == nullptr) {
+        return std::nullopt;
+    }
+
+    auto typeinfo = get_typeinfo(ptr);
+
+    if (!typeinfo) {
+        return std::nullopt;
+    }
+
+    auto ti = (std::type_info*)&*typeinfo;
+
+    return ti->raw_name();
+}
+
 std::map<uint32_t, std::string> WindowsHelpers::processes() {
     auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPPROCESS, 0);
 
@@ -135,7 +224,7 @@ std::map<uint32_t, std::string> WindowsHelpers::processes() {
 
     std::map<uint32_t, std::string> pids{};
     PROCESSENTRY32 entry{};
-
+    
     entry.dwSize = sizeof(entry);
 
     if (Process32First(snapshot, &entry)) {

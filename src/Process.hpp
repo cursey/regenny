@@ -3,6 +3,7 @@
 #include <cstdint>
 #include <string>
 #include <vector>
+#include <optional>
 
 class Process {
 public:
@@ -33,9 +34,25 @@ public:
     virtual bool write(uintptr_t address, const void* buffer, size_t size) = 0;
     virtual uint32_t process_id() = 0;
     virtual bool ok() = 0;
+    
+    // RTTI
+    virtual std::optional<std::string> get_typename(const void* ptr) = 0;
 
     auto&& modules() const { return m_modules; }
     auto&& allocations() const { return m_allocations; }
+
+    const Process::Module* get_module_within(uintptr_t addr) const;
+
+    template <typename T> 
+    std::optional<T> read(uintptr_t address) {
+        T out{};
+
+        if (!read(address, &out, sizeof(T))) {
+            return std::nullopt;
+        }
+
+        return out;
+    }
 
 protected:
     std::vector<Module> m_modules{};
