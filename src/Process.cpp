@@ -7,7 +7,8 @@ bool Process::read(uintptr_t address, void* buffer, size_t size) {
             ro_allocation.mem.size() == ro_allocation.size) {
             auto offset = address - ro_allocation.start;
 
-            if (offset >= ro_allocation.mem.size()) {
+            // two incase the size causes overflow
+            if (offset >= ro_allocation.mem.size() || offset + size >= ro_allocation.mem.size()) {
                 return false;
             }
 
