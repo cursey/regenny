@@ -283,6 +283,10 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
             m_ui.type_name = chosen_type->get();
             set_type();
         }
+
+        if (auto process_filter = m_project.get_as<std::string>("process_filter")) {
+            m_ui.process_filter = process_filter->get();
+        }
     } catch (const toml::parse_error& e) {
         spdlog::warn(e.what());
     }
@@ -308,6 +312,7 @@ void ReGenny::file_save() {
 
     {
         m_project.emplace<std::string>("chosen_type", m_ui.type_name);
+        m_project.emplace<std::string>("process_filter", m_ui.process_filter);
 
         auto proj_filepath = m_open_filepath;
 
