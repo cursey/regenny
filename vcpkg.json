@@ -12,6 +12,7 @@
     "nativefiledialog",
     "spdlog",
     "utfcpp",
-    "tomlplusplus"
+    "tomlplusplus",
+    "nlohmann-json"
   ]
 }

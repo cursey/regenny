@@ -15,7 +15,7 @@ MemoryUi::MemoryUi(
         return;
     }
 
-    m_proxy_variable = std::make_unique<genny::Variable>("");
+    m_proxy_variable = std::make_unique<genny::Variable>("root");
     m_proxy_variable->type(m_struct->ptr());
 
     auto root = std::make_unique<node::Pointer>(m_process, m_proxy_variable.get(), m_props);

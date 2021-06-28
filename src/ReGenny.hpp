@@ -9,6 +9,7 @@
 
 #include <SDL.h>
 #include <toml++/toml.h>
+#include <nlohmann/json.hpp>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"
@@ -67,7 +68,7 @@ private:
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
-    node::Property m_inherited_props{};
+    std::map<std::string, node::Property> m_props{};
 
     std::filesystem::path m_open_filepath{};
 
@@ -81,12 +82,15 @@ private:
     std::deque<std::filesystem::path> m_file_history{};
     Trigger::Group m_triggers{};
 
-    toml::table m_project{};
+    // toml::table m_project{};
+    nlohmann::json m_project{};
 
     void menu_ui();
 
     void file_open(const std::filesystem::path& filepath = {});
+    void load_project();
     void file_save();
+    void save_project();
     void file_save_as();
     void file_quit();
 

@@ -10,6 +10,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(utf8cpp CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(tomlplusplus CONFIG REQUIRED)
+find_package(nlohmann_json CONFIG REQUIRED)
 
 if(MSVC)
     set(EXE_TYPE WIN32)
@@ -60,11 +61,12 @@ target_link_libraries(regenny PRIVATE
     taocpp::pegtl
     unofficial::nativefiledialog::nfd
     spdlog::spdlog
-    spdlog::spdlog_header_only
+    #spdlog::spdlog_header_only
     utf8cpp
     SDL2::SDL2
     SDL2::SDL2main
-    tomlplusplus::tomlplusplus)
+    tomlplusplus::tomlplusplus
+    nlohmann_json::nlohmann_json)
 target_compile_definitions(regenny PRIVATE 
     GENNY_INCLUDE_PARSER # The SdkGenny parser is required
     UTF_CPP_CPLUSPLUS=201103L # utf8cpp doesn't properly recognize modern msvc

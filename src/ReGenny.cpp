@@ -1,6 +1,7 @@
 #include <algorithm>
 #include <cassert>
 #include <cstdlib>
+#include <type_traits>
 
 #include <fmt/format.h>
 #include <imgui.h>
@@ -248,12 +249,14 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
         m_open_filepath = filepath;
     }
 
+    load_project();
+
     spdlog::info("Opening {}...", m_open_filepath.string());
 
     std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
 
     if (!f) {
-        spdlog::warn("Failed to open {}!", m_open_filepath.string());
+        spdlog::error("Failed to open {}!", m_open_filepath.string());
         return;
     }
 
@@ -266,29 +269,52 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
     m_log_parse_errors = false;
 
     remember_file();
+}
 
+void ReGenny::load_project() {
     auto project_filepath = m_open_filepath;
-    project_filepath.replace_extension("toml");
+    project_filepath.replace_extension("json");
 
     if (!std::filesystem::exists(project_filepath)) {
-        spdlog::info("No project {} exists. Skipping...", project_filepath.string());
+        spdlog::warn("No project {} exists. Skipping...", project_filepath.string());
         return;
     }
 
+    spdlog::info("Opening project {}...", project_filepath.string());
+
+    std::ifstream f{project_filepath};
+
+    f >> m_project;
+
+    m_ui.type_name = m_project.value("chosen_type", "");
+    m_ui.process_filter = m_project.value("process_filter", "");
+    m_props.clear();
+
+    std::function<void(nlohmann::json&, node::Property&)> visit =
+        [&visit](nlohmann::json& j, node::Property& prop) {
+            if (j.empty()) {
+                return;
+            }
+
+            for (auto it = j.begin(); it != j.end(); ++it) {
+                auto& val = it.value();
+
+                if (val.is_boolean()) {
+                    prop[it.key()].value = (bool)val;
+                } else if (val.is_number()) {
+                    prop[it.key()].value = (int)val;
+                } else if (val.is_object()) {
+                    visit(val, prop.props[it.key()]);
+                }
+            }
+        };
+
     try {
-        spdlog::info("Opening project {}...", project_filepath.string());
-        m_project = toml::parse_file(project_filepath.string());
-
-        if (auto chosen_type = m_project.get_as<std::string>("chosen_type")) {
-            m_ui.type_name = chosen_type->get();
-            set_type();
+        for (auto it = m_project["props"].begin(); it != m_project["props"].end(); ++it) {
+            visit(it.value(), m_props[it.key()]);
         }
-
-        if (auto process_filter = m_project.get_as<std::string>("process_filter")) {
-            m_ui.process_filter = process_filter->get();
-        }
-    } catch (const toml::parse_error& e) {
-        spdlog::warn(e.what());
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error(e.what());
     }
 }
 
@@ -310,21 +336,53 @@ void ReGenny::file_save() {
         f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
     }
 
-    {
-        m_project.emplace<std::string>("chosen_type", m_ui.type_name);
-        m_project.emplace<std::string>("process_filter", m_ui.process_filter);
+    remember_file();
+    save_project();
+}
 
-        auto proj_filepath = m_open_filepath;
+void ReGenny::save_project() {
+    std::function<void(nlohmann::json&, const std::string&, node::Property&)> visit =
+        [&visit](nlohmann::json& j, const std::string& name, node::Property& prop) {
+            if (prop.value.index() == 0 && prop.props.empty()) {
+                return;
+            }
 
-        proj_filepath.replace_extension("toml");
-        spdlog::info("Saving {}...", proj_filepath.string());
+            std::visit(
+                [&](auto&& value) {
+                    using T = std::decay_t<decltype(value)>;
+                    if constexpr (std::is_same_v<T, int>) {
+                        j[name] = value;
+                    } else if constexpr (std::is_same_v<T, bool>) {
+                        j[name] = value;
+                    }
+                },
+                prop.value);
+            for (auto&& [child_name, child_prop] : prop.props) {
+                visit(j[name], child_name, child_prop);
+            }
+        };
 
-        std::ofstream f{proj_filepath, std::ofstream::out};
+    m_project["props"].clear();
 
-        f << m_project;
+    try {
+        for (auto&& [type_name, props] : m_props) {
+            visit(m_project["props"], type_name, props);
+        }
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error(e.what());
     }
 
-    remember_file();
+    auto proj_filepath = m_open_filepath;
+
+    proj_filepath.replace_extension("json");
+    spdlog::info("Saving {}...", proj_filepath.string());
+
+    m_project["chosen_type"] = m_ui.type_name;
+    m_project["process_filter"] = m_ui.process_filter;
+
+    std::ofstream f{proj_filepath, std::ofstream::out};
+
+    f << std::setw(4) << m_project;
 }
 
 void ReGenny::file_save_as() {
@@ -448,6 +506,11 @@ void ReGenny::memory_ui() {
             auto is_selected = type_name == m_ui.type_name;
 
             if (ImGui::Selectable(type_name.c_str(), is_selected)) {
+                // Save the previously selected type's props.
+                if (m_mem_ui != nullptr) {
+                    m_props[m_ui.type_name] = m_mem_ui->props();
+                }
+
                 m_ui.type_name = type_name;
                 set_type();
             }
@@ -547,19 +610,14 @@ void ReGenny::set_type() {
         return;
     }
 
-    if (auto type_addresses = m_project["type_addresses"].as_table()) {
-        if (auto type_address = type_addresses->get_as<std::string>(m_ui.type_name)) {
-            m_ui.address = type_address->get();
-        }
+    if (auto& type_addresses = m_project["type_addresses"]; type_addresses.is_object()) {
+        m_ui.address = type_addresses.value(m_ui.type_name, "");
     }
 
     set_address();
 
-    if (m_mem_ui != nullptr) {
-        m_inherited_props = m_mem_ui->props();
-    }
-
-    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_inherited_props);
+    m_mem_ui =
+        std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_props[m_ui.type_name]);
 }
 
 void ReGenny::editor_ui() {
@@ -590,10 +648,9 @@ void ReGenny::parse_editor_text() {
             m_sdk = std::move(sdk);
 
             if (m_mem_ui != nullptr) {
-                m_inherited_props = m_mem_ui->props();
+                m_props[m_ui.type_name] = m_mem_ui->props();
+                m_mem_ui.reset();
             }
-
-            m_mem_ui.reset();
 
             // Build the list of selectable types for the type selector.
             m_ui.type_names.clear();
@@ -663,7 +720,7 @@ void ReGenny::load_cfg() {
             m_load_font = true;
         }
     } catch (const toml::parse_error& e) {
-        spdlog::warn(e.what());
+        spdlog::error(e.what());
 
         m_cfg = toml::parse(DEFAULT_CFG);
     }
@@ -710,7 +767,5 @@ void ReGenny::remember_type_and_address() {
         return;
     }
 
-    auto type_addresses = m_project.emplace<toml::table>("type_addresses").first->second.as_table();
-
-    type_addresses->insert_or_assign(m_ui.type_name, m_ui.address);
+    m_project["type_addresses"][m_ui.type_name] = m_ui.address;
 }
