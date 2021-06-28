@@ -2,8 +2,6 @@ cmake_minimum_required(VERSION 3.16)
 
 project(ReGenny)
 
-option(REGENNY_ADD_ICON "Run ResourceHacker.exe to add an icon to the compiled executable" OFF)
-
 find_package(imgui CONFIG REQUIRED)
 find_package(fmt CONFIG REQUIRED)
 find_package(pegtl CONFIG REQUIRED)
@@ -25,10 +23,10 @@ add_executable(regenny ${EXE_TYPE}
     "src/Process.hpp" 
     "src/arch/Windows.hpp" 
     "src/arch/Windows.cpp" 
+    "src/arch/Windows.rc"
     "src/Helpers.hpp" 
     "src/arch/Arch.hpp" 
     "src/arch/Arch.cpp" 
-     
     "src/Utility.hpp" 
     "src/Utility.cpp" 
     "src/MemoryUi.hpp" 
@@ -84,12 +82,3 @@ if(MSVC)
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 endif()
-
-if(REGENNY_ADD_ICON)
-    add_custom_command(
-        TARGET regenny
-        POST_BUILD
-        COMMAND ResourceHacker.exe -open $<TARGET_FILE:regenny> -save $<TARGET_FILE:regenny> -action addskip -res ${CMAKE_SOURCE_DIR}/resources/bottle.ico -mask ICONGROUP,MAINICON,
-        )
-endif()
-
