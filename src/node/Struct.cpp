@@ -46,79 +46,23 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
     add_vars(m_struct);
 
     // Fill in the rest of the offsets with undefined nodes.
-    uintptr_t last_offset{};
-    auto add_undefined = [this](int offset, int size) {
-        auto& props = m_props[fmt::format("undefined_{:x}", offset)];
-        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
-    };
+    if (!m_nodes.empty()) {
+        for (auto i = m_nodes.begin(), j = std::next(m_nodes.begin()); j != m_nodes.end(); i = j++) {
+            auto last_offset = i->first + i->second->size();
+            auto delta = j->first - last_offset;
 
-    auto fill_space = [&](int delta) {
-        switch (delta) {
-        case 8:
-            add_undefined(last_offset, 8);
-            break;
-
-        case 7:
-            add_undefined(last_offset, 4);
-            add_undefined(last_offset + 4, 2);
-            add_undefined(last_offset + 6, 1);
-            break;
-
-        case 6:
-            add_undefined(last_offset, 4);
-            add_undefined(last_offset + 4, 2);
-            break;
-
-        case 5:
-            add_undefined(last_offset, 4);
-            add_undefined(last_offset + 4, 1);
-            break;
-
-        case 4:
-            add_undefined(last_offset, 4);
-            break;
-
-        case 3:
-            add_undefined(last_offset, 2);
-            add_undefined(last_offset + 2, 1);
-            break;
-
-        case 2:
-            add_undefined(last_offset, 2);
-            break;
-
-        case 1:
-            add_undefined(last_offset, 1);
-            break;
-
-        default:
-            break;
+            fill_space(last_offset, delta);
         }
-    };
 
-    for (uintptr_t offset = 0; offset < m_size;) {
-        auto delta = offset - last_offset;
+        // Fill in the end.
+        auto last_node = m_nodes.rbegin();
+        auto last_offset = last_node->first + last_node->second->size();
+        auto delta = m_size - last_offset;
 
-        if (auto search = m_nodes.find(offset); search != m_nodes.end()) {
-            auto& node = search->second;
-            fill_space(delta);
-            last_offset = offset + node->size();
-
-            if (offset == last_offset) { // A type with 0 size was encountered.
-                ++offset;
-            } else {
-                offset = last_offset;
-            }
-        } else if (delta > 0 && offset % sizeof(uintptr_t) == 0) {
-            fill_space(delta);
-            last_offset = offset;
-            ++offset;
-        } else {
-            ++offset;
-        }
+        fill_space(last_offset, delta);
+    } else {
+        fill_space(0, m_size);
     }
-
-    fill_space(m_size - last_offset);
 }
 
 void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
@@ -149,7 +93,30 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         ImGui::BeginTooltip();
     }
 
-    for (auto&& [node_offset, node] : m_nodes) {
+    auto it = m_nodes.begin();
+
+    for (uintptr_t node_offset = 0; node_offset < m_size;) {
+        // Advance the iterator until the next node >= the current node_offset.
+        for (; it != m_nodes.end() && it->first < node_offset; ++it) {
+        }
+
+        if (node_offset != it->first) {
+            // Advance until the next non-undefined node.
+            for (; it != m_nodes.end() && dynamic_cast<Undefined*>(it->second.get()); ++it) {
+            }
+
+            // Fill in the space.
+            if (it != m_nodes.end()) {
+                auto delta = it->first - node_offset;
+                fill_space(node_offset, delta);
+            } else {
+                fill_space(node_offset, m_size - node_offset);
+            }
+
+            // There will now be a node where @ node_offset. 
+            it = m_nodes.find(node_offset);
+        }
+
         auto backup_indentation_level = indentation_level;
 
         if (show_tooltip) {
@@ -158,11 +125,15 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             ++indentation_level;
         }
 
+        auto& node = it->second;
+
         ImGui::PushID(node.get());
         node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
         ImGui::PopID();
 
         indentation_level = backup_indentation_level;
+
+        node_offset += node->size();
     }
 
     if (show_tooltip) {
@@ -179,6 +150,69 @@ void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     for (auto&& [node_offset, node] : m_nodes) {
         node->on_refresh(address + node_offset, offset + node_offset, &mem[node_offset]);
+    }
+}
+
+void Struct::fill_space(uintptr_t last_offset, int delta) {
+    auto add_undefined = [this](int offset, int size) {
+        auto& props = m_props[fmt::format("undefined_{:x}", offset)];
+        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
+
+        // Delete nodes that are overwritten by the undefined node we just added.
+        for (auto i = offset + 1; i < offset + size; ++i) {
+            m_nodes.erase(i);
+        }
+    };
+
+    auto start = last_offset;
+    auto end = last_offset + delta;
+
+    for (auto offset = start; offset <= end; ++offset) {
+        if (offset % sizeof(uintptr_t) == 0 || offset == end) {
+            switch (offset - last_offset) {
+            case 8:
+                add_undefined(last_offset, 8);
+                break;
+
+            case 7:
+                add_undefined(last_offset, 4);
+                add_undefined(last_offset + 4, 2);
+                add_undefined(last_offset + 6, 1);
+                break;
+
+            case 6:
+                add_undefined(last_offset, 4);
+                add_undefined(last_offset + 4, 2);
+                break;
+
+            case 5:
+                add_undefined(last_offset, 4);
+                add_undefined(last_offset + 4, 1);
+                break;
+
+            case 4:
+                add_undefined(last_offset, 4);
+                break;
+
+            case 3:
+                add_undefined(last_offset, 2);
+                add_undefined(last_offset + 2, 1);
+                break;
+
+            case 2:
+                add_undefined(last_offset, 2);
+                break;
+
+            case 1:
+                add_undefined(last_offset, 1);
+                break;
+
+            default:
+                break;
+            }
+
+            last_offset = offset;
+        }
     }
 }
 } // namespace node

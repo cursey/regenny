@@ -5,9 +5,18 @@
 
 namespace node {
 Undefined::Undefined(Process& process, Property& props, size_t size, Undefined* parent)
-    : Base{process, props}, m_size{size}, m_parent{parent} {
+    : Base{process, props}, m_size{size}, m_original_size{size}, m_parent{parent} {
     if (m_props["__split"].value.index() == 0) {
         is_split(false);
+    }
+
+    if (m_props["__size"].value.index() == 0) {
+        size_override(0);
+    } 
+    
+    // If our inherited size_override isn't 0 we apply the override now.
+    if (size_override() != 0) {
+        m_size = size_override();
     }
 }
 
@@ -54,6 +63,16 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         if (m_parent != nullptr) {
             if (ImGui::Button("Unsplit")) {
                 m_parent->is_split() = false;
+            }
+        } else if (m_original_size != 8) {
+            if (ImGui::InputInt("Size Override", &size_override())) {
+                size_override() = std::clamp(size_override(), (int)m_original_size, 8);
+
+                if (size_override() == 0) {
+                    m_size = m_original_size;
+                } else {
+                    m_size = size_override();
+                }
             }
         }
 

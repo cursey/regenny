@@ -17,8 +17,15 @@ public:
     }
     auto& is_split() { return std::get<bool>(m_props["__split"].value); }
 
+    auto size_override(int size) { 
+        m_props["__size"].value = size;
+        return this;
+    }
+    auto& size_override() { return std::get<int>(m_props["__size"].value); }
+
 protected:
     size_t m_size{};
+    size_t m_original_size{};
     std::string m_bytes_str{};
     std::string m_preview_str{};
 

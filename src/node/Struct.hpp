@@ -27,8 +27,10 @@ public:
 private:
     bool m_display_self{true};
     genny::Struct* m_struct{};
-    std::multimap<uintptr_t, std::unique_ptr<Base>> m_nodes{};
+    std::map<uintptr_t, std::unique_ptr<Base>> m_nodes{};
     bool m_is_hovered{};
+
+    void fill_space(uintptr_t last_offset, int delta);
 };
 
 } // namespace node
