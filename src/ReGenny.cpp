@@ -834,11 +834,7 @@ void ReGenny::remember_type_and_address() {
         return;
     }
 
-    auto type_addresses = m_project["type_addresses"].as_table();
-    
-    if (type_addresses == nullptr) {
-        type_addresses = m_project.emplace<toml::table>("type_addresses").first->second.as_table();
-    }
+    auto type_addresses = m_project.emplace<toml::table>("type_addresses").first->second.as_table();
 
-    type_addresses->emplace<std::string>(m_ui.type_name, m_ui.address);
+    type_addresses->insert_or_assign(m_ui.type_name, m_ui.address);
 }
