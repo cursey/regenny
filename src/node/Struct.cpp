@@ -100,6 +100,11 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         for (; it != m_nodes.end() && it->first < node_offset; ++it) {
         }
 
+        if (it == m_nodes.end()) {
+            fill_space(node_offset, m_size - node_offset);
+            it = m_nodes.find(node_offset);
+        }
+
         if (node_offset != it->first) {
             // Advance until the next non-undefined node.
             for (; it != m_nodes.end() && dynamic_cast<Undefined*>(it->second.get()); ++it) {
