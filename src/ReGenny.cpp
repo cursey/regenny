@@ -474,6 +474,12 @@ void ReGenny::memory_ui() {
 }
 
 void ReGenny::set_address() {
+    // We need to access the modules and allocations of the attatched process to determine if the parsed address is
+    // valid. If there is no process we can't do that so we just bail.
+    if (m_process == nullptr) {
+        return;
+    }
+
     auto addr = parse_address(m_ui.address);
 
     switch (addr.index()) {
