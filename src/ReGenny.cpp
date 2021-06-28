@@ -252,6 +252,11 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
 
     std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
 
+    if (!f) {
+        spdlog::warn("Failed to open {}!", m_open_filepath.string());
+        return;
+    }
+
     m_ui.editor_text.resize(f.tellg());
     f.seekg(0, std::ifstream::beg);
     f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
