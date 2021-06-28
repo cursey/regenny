@@ -106,6 +106,11 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
     if (m_size == sizeof(uintptr_t)) {
         auto addr = *(uintptr_t*)mem;
 
+        // RTTI
+        if (auto tn = m_process.get_typename((void*)addr); tn) {
+            fmt::format_to(std::back_inserter(m_preview_str), "obj:{:s} ", *tn);
+        }
+
         for (auto&& mod : m_process.modules()) {
             if (mod.start <= addr && addr <= mod.end) {
                 fmt::format_to(std::back_inserter(m_preview_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
@@ -117,6 +122,7 @@ void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) 
         for (auto&& allocation : m_process.allocations()) {
             if (allocation.start <= addr && addr <= allocation.end) {
                 fmt::format_to(std::back_inserter(m_preview_str), "heap:0x{:X}", addr);
+
                 // Bail here so we don't try previewing this pointer as something else.
                 return;
             }

@@ -32,6 +32,10 @@ struct Thing {
     int abc{};
 };
 
+struct RTTITest {
+    virtual ~RTTITest(){};
+};
+
 struct Baz : Bar {
     int e{};
     int thing{};
@@ -43,6 +47,7 @@ struct Baz : Bar {
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
+    __declspec(align(8)) RTTITest* rtti{};
 };
 #pragma pack(pop)
 
@@ -81,6 +86,9 @@ int main(int argc, char* argv[]) {
     }
     baz->hello = "Hello, world!";
     baz->wide_hello = L"Hello, wide world!";
+
+    auto rtti = new RTTITest{};
+    baz->rtti = rtti;
 
     std::cout << "0x" << std::hex << (uintptr_t)baz << std::endl;
     std::cout << "Press ENTER to exit.";

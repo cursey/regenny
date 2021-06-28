@@ -1,6 +1,10 @@
 #pragma once
 
+#include <array>
+
 #include <Windows.h>
+#include <rttidata.h>
+#include <vcruntime_typeinfo.h>
 
 #include "Helpers.hpp"
 #include "Process.hpp"
@@ -13,6 +17,13 @@ public:
     bool write(uintptr_t address, const void* buffer, size_t size) override;
     uint32_t process_id() override;
     bool ok() override { return m_process != nullptr; }
+
+    std::optional<std::string> get_typename(const void* ptr) override;
+
+    // RTTI
+    std::optional<uintptr_t> get_complete_object_locator_ptr(const void* ptr);
+    std::optional<_s_RTTICompleteObjectLocator> get_complete_object_locator(const void* ptr);
+    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> get_typeinfo(const void* ptr); // __RTtypeid
 
 protected:
     bool handle_read(uintptr_t address, void* buffer, size_t size) override;

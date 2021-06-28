@@ -4,6 +4,9 @@ type ushort 2 [[u16]]
 type str 8 [[utf8*]]
 type wstr 8 [[utf16*]]
 type bool 1 [[bool]]
+type void 0
+
+struct RTTITest{}
 
 enum Place {
     EARTH = 1,
@@ -36,7 +39,7 @@ struct Thing {
     int abc
 }
 
-struct Baz : Bar {
+struct Baz : Bar 0x100 {
     int e
     int thing
     int* f
@@ -47,4 +50,10 @@ struct Baz : Bar {
     bool im_true
     bool im_false
     bool im_also_true
+	//RTTITest* rtti
+ + 5
+}
+
+struct RTTITest 0x100 {
+	void* vtable
 }
