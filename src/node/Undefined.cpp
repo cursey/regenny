@@ -66,7 +66,7 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             }
         } else if (m_original_size != 8) {
             if (ImGui::InputInt("Size Override", &size_override())) {
-                size_override() = std::clamp(size_override(), (int)m_original_size, 8);
+                size_override() = std::clamp(size_override(), 0, 8);
 
                 if (size_override() == 0) {
                     m_size = m_original_size;
