@@ -46,6 +46,8 @@ private:
         std::map<uint32_t, std::string> processes{};
         std::string process_name{};
         uint32_t process_id{};
+        std::string process_filter{};
+
         std::string error_msg{};
         ImGuiID error_popup{};
 

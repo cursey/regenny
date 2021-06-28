@@ -1,0 +1,50 @@
+type int 4 [[i32]]
+type float 4 [[f32]]
+type ushort 2 [[u16]]
+type str 8 [[utf8*]]
+type wstr 8 [[utf16*]]
+type bool 1 [[bool]]
+
+enum Place {
+    EARTH = 1,
+    MOON = 2,
+    MARS = 3,
+}
+
+struct Date {
+    ushort nWeekDay : 3
+    ushort nMonthDay : 6
+    ushort nMonth : 5
+    ushort nYear : 8
+}
+
+struct Foo {
+    int a
+    int b
+    float c
+    Place p
+}
+
+struct Bar {
+    int d
+    Foo* foo
+    int[4][3] m
+    Date date
+}
+
+struct Thing {
+    int abc
+}
+
+struct Baz : Bar {
+    int e
+    int thing
+    int* f
+    Foo g
+    Thing* things
+    str hello
+    wstr wide_hello
+    bool im_true
+    bool im_false
+    bool im_also_true
+}

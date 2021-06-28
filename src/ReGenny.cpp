@@ -17,110 +17,10 @@
 
 #include "ReGenny.hpp"
 
-constexpr auto DEFAULT_EDITOR_TEXT = R"(
-type int 4 [[i32]]
-type float 4 [[f32]]
-type ushort 2 [[u16]]
-type str 8 [[utf8*]]
-type wstr 8 [[utf16*]]
-type bool 1 [[bool]]
-
-enum Place {
-    EARTH = 1,
-    MOON = 2,
-    MARS = 3,
-}
-
-struct Date {
-    ushort nWeekDay : 3
-    ushort nMonthDay : 6
-    ushort nMonth : 5
-    ushort nYear : 8
-}
-
-struct Foo {
-    int a
-    int b
-    float c
-    Place p
-}
-
-struct Bar {
-    int d
-    Foo* foo
-    int[4][3] m
-    Date date
-}
-
-struct Thing {
-    int abc
-}
-
-struct Baz : Bar {
-    int e
-    int thing
-    int* f
-    Foo g
-    Thing* things
-    str hello
-    wstr wide_hello
-    bool im_true
-    bool im_false
-    bool im_also_true
-}
-)";
-
-constexpr auto DEFAULT_EDITOR_TYPE = "Baz";
-
-#include <pshpack1.h>
-enum Place { EARTH = 1, MOON = 2, MARS = 3 };
-
-struct Date {
-    unsigned short nWeekDay : 3;
-    unsigned short nMonthDay : 6;
-    unsigned short nMonth : 5;
-    unsigned short nYear : 8;
-};
-
-struct Foo {
-    int a{};
-    int b{};
-    float c{};
-    Place p{};
-};
-
-struct Bar {
-    int d{};
-    Foo* foo{};
-    int m[4][3];
-    union {
-        Date date;
-        unsigned int date_int{};
-    };
-};
-
-struct Thing {
-    int abc{};
-};
-
-struct Baz : Bar {
-    int e{};
-    int thing{};
-    int* f{};
-    Foo g{};
-    Thing* things{};
-    char* hello{};
-    wchar_t* wide_hello{};
-    bool im_true{true};
-    bool im_false{false};
-    char im_also_true{7};
-};
-#include <poppack.h>
-
 ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     spdlog::set_default_logger(m_logger.logger());
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
-    spdlog::info("Hello, world!");
+    spdlog::info("Start of log.");
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
@@ -133,54 +33,6 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
 
     m_helpers = arch::make_helpers();
-
-    // Defaults for testing.
-    m_ui.editor_text = DEFAULT_EDITOR_TEXT;
-    m_ui.type_name = DEFAULT_EDITOR_TYPE;
-    m_ui.process_id = GetCurrentProcessId();
-    m_ui.process_name = "ReGenny.exe";
-
-    auto foo = new Foo{};
-    foo->a = 42;
-    foo->b = 1337;
-    foo->c = 77.7f;
-    foo->p = Place::MARS;
-
-    auto baz = new Baz{};
-    baz->d = 123;
-    baz->foo = foo;
-    for (auto i = 0; i < 4; ++i) {
-        for (auto j = 0; j < 3; ++j) {
-            baz->m[i][j] = i + j;
-        }
-    }
-    baz->date.nWeekDay = 1;
-    baz->date.nMonthDay = 2;
-    baz->date.nMonth = 3;
-    baz->date.nYear = 4;
-    baz->e = 666;
-    baz->f = new int[10];
-    for (auto i = 0; i < 10; ++i) {
-        baz->f[i] = i;
-    }
-    baz->g = *foo;
-    ++baz->g.a;
-    ++baz->g.b;
-    ++baz->g.c;
-    baz->g.p = Place::MOON;
-    baz->things = new Thing[10];
-    for (auto i = 0; i < 10; ++i) {
-        baz->things[i].abc = i * 2;
-    }
-    baz->hello = "Hello, world!";
-    baz->wide_hello = L"Hello, wide world!";
-
-    m_ui.address = fmt::format("0x{:X}", (uintptr_t)baz);
-
-    attach();
-    set_address();
-    parse_editor_text();
-    // set_type();
 }
 
 ReGenny::~ReGenny() {
@@ -518,8 +370,17 @@ void ReGenny::attach_ui() {
         m_ui.processes = m_helpers->processes();
     }
 
+    ImGui::InputText("Filter", &m_ui.process_filter);
+
     if (ImGui::BeginListBox("Processes")) {
         for (auto&& [pid, name] : m_ui.processes) {
+            if (!m_ui.process_filter.empty()) {
+                if (auto it = std::search(name.begin(), name.end(), m_ui.process_filter.begin(),
+                        m_ui.process_filter.end(), [](auto a, auto b) { return tolower(a) == tolower(b); });
+                    it == name.end()) {
+                    continue;
+                }
+            }
             auto is_selected = pid == m_ui.process_id;
 
             if (ImGui::Selectable(fmt::format("{} - {}", pid, name).c_str(), is_selected)) {
@@ -682,8 +543,7 @@ void ReGenny::set_type() {
         m_inherited_props = m_mem_ui->props();
     }
 
-    m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_inherited_props);
+    m_mem_ui = std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_inherited_props);
 }
 
 void ReGenny::editor_ui() {

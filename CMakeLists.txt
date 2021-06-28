@@ -82,3 +82,22 @@ if(MSVC)
             MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
     endif()
 endif()
+
+macro(regenny_add_test test_name test_files)
+    add_executable(${test_name} ${test_files})
+    set_target_properties(${test_name}
+        PROPERTIES 
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+
+    if(MSVC)
+        if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
+            set_target_properties(${test_name}
+                PROPERTIES
+                MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+        endif()
+    endif()
+endmacro()
+
+regenny_add_test(test0 "examples/test0.cpp")
