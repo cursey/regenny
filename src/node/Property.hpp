@@ -22,8 +22,7 @@ struct Property {
 
     template <typename T> void set(T val) { value = val; }
 
-    template<typename T>
-    void set_default(T val) { 
+    template <typename T> void set_default(T val) {
         if (value.index() == 0) {
             value = val;
         }

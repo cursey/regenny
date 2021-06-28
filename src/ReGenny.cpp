@@ -290,24 +290,23 @@ void ReGenny::load_project() {
     m_ui.process_filter = m_project.value("process_filter", "");
     m_props.clear();
 
-    std::function<void(nlohmann::json&, node::Property&)> visit =
-        [&visit](nlohmann::json& j, node::Property& prop) {
-            if (j.empty()) {
-                return;
-            }
+    std::function<void(nlohmann::json&, node::Property&)> visit = [&visit](nlohmann::json& j, node::Property& prop) {
+        if (j.empty()) {
+            return;
+        }
 
-            for (auto it = j.begin(); it != j.end(); ++it) {
-                auto& val = it.value();
+        for (auto it = j.begin(); it != j.end(); ++it) {
+            auto& val = it.value();
 
-                if (val.is_boolean()) {
-                    prop[it.key()].value = (bool)val;
-                } else if (val.is_number()) {
-                    prop[it.key()].value = (int)val;
-                } else if (val.is_object()) {
-                    visit(val, prop.props[it.key()]);
-                }
+            if (val.is_boolean()) {
+                prop[it.key()].value = (bool)val;
+            } else if (val.is_number()) {
+                prop[it.key()].value = (int)val;
+            } else if (val.is_object()) {
+                visit(val, prop.props[it.key()]);
             }
-        };
+        }
+    };
 
     try {
         for (auto it = m_project["props"].begin(); it != m_project["props"].end(); ++it) {
@@ -365,7 +364,7 @@ void ReGenny::save_project() {
             }
         };
 
-    std::function<void(nlohmann::json&)> erase_null = [&erase_null](nlohmann::json& j) { 
+    std::function<void(nlohmann::json&)> erase_null = [&erase_null](nlohmann::json& j) {
         if (!j.is_object()) {
             return;
         }

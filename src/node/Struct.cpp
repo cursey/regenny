@@ -116,7 +116,7 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
                 fill_space(node_offset, m_size - node_offset);
             }
 
-            // There will now be a node where @ node_offset. 
+            // There will now be a node where @ node_offset.
             it = m_nodes.find(node_offset);
         }
 

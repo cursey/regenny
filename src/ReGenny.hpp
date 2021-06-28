@@ -8,8 +8,8 @@
 #include <unordered_map>
 
 #include <SDL.h>
-#include <toml++/toml.h>
 #include <nlohmann/json.hpp>
+#include <toml++/toml.h>
 
 #include "Genny.hpp"
 #include "Helpers.hpp"

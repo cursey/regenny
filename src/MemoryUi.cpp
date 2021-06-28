@@ -8,8 +8,7 @@
 
 #include "MemoryUi.hpp"
 
-MemoryUi::MemoryUi(
-    genny::Sdk& sdk, genny::Struct* struct_, Process& process, node::Property& inherited_props)
+MemoryUi::MemoryUi(genny::Sdk& sdk, genny::Struct* struct_, Process& process, node::Property& inherited_props)
     : m_sdk{sdk}, m_struct{struct_}, m_process{process}, m_props{inherited_props} {
     if (m_struct == nullptr) {
         return;

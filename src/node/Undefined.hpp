@@ -11,7 +11,7 @@ public:
     size_t size() override;
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
-    auto size_override(int size) { 
+    auto size_override(int size) {
         m_props["__size"].set(size);
         return this;
     }

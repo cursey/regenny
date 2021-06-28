@@ -182,8 +182,7 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
     if (locator->signature == COL_SIG_REV0) {
         auto module_within = get_module_within(*locator_ptr);
         image_base = module_within->start;
-    }
-    else {
+    } else {
         image_base = *locator_ptr - locator->pSelf;
     }
 
@@ -224,7 +223,7 @@ std::map<uint32_t, std::string> WindowsHelpers::processes() {
 
     std::map<uint32_t, std::string> pids{};
     PROCESSENTRY32 entry{};
-    
+
     entry.dwSize = sizeof(entry);
 
     if (Process32First(snapshot, &entry)) {
