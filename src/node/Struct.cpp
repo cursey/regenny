@@ -94,10 +94,6 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto it = m_nodes.begin();
 
     for (uintptr_t node_offset = 0; node_offset < m_size;) {
-        // Advance the iterator until the next node >= the current node_offset.
-        for (; it != m_nodes.end() && it->first < node_offset; ++it) {
-        }
-
         if (it == m_nodes.end()) {
             fill_space(node_offset, m_size - node_offset);
             it = m_nodes.find(node_offset);
@@ -120,23 +116,29 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             it = m_nodes.find(node_offset);
         }
 
-        auto backup_indentation_level = indentation_level;
+        // Display all nodes @ this offset (more than 1 indicates a bitfield).
+        size_t node_size{};
 
-        if (show_tooltip) {
-            indentation_level = 0;
-        } else if (m_display_self) {
-            ++indentation_level;
+        for (; it != m_nodes.end() && it->first == node_offset; ++it) {
+            auto backup_indentation_level = indentation_level;
+
+            if (show_tooltip) {
+                indentation_level = 0;
+            } else if (m_display_self) {
+                ++indentation_level;
+            }
+
+            auto& node = it->second;
+
+            ImGui::PushID(node.get());
+            node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
+            ImGui::PopID();
+
+            indentation_level = backup_indentation_level;
+            node_size = node->size();
         }
 
-        auto& node = it->second;
-
-        ImGui::PushID(node.get());
-        node->display(address + node_offset, offset + node_offset, &mem[node_offset]);
-        ImGui::PopID();
-
-        indentation_level = backup_indentation_level;
-
-        node_offset += node->size();
+        node_offset += node_size;
     }
 
     if (show_tooltip) {
