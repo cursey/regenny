@@ -4,16 +4,13 @@
 #include "Undefined.hpp"
 
 namespace node {
-Undefined::Undefined(Process& process, Property& props, size_t size, Undefined* parent)
-    : Base{process, props}, m_size{size}, m_original_size{size}, m_parent{parent} {
-    if (m_props["__split"].value.index() == 0) {
-        is_split(false);
-    }
+Undefined::Undefined(Process& process, Property& props, size_t size)
+    : Base{process, props}, m_size{size}, m_original_size{size} {
 
     if (m_props["__size"].value.index() == 0) {
         size_override(0);
-    } 
-    
+    }
+
     // If our inherited size_override isn't 0 we apply the override now.
     if (size_override() != 0) {
         m_size = size_override();
@@ -21,27 +18,6 @@ Undefined::Undefined(Process& process, Property& props, size_t size, Undefined* 
 }
 
 void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    // Reset if this node has become unsplit.
-    if (!is_split() && m_split0 != nullptr) {
-        m_split0.reset();
-        m_split1.reset();
-        m_props["split0"] = {};
-        m_props["split1"] = {};
-    }
-
-    // Split display.
-    if (m_split0 != nullptr) {
-        auto size = m_size / 2;
-
-        ImGui::PushID(m_split0.get());
-        m_split0->display(address, offset, mem);
-        ImGui::PopID();
-        ImGui::PushID(m_split1.get());
-        m_split1->display(address + size, offset + size, mem + size);
-        ImGui::PopID();
-        return;
-    }
-
     // Normal unsplit display.
     display_address_offset(address, offset);
     ImGui::SameLine();
@@ -52,27 +28,13 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::EndGroup();
 
     if (ImGui::BeginPopupContextItem("UndefinedNodes")) {
-        if (m_size > 1) {
-            if (ImGui::Button("Split")) {
-                is_split() = true;
-                m_split0 = std::make_unique<Undefined>(m_process, m_props["split0"], m_size / 2, this);
-                m_split1 = std::make_unique<Undefined>(m_process, m_props["split1"], m_size / 2, this);
-            }
-        }
+        if (ImGui::InputInt("Size Override", &size_override())) {
+            size_override() = std::clamp(size_override(), 0, 8);
 
-        if (m_parent != nullptr) {
-            if (ImGui::Button("Unsplit")) {
-                m_parent->is_split() = false;
-            }
-        } else if (m_original_size != 8) {
-            if (ImGui::InputInt("Size Override", &size_override())) {
-                size_override() = std::clamp(size_override(), 0, 8);
-
-                if (size_override() == 0) {
-                    m_size = m_original_size;
-                } else {
-                    m_size = size_override();
-                }
+            if (size_override() == 0) {
+                m_size = m_original_size;
+            } else {
+                m_size = size_override();
             }
         }
 
@@ -86,14 +48,6 @@ size_t Undefined::size() {
 
 void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
     Base::on_refresh(address, offset, mem);
-
-    // Split refresh.
-    if (m_split0 != nullptr) {
-        auto size = m_size / 2;
-        m_split0->on_refresh(address, offset, mem);
-        m_split1->on_refresh(address + size, offset + size, mem + size);
-        return;
-    }
 
     // Normal unsplit refresh.
     m_bytes_str.clear();
