@@ -21,6 +21,7 @@ add_executable(regenny ${EXE_TYPE}
     "src/ReGenny.hpp" 
     "src/ReGenny.cpp" 
     "src/Process.hpp" 
+    "src/Process.cpp"
     "src/arch/Windows.hpp" 
     "src/arch/Windows.cpp" 
     "src/arch/Windows.rc"

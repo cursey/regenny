@@ -10,10 +10,12 @@ class WindowsProcess : public Process {
 public:
     WindowsProcess(DWORD process_id);
 
-    bool read(uintptr_t address, void* buffer, size_t size) override;
     bool write(uintptr_t address, const void* buffer, size_t size) override;
     uint32_t process_id() override;
     bool ok() override { return m_process != nullptr; }
+
+protected:
+    bool handle_read(uintptr_t address, void* buffer, size_t size) override;
 
 private:
     HANDLE m_process{};

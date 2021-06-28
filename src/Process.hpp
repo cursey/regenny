@@ -24,7 +24,12 @@ public:
         bool execute{};
     };
 
-    virtual bool read(uintptr_t address, void* buffer, size_t size) = 0;
+    struct ReadOnlyAllocation : public Allocation {
+        // Read only allocations get cached.
+        std::vector<std::byte> mem{};
+    };
+
+    bool read(uintptr_t address, void* buffer, size_t size);
     virtual bool write(uintptr_t address, const void* buffer, size_t size) = 0;
     virtual uint32_t process_id() = 0;
     virtual bool ok() = 0;
@@ -35,4 +40,7 @@ public:
 protected:
     std::vector<Module> m_modules{};
     std::vector<Allocation> m_allocations{};
+    std::vector<ReadOnlyAllocation> m_read_only_allocations{};
+
+    virtual bool handle_read(uintptr_t address, void* buffer, size_t size) = 0;
 };
