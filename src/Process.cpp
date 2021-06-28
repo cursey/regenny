@@ -6,7 +6,7 @@ bool Process::read(uintptr_t address, void* buffer, size_t size) {
         if (ro_allocation.start <= address && address + size <= ro_allocation.end &&
             ro_allocation.mem.size() == ro_allocation.size) {
             auto offset = address - ro_allocation.start;
-            memcpy(buffer, ro_allocation.mem.data(), size);
+            memcpy(buffer, ro_allocation.mem.data() + offset, size);
             return true;
         }
     }
