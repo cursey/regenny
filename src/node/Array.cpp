@@ -11,13 +11,8 @@ Array::Array(Process& process, genny::Variable* var, Property& props)
     : Variable{process, var, props}, m_arr{dynamic_cast<genny::Array*>(var->type())} {
     assert(m_arr != nullptr);
 
-    if (m_props["__start"].value.index() == 0) {
-        start_element(0);
-    }
-
-    if (m_props["__count"].value.index() == 0) {
-        num_elements_displayed(0);
-    }
+    m_props["__start"].set_default(0);
+    m_props["__count"].set_default(0);
 
     // Make sure inherited props are within acceptable ranges.
     start_element() = std::clamp(start_element(), 0, (int)m_arr->count());

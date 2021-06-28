@@ -14,22 +14,22 @@ public:
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto is_collapsed(bool is_collapsed) {
-        m_props["__collapsed"].value = is_collapsed;
+        m_props["__collapsed"].set(is_collapsed);
         return this;
     }
-    auto& is_collapsed() { return std::get<bool>(m_props["__collapsed"].value); }
+    auto& is_collapsed() { return m_props["__collapsed"].as_bool(); }
 
     auto is_array(bool is_array) {
-        m_props["__array"].value = is_array;
+        m_props["__array"].set(is_array);
         return this;
     }
-    auto& is_array() { return std::get<bool>(m_props["__array"].value); }
+    auto& is_array() { return m_props["__array"].as_bool(); }
 
     auto array_count(int count) {
-        m_props["__count"].value = count;
+        m_props["__count"].set(count);
         return this;
     }
-    auto& array_count() { return std::get<int>(m_props["__count"].value); }
+    auto& array_count() { return m_props["__count"].as_int(); }
 
 protected:
     genny::Pointer* m_ptr{};

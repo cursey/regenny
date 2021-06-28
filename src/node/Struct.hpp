@@ -13,10 +13,10 @@ public:
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto is_collapsed(bool is_collapsed) {
-        m_props["__collapsed"].value = is_collapsed;
+        m_props["__collapsed"].set(is_collapsed);
         return this;
     }
-    auto& is_collapsed() { return std::get<bool>(m_props["__collapsed"].value); }
+    auto& is_collapsed() { return m_props["__collapsed"].as_bool(); }
 
     auto display_self(bool display_self) {
         m_display_self = display_self;

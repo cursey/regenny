@@ -12,10 +12,10 @@ public:
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto size_override(int size) { 
-        m_props["__size"].value = size;
+        m_props["__size"].set(size);
         return this;
     }
-    auto& size_override() { return std::get<int>(m_props["__size"].value); }
+    auto& size_override() { return m_props["__size"].as_int(); }
 
 protected:
     size_t m_size{};

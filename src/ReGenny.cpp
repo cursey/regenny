@@ -347,26 +347,48 @@ void ReGenny::save_project() {
                 return;
             }
 
-            std::visit(
-                [&](auto&& value) {
-                    using T = std::decay_t<decltype(value)>;
-                    if constexpr (std::is_same_v<T, int>) {
-                        j[name] = value;
-                    } else if constexpr (std::is_same_v<T, bool>) {
-                        j[name] = value;
-                    }
-                },
-                prop.value);
+            if (prop.value != prop.default_value) {
+                std::visit(
+                    [&](auto&& value) {
+                        using T = std::decay_t<decltype(value)>;
+                        if constexpr (std::is_same_v<T, int>) {
+                            j[name] = value;
+                        } else if constexpr (std::is_same_v<T, bool>) {
+                            j[name] = value;
+                        }
+                    },
+                    prop.value);
+            }
+
             for (auto&& [child_name, child_prop] : prop.props) {
                 visit(j[name], child_name, child_prop);
             }
         };
+
+    std::function<void(nlohmann::json&)> erase_null = [&erase_null](nlohmann::json& j) { 
+        if (!j.is_object()) {
+            return;
+        }
+
+        for (auto it = j.begin(); it != j.end();) {
+            if (it->is_null()) {
+                it = j.erase(it);
+            } else {
+                erase_null(it.value());
+                ++it;
+            }
+        }
+    };
 
     m_project["props"].clear();
 
     try {
         for (auto&& [type_name, props] : m_props) {
             visit(m_project["props"], type_name, props);
+        }
+
+        for (auto it = m_project["props"].begin(); it != m_project["props"].end(); ++it) {
+            erase_null(it.value());
         }
     } catch (const nlohmann::json::exception& e) {
         spdlog::error(e.what());

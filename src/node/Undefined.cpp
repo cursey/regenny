@@ -6,10 +6,7 @@
 namespace node {
 Undefined::Undefined(Process& process, Property& props, size_t size)
     : Base{process, props}, m_size{size}, m_original_size{size} {
-
-    if (m_props["__size"].value.index() == 0) {
-        size_override(0);
-    }
+    m_props["__size"].set_default(0);
 
     // If our inherited size_override isn't 0 we apply the override now.
     if (size_override() != 0) {

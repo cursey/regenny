@@ -13,9 +13,7 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
     : Variable{process, var, props}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
     assert(m_struct != nullptr);
 
-    if (m_props["__collapsed"].value.index() == 0) {
-        is_collapsed(true);
-    }
+    m_props["__collapsed"].set_default(true);
 
     // Build the node map.
     auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {

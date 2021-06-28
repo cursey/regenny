@@ -13,17 +13,9 @@ Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Vari
     m_ptr = dynamic_cast<genny::Pointer*>(m_var->type());
     assert(m_ptr != nullptr);
 
-    if (m_props["__collapsed"].value.index() == 0) {
-        is_collapsed(true);
-    }
-
-    if (m_props["__array"].value.index() == 0) {
-        is_array(false);
-    }
-
-    if (m_props["__count"].value.index() == 0) {
-        array_count(1);
-    }
+    m_props["__collapsed"].set_default(true);
+    m_props["__array"].set_default(false);
+    m_props["__count"].set_default(1);
 }
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {

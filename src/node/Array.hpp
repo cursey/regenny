@@ -11,16 +11,16 @@ public:
     void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto start_element(int start_element) {
-        m_props["__start"].value = start_element;
+        m_props["__start"].set(start_element);
         return this;
     }
-    auto& start_element() { return std::get<int>(m_props["__start"].value); }
+    auto& start_element() { return m_props["__start"].as_int(); }
 
     auto num_elements_displayed(int num_elements) {
-        m_props["__count"].value = num_elements;
+        m_props["__count"].set(num_elements);
         return this;
     }
-    auto& num_elements_displayed() { return std::get<int>(m_props["__count"].value); }
+    auto& num_elements_displayed() { return m_props["__count"].as_int(); }
 
 protected:
     genny::Array* m_arr{};
