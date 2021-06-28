@@ -47,7 +47,7 @@ struct Baz : Bar {
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
-    __declspec(align(8)) RTTITest* rtti{};
+    __declspec(align(sizeof(void*))) RTTITest* rtti{};
 };
 #pragma pack(pop)
 
