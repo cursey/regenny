@@ -94,6 +94,10 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto it = m_nodes.begin();
 
     for (uintptr_t node_offset = 0; node_offset < m_size;) {
+        // Advance the iterator until the next node >= the current node_offset.
+        for (; it != m_nodes.end() && it->first < node_offset; ++it) {
+        }
+
         if (it == m_nodes.end()) {
             fill_space(node_offset, m_size - node_offset);
             it = m_nodes.find(node_offset);
@@ -160,13 +164,13 @@ void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
 void Struct::fill_space(uintptr_t last_offset, int delta) {
     auto add_undefined = [this](int offset, int size) {
-        auto& props = m_props[fmt::format("undefined_{:x}", offset)];
-        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
-
-        // Delete nodes that are overwritten by the undefined node we just added.
-        for (auto i = offset + 1; i < offset + size; ++i) {
+        // Delete nodes that are will be overwritten by the undefined node we are going to add.
+        for (auto i = offset; i < offset + size; ++i) {
             m_nodes.erase(i);
         }
+
+        auto& props = m_props[fmt::format("undefined_{:x}", offset)];
+        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
     };
 
     auto start = last_offset;
