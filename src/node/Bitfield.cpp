@@ -53,8 +53,8 @@ void Bitfield::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::TextUnformatted(m_display_str.c_str());
 }
 
-void Bitfield::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Bitfield::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
     m_display_str.clear();
 
     switch (m_var->type()->size()) {

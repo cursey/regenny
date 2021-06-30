@@ -10,7 +10,7 @@ public:
     Struct(Process& process, genny::Variable* var, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
-    void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
+    void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
     auto is_collapsed(bool is_collapsed) {
         m_props["__collapsed"].set(is_collapsed);

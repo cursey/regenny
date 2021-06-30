@@ -12,7 +12,7 @@ public:
     virtual void display_name();
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     size_t size() override;
-    void on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) override;
+    void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
 protected:
     genny::Variable* m_var{};

@@ -70,8 +70,8 @@ size_t Variable::size() {
     return m_size;
 }
 
-void Variable::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Variable::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
 
     m_value_str.clear();
 

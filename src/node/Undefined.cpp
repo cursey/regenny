@@ -43,8 +43,8 @@ size_t Undefined::size() {
     return m_size;
 }
 
-void Undefined::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
 
     // Normal unsplit refresh.
     m_bytes_str.clear();

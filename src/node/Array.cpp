@@ -61,8 +61,8 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     }
 }
 
-void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Array::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
 
     auto num_elements = num_elements_displayed();
     auto start = start_element();
@@ -72,7 +72,7 @@ void Array::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
         auto& cur_node = m_elements[i];
         auto cur_offset = cur_element * m_arr->of()->size();
 
-        cur_node->on_refresh(address + cur_offset, offset + cur_offset, mem + cur_offset);
+        cur_node->update(address + cur_offset, offset + cur_offset, mem + cur_offset);
     }
 }
 

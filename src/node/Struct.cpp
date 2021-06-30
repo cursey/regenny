@@ -150,15 +150,15 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     }
 }
 
-void Struct::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Struct::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
 
     if (is_collapsed() && !m_is_hovered) {
         return;
     }
 
     for (auto&& [node_offset, node] : m_nodes) {
-        node->on_refresh(address + node_offset, offset + node_offset, &mem[node_offset]);
+        node->update(address + node_offset, offset + node_offset, &mem[node_offset]);
     }
 }
 

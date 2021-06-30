@@ -121,8 +121,8 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     indentation_level = backup_indentation_level;
 }
 
-void Pointer::on_refresh(uintptr_t address, uintptr_t offset, std::byte* mem) {
-    Base::on_refresh(address, offset, mem);
+void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    Base::update(address, offset, mem);
     m_value_str.clear();
 
     auto addr = *(uintptr_t*)mem;
@@ -155,7 +155,7 @@ void Pointer::refresh_memory() {
         // Make sure our memory buffer is large enough (since the first refresh it wont be).
         m_mem.resize(m_ptr->to()->size() * array_count());
         m_process.read(m_address, m_mem.data(), m_mem.size());
-        m_ptr_node->on_refresh(m_address, 0, &m_mem[0]);
+        m_ptr_node->update(m_address, 0, &m_mem[0]);
     }
 }
 } // namespace node
