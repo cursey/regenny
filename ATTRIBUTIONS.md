@@ -44,6 +44,10 @@ to open source.
 - Copyright (c) Mark Gillard
 - [MIT License](https://github.com/marzer/tomlplusplus/blob/master/LICENSE)
 
+### [JSON for Modern C++](https://github.com/nlohmann/json)
+- Copyright (c) 2013-2021 Niels Lohmann
+- [MIT License](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
+
 ### [bottle.png](https://www.flaticon.com/free-icon/bottle_867876)
 - Icon made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)
 
