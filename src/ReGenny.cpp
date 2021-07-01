@@ -288,6 +288,8 @@ void ReGenny::load_project() {
 
     m_ui.type_name = m_project.value("chosen_type", "");
     m_ui.process_filter = m_project.value("process_filter", "");
+    m_ui.process_id = m_project.value<uint32_t>("process_id", 0);
+    m_ui.process_name = m_project.value("process_name", "");
     m_props.clear();
 
     std::function<void(nlohmann::json&, node::Property&)> visit = [&visit](nlohmann::json& j, node::Property& prop) {
@@ -314,6 +316,10 @@ void ReGenny::load_project() {
         }
     } catch (const nlohmann::json::exception& e) {
         spdlog::error(e.what());
+    }
+
+    if (m_process == nullptr) {
+        attach();
     }
 }
 
@@ -400,6 +406,8 @@ void ReGenny::save_project() {
 
     m_project["chosen_type"] = m_ui.type_name;
     m_project["process_filter"] = m_ui.process_filter;
+    m_project["process_id"] = m_ui.process_id;
+    m_project["process_name"] = m_ui.process_name;
 
     std::ofstream f{proj_filepath, std::ofstream::out};
 
@@ -498,6 +506,19 @@ void ReGenny::attach_ui() {
 
 void ReGenny::attach() {
     if (m_ui.process_id == 0) {
+        return;
+    }
+
+    // Validate that the chosen process_id and process_name match.
+    auto is_valid = false;
+
+    for (auto&& [pid, name] : m_ui.processes) {
+        if (pid == m_ui.process_id && name == m_ui.process_name) {
+            is_valid = true;
+        }
+    }
+
+    if (!is_valid) {
         return;
     }
 
