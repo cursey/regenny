@@ -321,6 +321,9 @@ void ReGenny::load_project() {
     if (m_process == nullptr) {
         attach();
     }
+
+    // Reset the memory UI here since a new project has been loaded.
+    m_mem_ui.reset();
 }
 
 void ReGenny::file_save() {
@@ -534,9 +537,6 @@ void ReGenny::attach() {
     }
 
     parse_editor_text();
-    set_address();
-    set_type();
-
     SDL_SetWindowTitle(m_window, fmt::format("ReGenny - {} PID: {}", m_ui.process_name, m_ui.process_id).c_str());
 }
 
