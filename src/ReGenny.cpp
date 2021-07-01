@@ -249,8 +249,6 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
         m_open_filepath = filepath;
     }
 
-    load_project();
-
     spdlog::info("Opening {}...", m_open_filepath.string());
 
     std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
@@ -269,6 +267,7 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
     m_log_parse_errors = false;
 
     remember_file();
+    load_project();
 }
 
 void ReGenny::load_project() {
