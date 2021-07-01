@@ -1488,9 +1488,12 @@ struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
 
-// plus<printable characters not-including comma or closing square bracket>
-struct Metadata : plus<sor<range<32, 43>, range<45, 92>, range<94, 126>>> {};
+struct Metadata : plus<not_one<',', ']'>> {};
 struct MetadataDecl : if_must<two<'['>, Seps, list<Metadata, one<','>, Sep>, Seps, two<']'>> {};
+
+struct IncludeId : TAO_PEGTL_STRING("#include") {};
+struct IncludePath : plus<not_one<'"'>> {};
+struct IncludeDecl : if_must<IncludeId, Seps, one<'"'>, IncludePath, one<'"'>> {};
 
 struct NsId : TAO_PEGTL_STRING("namespace") {};
 struct NsName : identifier {};
@@ -1559,7 +1562,7 @@ struct FnParams : if_must<one<'('>, Seps, opt<FnParamList>, Seps, one<')'>> {};
 struct FnStaticId : TAO_PEGTL_STRING("static") {};
 struct FnDecl : seq<opt<FnStaticId>, Seps, FnRetType, Seps, FnName, Seps, FnParams, Endl> {};
 
-struct Decl : sor<TypeDecl, NsExpr, EnumExpr, StructExpr> {};
+struct Decl : sor<IncludeDecl, TypeDecl, NsExpr, EnumExpr, StructExpr> {};
 struct Grammar : until<eof, sor<eolf, Sep, Decl>> {};
 
 struct State {
@@ -1568,6 +1571,8 @@ struct State {
 
     std::vector<std::string> metadata_parts{};
     std::vector<std::string> metadata{};
+
+    std::string include_path{};
 
     std::vector<std::string> ns_parts{};
     std::vector<std::string> ns{};
@@ -1655,6 +1660,29 @@ template <> struct Action<Metadata> {
 template <> struct Action<MetadataDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.metadata = std::move(s.metadata_parts);
+    }
+};
+
+template <> struct Action<IncludePath> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        s.include_path = in.string_view();
+    }
+};
+
+template <> struct Action<IncludeDecl> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        try {
+            auto include_path = std::move(s.include_path);
+            file_input f{include_path};
+
+            if (!parse<genny::parser::Grammar, genny::parser::Action>(f, s)) {
+                throw parse_error{"Failed to parse file '" + include_path + "'", in};
+            }
+        } catch (const parse_error& e) {
+            throw e;
+        } catch (const std::exception& e) {
+            throw parse_error{std::string{"Failed to include file: "} + e.what(), in};
+        }
     }
 };
 
