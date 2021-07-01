@@ -1,6 +1,6 @@
 # ReGenny
 
-ReGenny is a reverse engineering tool to reconstruct data structures in real-time and generate usable C++ header files. Header file generation is done by the sister project [SdkGenny](https://github.com/cursey/sdkgenny). 
+ReGenny is a reverse engineering tool interactively reconstruct structures and generate usable C++ header files. Header file generation is done by the sister project [SdkGenny](https://github.com/cursey/sdkgenny). 
 
 ![Early build preview](resources/readme_preview.png)
 
