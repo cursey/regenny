@@ -27,6 +27,8 @@ protected:
     std::vector<std::unique_ptr<Variable>> m_elements{};
     std::vector<std::unique_ptr<genny::Variable>> m_proxy_variables{};
 
+    std::string m_value_str{};
+
     void create_nodes();
 };
 } // namespace node

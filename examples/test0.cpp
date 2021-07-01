@@ -36,6 +36,26 @@ struct RTTITest {
     virtual ~RTTITest(){};
 };
 
+struct A {
+    virtual ~A() {}
+};
+
+struct B : A {
+    virtual ~B() {}
+};
+
+struct C : B {
+    virtual ~C() {}
+};
+
+struct D {
+    virtual ~D() {}
+};
+
+struct E : C, D {
+    virtual ~E() {}
+};
+
 struct Baz : Bar {
     int e{};
     int thing{};
@@ -44,10 +64,12 @@ struct Baz : Bar {
     Thing* things{};
     char* hello{};
     wchar_t* wide_hello{};
+    char intrusive_hello[32]{"hello, intrusive world!"};
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
     __declspec(align(sizeof(void*))) RTTITest* rtti{};
+    E* e_ptr{};
 };
 #pragma pack(pop)
 
@@ -89,6 +111,7 @@ int main(int argc, char* argv[]) {
 
     auto rtti = new RTTITest{};
     baz->rtti = rtti;
+    baz->e_ptr = new E{};
 
     std::cout << "0x" << std::hex << (uintptr_t)baz << std::endl;
     std::cout << "Press ENTER to exit.";
