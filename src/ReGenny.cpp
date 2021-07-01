@@ -262,12 +262,13 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
     f.seekg(0, std::ifstream::beg);
     f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
 
+    load_project();
+
     m_log_parse_errors = true;
     parse_editor_text();
     m_log_parse_errors = false;
 
     remember_file();
-    load_project();
 }
 
 void ReGenny::load_project() {
