@@ -11,7 +11,7 @@ template <typename T> void display_as(std::string& s, std::byte* mem) {
     fmt::format_to(std::back_inserter(s), "{} ", *(T*)mem);
 }
 
-void display_str(std::string& s, const std::string& str) {
+static void display_str(std::string& s, const std::string& str) {
     s += "\"";
 
     for (auto&& c : str) {

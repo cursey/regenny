@@ -41,6 +41,7 @@ protected:
     std::unique_ptr<genny::Variable> m_proxy_var{};
 
     std::string m_value_str{};
+    std::string m_address_str{};
 
     bool m_is_hovered{};
 

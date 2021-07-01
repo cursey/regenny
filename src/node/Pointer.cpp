@@ -1,5 +1,6 @@
 #include <fmt/format.h>
 #include <imgui.h>
+#include <utf8.h>
 
 #include "Array.hpp"
 #include "Struct.hpp"
@@ -9,6 +10,20 @@
 using namespace std::literals;
 
 namespace node {
+static void display_str(std::string& s, const std::string& str) {
+    s += "\"";
+
+    for (auto&& c : str) {
+        if (c == 0) {
+            break;
+        }
+
+        s += c;
+    }
+
+    s += "\" ";
+}
+
 Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Variable{process, var, props} {
     m_ptr = dynamic_cast<genny::Pointer*>(m_var->type());
     assert(m_ptr != nullptr);
@@ -29,8 +44,16 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         ImGui::SameLine();
         // ImGui::Text("%p", *(uintptr_t*)mem);
         ImGui::PushStyleColor(ImGuiCol_Text, {0.6f, 0.6f, 0.6f, 1.0f});
-        ImGui::TextUnformatted(m_value_str.c_str());
+        ImGui::TextUnformatted(m_address_str.c_str());
         ImGui::PopStyleColor();
+
+        if (!m_value_str.empty()) {
+            ImGui::SameLine();
+            ImGui::PushStyleColor(ImGuiCol_Text, {181.0f / 255.0f, 206.0f / 255.0f, 168.0f / 255.0f, 1.0f});
+            ImGui::TextUnformatted(m_value_str.c_str());
+            ImGui::PopStyleColor();
+        }
+
         ImGui::EndGroup();
 
         m_is_hovered = ImGui::IsItemHovered();
@@ -124,12 +147,54 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     Base::update(address, offset, mem);
     m_value_str.clear();
+    m_address_str.clear();
+
+    for (auto&& md : m_var->metadata()) {
+        if (md == "utf8*") {
+            m_utf8.resize(256);
+            m_process.read(*(uintptr_t*)mem, m_utf8.data(), 255 * sizeof(char));
+            display_str(m_value_str, m_utf8);
+        } else if (md == "utf16*") {
+            m_utf16.resize(256);
+            m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(char16_t));
+
+            m_utf16.back() = L'\0';
+
+            // if we don't do this then utf16to8 will throw an exception.
+            // todo: do for utf32?
+            const auto real_len = wcslen((wchar_t*)m_utf16.data());
+            m_utf16.resize(real_len);
+
+            std::string utf8conv{};
+
+            try {
+                utf8conv = utf8::utf16to8(m_utf16);
+            } catch (utf8::invalid_utf16& e) {
+                utf8conv = e.what();
+            }
+
+            display_str(m_value_str, utf8conv);
+        } else if (md == "utf32*") {
+            m_utf32.resize(256);
+            m_process.read(*(uintptr_t*)mem, m_utf32.data(), 255 * sizeof(char32_t));
+
+            std::string utf32conv{};
+
+            try {
+                utf32conv = utf8::utf32to8(m_utf32);
+            } catch (utf8::invalid_utf16& e) {
+                utf32conv = e.what();
+            }
+
+            display_str(m_value_str, utf32conv);
+        } 
+    }
 
     auto addr = *(uintptr_t*)mem;
 
     for (auto&& mod : m_process.modules()) {
         if (mod.start <= addr && addr <= mod.end) {
-            fmt::format_to(std::back_inserter(m_value_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
+            fmt::format_to(std::back_inserter(m_address_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
             // Bail here so we don't try previewing this pointer as something else.
             return;
         }
@@ -137,7 +202,7 @@ void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     for (auto&& allocation : m_process.allocations()) {
         if (allocation.start <= addr && addr <= allocation.end) {
-            fmt::format_to(std::back_inserter(m_value_str), "0x{:X}", addr);
+            fmt::format_to(std::back_inserter(m_address_str), "0x{:X}", addr);
             // Bail here so we don't try previewing this pointer as something else.
             return;
         }

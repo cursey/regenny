@@ -5,6 +5,8 @@ type str 8 [[utf8*]]
 type wstr 8 [[utf16*]]
 type bool 1 [[bool]]
 type uintptr_t 8 [[u64]]
+type char 1
+type wchar_t 2
 
 struct RTTITest{}
 
@@ -45,8 +47,8 @@ struct Baz : Bar 0x100 {
     int* f
     Foo g
     Thing* things
-    str hello
-    wstr wide_hello
+    char* hello [[utf8*]]
+    wchar_t* wide_hello [[utf16*]]
     bool im_true
     bool im_false
     bool im_also_true
