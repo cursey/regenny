@@ -1566,6 +1566,7 @@ struct Decl : sor<IncludeDecl, TypeDecl, NsExpr, EnumExpr, StructExpr> {};
 struct Grammar : until<eof, sor<eolf, Sep, Decl>> {};
 
 struct State {
+    std::filesystem::path filepath{std::filesystem::current_path()};
     std::vector<Object*> parents{};
     std::stack<int> namespace_depth{};
 
@@ -1671,9 +1672,12 @@ template <> struct Action<IncludePath> {
 
 template <> struct Action<IncludeDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        auto backup_filepath = s.filepath;
+
         try {
             auto include_path = std::move(s.include_path);
-            file_input f{include_path};
+            s.filepath = (s.filepath.has_extension() ? s.filepath.parent_path() : s.filepath) / include_path;
+            file_input f{s.filepath};
 
             if (!parse<genny::parser::Grammar, genny::parser::Action>(f, s)) {
                 throw parse_error{"Failed to parse file '" + include_path + "'", in};
@@ -1683,6 +1687,8 @@ template <> struct Action<IncludeDecl> {
         } catch (const std::exception& e) {
             throw parse_error{std::string{"Failed to include file: "} + e.what(), in};
         }
+
+        s.filepath = backup_filepath;
     }
 };
 

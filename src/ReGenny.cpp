@@ -681,6 +681,7 @@ void ReGenny::parse_editor_text() {
     auto sdk = std::make_unique<genny::Sdk>();
 
     genny::parser::State s{};
+    s.filepath = m_open_filepath;
     s.parents.push_back(sdk->global_ns());
 
     tao::pegtl::memory_input in{m_ui.editor_text, "editor"};
