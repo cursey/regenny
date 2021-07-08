@@ -43,7 +43,7 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
         CloseHandle(snapshot);
     }
 
-    auto record_allocation = [this](uintptr_t address) {
+    auto record_allocation = [this](uintptr_t address) -> uintptr_t {
         // Skip over allocations we already know about.
         for (auto&& allocation : m_allocations) {
             if (allocation.start == address) {
@@ -190,7 +190,7 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 
     return Process::read<std::array<uint8_t, sizeof(std::type_info) + 256>>((uintptr_t)ti);
 #else
-    if (type_desc_pre == nullptr) {
+    if (type_desc_pre == nullptr || get_module_within((uintptr_t)type_desc_pre) == nullptr) {
         return std::nullopt;
     }
 
