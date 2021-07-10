@@ -1,5 +1,21 @@
 cmake_minimum_required(VERSION 3.16)
 
+# Check if CMAKE_TOOLCHAIN_FILE is set and use it if it is not
+if(NOT CMAKE_TOOLCHAIN_FILE)
+    message("CMAKE_TOOLCHAIN_FILE not detected, setting up vcpkg...")
+
+    # Download and setup vcpkg in CMake. Download master tarball from https://github.com/microsoft/vcpkg/archive
+    if (NOT IS_DIRECTORY "${CMAKE_BINARY_DIR}/vcpkg-master")
+        message("Downloading vcpkg...")
+
+        file(DOWNLOAD "https://github.com/microsoft/vcpkg/archive/master.tar.gz" "${CMAKE_BINARY_DIR}/master.tar.gz")
+        file(ARCHIVE_EXTRACT INPUT "${CMAKE_BINARY_DIR}/master.tar.gz" DESTINATION "${CMAKE_BINARY_DIR}/")
+    endif()
+
+    # Set CMAKE_TOOLCHAIN_FILE to point to vcpkg/scripts/buildsystems/vcpkg.cmake
+    set(CMAKE_TOOLCHAIN_FILE "${CMAKE_BINARY_DIR}/vcpkg-master/scripts/buildsystems/vcpkg.cmake")
+endif()
+
 project(ReGenny)
 
 find_package(imgui CONFIG REQUIRED)
