@@ -1146,12 +1146,26 @@ public:
 
     void generate(const std::filesystem::path& sdk_path) const { generate_namespace(sdk_path, m_global_ns.get()); }
 
+    const auto& header_extension() const { return m_header_extension; }
+    auto header_extension(std::string_view ext) {
+        m_header_extension = ext;
+        return this;
+    }
+
+    const auto& source_extension() const { return m_source_extension; }
+    auto source_extension(std::string_view ext) {
+        m_source_extension = ext;
+        return this;
+    }
+
 protected:
     std::unique_ptr<Namespace> m_global_ns{std::make_unique<Namespace>("")};
     std::string m_preamble{};
     std::string m_postamble{};
     std::set<std::string> m_includes{};
     std::set<std::string> m_local_includes{};
+    std::string m_header_extension{".hpp"};
+    std::string m_source_extension{".cpp"};
 
     std::filesystem::path path_for_object(Object* obj) const {
         std::filesystem::path path{};
@@ -1174,13 +1188,13 @@ protected:
 
     std::filesystem::path include_path_for_object(Object* obj) const {
         auto path = path_for_object(obj);
-        path += ".hpp";
+        path += m_header_extension;
         return path;
     }
 
     std::filesystem::path source_path_for_object(Object* obj) const {
         auto path = path_for_object(obj);
-        path += ".cpp";
+        path += m_source_extension;
         return path;
     }
 
