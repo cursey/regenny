@@ -187,7 +187,7 @@ void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             }
 
             display_str(m_value_str, utf32conv);
-        } 
+        }
     }
 
     auto addr = *(uintptr_t*)mem;

@@ -20,4 +20,3 @@ struct Project {
 
 void to_json(nlohmann::json& j, const Project& p);
 void from_json(const nlohmann::json& j, Project& p);
-

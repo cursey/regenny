@@ -400,7 +400,9 @@ void ReGenny::action_generate_sdk() {
     }
 
     spdlog::info("Generating SDK at {}...", sdk_path);
-    m_sdk->header_extension(m_project.extension_header)->source_extension(m_project.extension_source)->generate(sdk_path);
+    m_sdk->header_extension(m_project.extension_header)
+        ->source_extension(m_project.extension_source)
+        ->generate(sdk_path);
     free(sdk_path);
 }
 
@@ -476,7 +478,8 @@ void ReGenny::attach() {
     }
 
     parse_editor_text();
-    SDL_SetWindowTitle(m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
+    SDL_SetWindowTitle(
+        m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
 }
 
 void ReGenny::memory_ui() {
@@ -599,8 +602,8 @@ void ReGenny::set_type() {
 
     set_address();
 
-    m_mem_ui =
-        std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.chosen_type]);
+    m_mem_ui = std::make_unique<MemoryUi>(
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.chosen_type]);
 }
 
 void ReGenny::editor_ui() {

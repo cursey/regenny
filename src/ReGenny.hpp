@@ -16,9 +16,9 @@
 #include "LoggerUi.hpp"
 #include "MemoryUi.hpp"
 #include "Process.hpp"
+#include "Project.hpp"
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
-#include "Project.hpp"
 
 class ReGenny {
 public:

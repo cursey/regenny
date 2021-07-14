@@ -106,7 +106,7 @@ void Variable::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             } else if (md == "utf16*") {
                 m_utf16.resize(256);
                 m_process.read(*(uintptr_t*)mem, m_utf16.data(), 255 * sizeof(char16_t));
-                
+
                 m_utf16.back() = L'\0';
 
                 // if we don't do this then utf16to8 will throw an exception.

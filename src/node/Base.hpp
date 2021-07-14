@@ -12,7 +12,6 @@ class Base {
 public:
     Base(Process& process, Property& props);
 
-
     virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
     virtual size_t size() = 0;
     virtual void update(uintptr_t address, uintptr_t offset, std::byte* mem);
