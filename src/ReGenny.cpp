@@ -163,6 +163,20 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
+    m_ui.extensions_popup = ImGui::GetID("Set SDK Extensions");
+    if (ImGui::BeginPopup("Set SDK Extensions")) {
+
+        ImGui::InputText("Header Extension", &m_ui.header_extension);
+        ImGui::InputText("Source Extension", &m_ui.source_extension);
+
+        if (ImGui::Button("OK")) {
+            ImGui::CloseCurrentPopup();
+            save_project();
+        }
+
+        ImGui::EndPopup();
+    }
+
     ImGui::End();
 }
 
@@ -218,6 +232,10 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Set Font")) {
                 // options_set_font();
                 ImGui::OpenPopup(m_ui.font_popup);
+            }
+
+            if (ImGui::MenuItem("Set SDK Extensions")) {
+                ImGui::OpenPopup(m_ui.extensions_popup);
             }
 
             ImGui::EndMenu();
@@ -290,6 +308,8 @@ void ReGenny::load_project() {
     m_ui.process_filter = m_project.value("process_filter", "");
     m_ui.process_id = m_project.value<uint32_t>("process_id", 0);
     m_ui.process_name = m_project.value("process_name", "");
+    m_ui.header_extension = m_project.value("extension_header", ".hpp");
+    m_ui.source_extension = m_project.value("extension_source", ".cpp");
     m_props.clear();
 
     std::function<void(nlohmann::json&, node::Property&)> visit = [&visit](nlohmann::json& j, node::Property& prop) {
@@ -411,6 +431,8 @@ void ReGenny::save_project() {
     m_project["process_filter"] = m_ui.process_filter;
     m_project["process_id"] = m_ui.process_id;
     m_project["process_name"] = m_ui.process_name;
+    m_project["extension_header"] = m_ui.header_extension;
+    m_project["extension_source"] = m_ui.source_extension;
 
     std::ofstream f{proj_filepath, std::ofstream::out};
 
@@ -461,7 +483,7 @@ void ReGenny::action_generate_sdk() {
     }
 
     spdlog::info("Generating SDK at {}...", sdk_path);
-    m_sdk->generate(sdk_path);
+    m_sdk->header_extension(m_ui.header_extension)->source_extension(m_ui.source_extension)->generate(sdk_path);
     free(sdk_path);
 }
 

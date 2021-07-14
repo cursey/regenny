@@ -65,6 +65,10 @@ private:
         ImGuiID font_popup{};
 
         ImGuiID about_popup{};
+
+        ImGuiID extensions_popup{};
+        std::string header_extension{".hpp"};
+        std::string source_extension{".cpp"};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
