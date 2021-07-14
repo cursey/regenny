@@ -40,10 +40,6 @@ to open source.
 ### [UTF8-CPP](https://github.com/nemtrif/utfcpp)
 - [Boost Software License 1.0](https://github.com/nemtrif/utfcpp/blob/master/LICENSE)
 
-### [toml++](https://github.com/marzer/tomlplusplus)
-- Copyright (c) Mark Gillard
-- [MIT License](https://github.com/marzer/tomlplusplus/blob/master/LICENSE)
-
 ### [JSON for Modern C++](https://github.com/nlohmann/json)
 - Copyright (c) 2013-2021 Niels Lohmann
 - [MIT License](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)

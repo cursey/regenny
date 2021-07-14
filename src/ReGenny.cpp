@@ -45,11 +45,11 @@ void ReGenny::process_event(SDL_Event& e) {
 
 void ReGenny::update() {
     if (m_load_font) {
-        spdlog::info("Setting font {}...", m_ui.font_to_load);
+        spdlog::info("Setting font {}...", m_cfg.font_file);
 
         auto& io = ImGui::GetIO();
         io.Fonts->Clear();
-        io.Fonts->AddFontFromFileTTF(m_ui.font_to_load.c_str(), m_ui.font_size);
+        io.Fonts->AddFontFromFileTTF(m_cfg.font_file.c_str(), m_cfg.font_size);
         ImGui_ImplOpenGL3_DestroyFontsTexture();
         ImGui_ImplOpenGL3_CreateFontsTexture();
         m_load_font = false;
@@ -134,23 +134,21 @@ void ReGenny::ui() {
             nfdchar_t* out_path{};
 
             if (NFD_OpenDialog("ttf", nullptr, &out_path) == NFD_OKAY) {
-                m_ui.font_to_load = out_path;
+                m_cfg.font_file = out_path;
             }
         }
 
         ImGui::SameLine();
-        ImGui::TextUnformatted(m_ui.font_to_load.c_str());
-        ImGui::SliderFloat("Size", &m_ui.font_size, 6.0f, 32.0f, "%.0f");
+        ImGui::TextUnformatted(m_cfg.font_file.c_str());
+        ImGui::SliderFloat("Size", &m_cfg.font_size, 6.0f, 32.0f, "%.0f");
 
         if (ImGui::Button("OK")) {
             ImGui::CloseCurrentPopup();
 
-            if (!m_ui.font_to_load.empty()) {
+            if (!m_cfg.font_file.empty()) {
                 m_load_font = true;
             }
 
-            m_cfg["font"]["file"].ref<std::string>() = m_ui.font_to_load;
-            m_cfg["font"]["size"].ref<int64_t>() = m_ui.font_size;
             save_cfg();
         }
 
@@ -188,12 +186,12 @@ void ReGenny::menu_ui() {
             }
 
             if (ImGui::BeginMenu("Open Recent...")) {
-                if (m_file_history.empty()) {
+                if (m_cfg.file_history.empty()) {
                     ImGui::TextUnformatted("No files have been open recently");
                 }
 
-                for (auto&& path : m_file_history) {
-                    if (ImGui::MenuItem(path.string().c_str())) {
+                for (auto&& path : m_cfg.file_history) {
+                    if (ImGui::MenuItem(path.c_str())) {
                         file_open(path);
                     }
                 }
@@ -485,17 +483,17 @@ void ReGenny::attach() {
 void ReGenny::memory_ui() {
     assert(m_process != nullptr);
 
-    if (ImGui::BeginCombo("Typename", m_project.chosen_type.c_str())) {
+    if (ImGui::BeginCombo("Typename", m_project.type_chosen.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
-            auto is_selected = type_name == m_project.chosen_type;
+            auto is_selected = type_name == m_project.type_chosen;
 
             if (ImGui::Selectable(type_name.c_str(), is_selected)) {
                 // Save the previously selected type's props.
                 if (m_mem_ui != nullptr) {
-                    m_project.props[m_project.chosen_type] = m_mem_ui->props();
+                    m_project.props[m_project.type_chosen] = m_mem_ui->props();
                 }
 
-                m_project.chosen_type = type_name;
+                m_project.type_chosen = type_name;
                 set_type();
             }
 
@@ -575,7 +573,7 @@ void ReGenny::set_type() {
     }
 
     genny::Object* parent = m_sdk->global_ns();
-    std::string type_name = m_project.chosen_type;
+    std::string type_name = m_project.type_chosen;
     size_t pos{};
 
     while ((pos = type_name.find('.')) != std::string::npos) {
@@ -594,7 +592,7 @@ void ReGenny::set_type() {
         return;
     }
 
-    if (auto search = m_project.type_addresses.find(m_project.chosen_type); search != m_project.type_addresses.end()) {
+    if (auto search = m_project.type_addresses.find(m_project.type_chosen); search != m_project.type_addresses.end()) {
         m_ui.address = search->second;
     } else {
         m_ui.address.clear();
@@ -603,7 +601,7 @@ void ReGenny::set_type() {
     set_address();
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.chosen_type]);
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
 }
 
 void ReGenny::editor_ui() {
@@ -635,7 +633,7 @@ void ReGenny::parse_editor_text() {
             m_sdk = std::move(sdk);
 
             if (m_mem_ui != nullptr) {
-                m_project.props[m_project.chosen_type] = m_mem_ui->props();
+                m_project.props[m_project.type_chosen] = m_mem_ui->props();
                 m_mem_ui.reset();
             }
 
@@ -676,74 +674,55 @@ void ReGenny::parse_editor_text() {
     }
 }
 
-constexpr auto DEFAULT_CFG = R"(
-[font]
-file = '' 
-size = 16
-
-[history]
-files = []
-)";
-
 void ReGenny::load_cfg() {
+    auto cfg_path = (m_app_path / "cfg.json").string();
+
+    spdlog::info("Loading config {}...", cfg_path);
+
     try {
-        auto cfg_path = (m_app_path / "cfg.toml").string();
-        spdlog::info("Loading config {}...", cfg_path);
-        m_cfg = toml::parse_file(cfg_path);
-        m_ui.font_to_load = m_cfg["font"]["file"].value_or("");
-        m_ui.font_size = m_cfg["font"]["size"].value_or(16);
+        std::ifstream f{cfg_path};
+        nlohmann::json j{};
 
-        if (auto files = m_cfg["history"]["files"].as_array()) {
-            for (auto&& file : *files) {
-                file.visit([this](auto&& file) noexcept {
-                    if constexpr (toml::is_string<decltype(file)>) {
-                        m_file_history.emplace_back(*file);
-                    }
-                });
-            }
-        }
+        f >> j;
+        m_cfg = j.get<Config>();
 
-        if (!m_ui.font_to_load.empty()) {
+        if (!m_cfg.font_file.empty()) {
             m_load_font = true;
         }
-    } catch (const toml::parse_error& e) {
+    } catch (const nlohmann::json::exception& e) {
         spdlog::error(e.what());
-
-        m_cfg = toml::parse(DEFAULT_CFG);
+        m_cfg = {};
     }
 }
 
 void ReGenny::save_cfg() {
-    auto cfg_path = m_app_path / "cfg.toml";
+    auto cfg_path = m_app_path / "cfg.json";
 
     spdlog::info("Saving config {}...", cfg_path.string());
 
-    std::ofstream f{cfg_path};
+    try {
+        std::ofstream f{cfg_path};
+        nlohmann::json j = m_cfg;
 
-    f << m_cfg;
+        f << std::setw(4) << j;
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error(e.what());
+    }
 }
 
 void ReGenny::remember_file() {
-    for (auto it = m_file_history.begin(); it != m_file_history.end();) {
+    for (auto it = m_cfg.file_history.begin(); it != m_cfg.file_history.end();) {
         if (*it == m_open_filepath) {
-            it = m_file_history.erase(it);
+            it = m_cfg.file_history.erase(it);
         } else {
             ++it;
         }
     }
 
-    m_file_history.emplace_front(m_open_filepath);
+    m_cfg.file_history.emplace_front(m_open_filepath.string());
 
-    if (m_file_history.size() > 10) {
-        m_file_history.resize(10);
-    }
-
-    if (auto files = m_cfg["history"]["files"].as_array()) {
-        files->clear();
-
-        for (auto&& path : m_file_history) {
-            files->push_back(path.string());
-        }
+    if (m_cfg.file_history.size() > 10) {
+        m_cfg.file_history.resize(10);
     }
 
     save_cfg();
@@ -754,5 +733,5 @@ void ReGenny::remember_type_and_address() {
         return;
     }
 
-    m_project.type_addresses[m_project.chosen_type] = m_ui.address;
+    m_project.type_addresses[m_project.type_chosen] = m_ui.address;
 }

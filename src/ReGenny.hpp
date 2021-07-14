@@ -8,9 +8,8 @@
 #include <unordered_map>
 
 #include <SDL.h>
-#include <nlohmann/json.hpp>
-#include <toml++/toml.h>
 
+#include "Config.hpp"
 #include "Genny.hpp"
 #include "Helpers.hpp"
 #include "LoggerUi.hpp"
@@ -57,12 +56,8 @@ private:
         std::string editor_error_msg{};
         bool editor_has_saved{};
 
-        std::string font_to_load{};
-        float font_size{16.0f};
         ImGuiID font_popup{};
-
         ImGuiID about_popup{};
-
         ImGuiID extensions_popup{};
     } m_ui{};
 
@@ -75,11 +70,10 @@ private:
 
     bool m_load_font{};
 
-    toml::table m_cfg{};
     std::filesystem::path m_app_path{};
-    std::deque<std::filesystem::path> m_file_history{};
     Trigger::Group m_triggers{};
 
+    Config m_cfg{};
     Project m_project{};
 
     void menu_ui();

@@ -50,23 +50,23 @@ void to_json(nlohmann::json& j, const Project& p) {
         erase_null(it.value());
     }
 
-    j["chosen_type"] = p.chosen_type;
-    j["process_filter"] = p.process_filter;
-    j["process_id"] = p.process_id;
-    j["process_name"] = p.process_name;
-    j["extension_header"] = p.extension_header;
-    j["extension_source"] = p.extension_source;
-    j["type_addresses"] = p.type_addresses;
+    j["process"]["filter"] = p.process_filter;
+    j["process"]["id"] = p.process_id;
+    j["process"]["name"] = p.process_name;
+    j["extension"]["header"] = p.extension_header;
+    j["extension"]["source"] = p.extension_source;
+    j["type"]["addresses"] = p.type_addresses;
+    j["type"]["chosen"] = p.type_chosen;
 }
 
 void from_json(const nlohmann::json& j, Project& p) {
-    p.chosen_type = j.value("chosen_type", "");
-    p.process_filter = j.value("process_filter", "");
-    p.process_id = j.value<uint32_t>("process_id", 0);
-    p.process_name = j.value("process_name", "");
-    p.extension_header = j.value("extension_header", ".hpp");
-    p.extension_source = j.value("extension_source", ".cpp");
-    p.type_addresses = j.value<decltype(p.type_addresses)>("type_addresses", {});
+    p.process_filter = j.at("process").value("filter", "");
+    p.process_id = j.at("process").value<uint32_t>("id", 0);
+    p.process_name = j.at("process").value("name", "");
+    p.extension_header = j.at("extension").value("header", ".hpp");
+    p.extension_source = j.at("extension").value("source", ".cpp");
+    p.type_addresses = j.at("type").value<decltype(p.type_addresses)>("addresses", {});
+    p.type_chosen = j.at("type").value("chosen", "");
     p.props.clear();
 
     std::function<void(const nlohmann::json&, node::Property&)> visit = [&visit](const nlohmann::json& j,
@@ -88,7 +88,7 @@ void from_json(const nlohmann::json& j, Project& p) {
         }
     };
 
-    for (auto it = j["props"].begin(); it != j["props"].end(); ++it) {
+    for (auto it = j.at("props").begin(); it != j.at("props").end(); ++it) {
         visit(it.value(), p.props[it.key()]);
     }
 }

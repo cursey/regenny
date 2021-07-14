@@ -8,7 +8,6 @@
 #include "node/Property.hpp"
 
 struct Project {
-    std::string chosen_type{};
     std::string extension_header{".hpp"};
     std::string extension_source{".cpp"};
     std::string process_filter{};
@@ -16,6 +15,7 @@ struct Project {
     std::string process_name{};
     std::map<std::string, node::Property> props{};
     std::map<std::string, std::string> type_addresses{};
+    std::string type_chosen{};
 };
 
 void to_json(nlohmann::json& j, const Project& p);

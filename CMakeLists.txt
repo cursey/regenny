@@ -25,7 +25,6 @@ find_package(unofficial-nativefiledialog CONFIG REQUIRED)
 find_package(spdlog CONFIG REQUIRED)
 find_package(utf8cpp CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
-find_package(tomlplusplus CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
 
 if(MSVC)
@@ -70,7 +69,9 @@ add_executable(regenny ${EXE_TYPE}
     "src/AboutUi.cpp" 
     "thirdparty/SDL_Trigger/sdl_trigger.cpp" 
     "src/Project.hpp" 
-    "src/Project.cpp")
+    "src/Project.cpp" 
+    "src/Config.hpp" 
+    "src/Config.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/" "thirdparty/SDL_Trigger/")
 target_link_libraries(regenny PRIVATE 
@@ -83,7 +84,6 @@ target_link_libraries(regenny PRIVATE
     utf8cpp
     SDL2::SDL2
     SDL2::SDL2main
-    tomlplusplus::tomlplusplus
     nlohmann_json::nlohmann_json)
 target_compile_definitions(regenny PRIVATE 
     GENNY_INCLUDE_PARSER # The SdkGenny parser is required
