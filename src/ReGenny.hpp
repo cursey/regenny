@@ -18,6 +18,7 @@
 #include "Process.hpp"
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
+#include "Project.hpp"
 
 class ReGenny {
 public:
@@ -45,15 +46,11 @@ private:
     struct {
         // Process ID -> process name.
         std::map<uint32_t, std::string> processes{};
-        std::string process_name{};
-        uint32_t process_id{};
-        std::string process_filter{};
 
         std::string error_msg{};
         ImGuiID error_popup{};
 
         std::string address{};
-        std::string type_name{};
         std::set<std::string> type_names{};
 
         std::string editor_text{};
@@ -67,12 +64,9 @@ private:
         ImGuiID about_popup{};
 
         ImGuiID extensions_popup{};
-        std::string header_extension{".hpp"};
-        std::string source_extension{".cpp"};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
-    std::map<std::string, node::Property> m_props{};
 
     std::filesystem::path m_open_filepath{};
 
@@ -86,8 +80,7 @@ private:
     std::deque<std::filesystem::path> m_file_history{};
     Trigger::Group m_triggers{};
 
-    // toml::table m_project{};
-    nlohmann::json m_project{};
+    Project m_project{};
 
     void menu_ui();
 

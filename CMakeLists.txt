@@ -68,7 +68,9 @@ add_executable(regenny ${EXE_TYPE}
     "src/node/Property.hpp" 
     "src/AboutUi.hpp" 
     "src/AboutUi.cpp" 
-    "thirdparty/SDL_Trigger/sdl_trigger.cpp")
+    "thirdparty/SDL_Trigger/sdl_trigger.cpp" 
+    "src/Project.hpp" 
+    "src/Project.cpp")
 target_compile_features(regenny PRIVATE cxx_std_17)
 target_include_directories(regenny PRIVATE "src/" "thirdparty/scope_gaurd/" "thirdparty/SDL_Trigger/")
 target_link_libraries(regenny PRIVATE 

@@ -166,8 +166,8 @@ void ReGenny::ui() {
     m_ui.extensions_popup = ImGui::GetID("Set SDK Extensions");
     if (ImGui::BeginPopup("Set SDK Extensions")) {
 
-        ImGui::InputText("Header Extension", &m_ui.header_extension);
-        ImGui::InputText("Source Extension", &m_ui.source_extension);
+        ImGui::InputText("Header Extension", &m_project.extension_header);
+        ImGui::InputText("Source Extension", &m_project.extension_source);
 
         if (ImGui::Button("OK")) {
             ImGui::CloseCurrentPopup();
@@ -300,40 +300,12 @@ void ReGenny::load_project() {
 
     spdlog::info("Opening project {}...", project_filepath.string());
 
-    std::ifstream f{project_filepath};
-
-    f >> m_project;
-
-    m_ui.type_name = m_project.value("chosen_type", "");
-    m_ui.process_filter = m_project.value("process_filter", "");
-    m_ui.process_id = m_project.value<uint32_t>("process_id", 0);
-    m_ui.process_name = m_project.value("process_name", "");
-    m_ui.header_extension = m_project.value("extension_header", ".hpp");
-    m_ui.source_extension = m_project.value("extension_source", ".cpp");
-    m_props.clear();
-
-    std::function<void(nlohmann::json&, node::Property&)> visit = [&visit](nlohmann::json& j, node::Property& prop) {
-        if (j.empty()) {
-            return;
-        }
-
-        for (auto it = j.begin(); it != j.end(); ++it) {
-            auto& val = it.value();
-
-            if (val.is_boolean()) {
-                prop[it.key()].value = (bool)val;
-            } else if (val.is_number()) {
-                prop[it.key()].value = (int)val;
-            } else if (val.is_object()) {
-                visit(val, prop.props[it.key()]);
-            }
-        }
-    };
-
     try {
-        for (auto it = m_project["props"].begin(); it != m_project["props"].end(); ++it) {
-            visit(it.value(), m_props[it.key()]);
-        }
+        std::ifstream f{project_filepath};
+        nlohmann::json j{};
+
+        f >> j;
+        m_project = j.get<Project>();
     } catch (const nlohmann::json::exception& e) {
         spdlog::error(e.what());
     }
@@ -369,74 +341,19 @@ void ReGenny::file_save() {
 }
 
 void ReGenny::save_project() {
-    std::function<void(nlohmann::json&, const std::string&, node::Property&)> visit =
-        [&visit](nlohmann::json& j, const std::string& name, node::Property& prop) {
-            if (prop.value.index() == 0 && prop.props.empty()) {
-                return;
-            }
-
-            if (prop.value != prop.default_value) {
-                std::visit(
-                    [&](auto&& value) {
-                        using T = std::decay_t<decltype(value)>;
-                        if constexpr (std::is_same_v<T, int>) {
-                            j[name] = value;
-                        } else if constexpr (std::is_same_v<T, bool>) {
-                            j[name] = value;
-                        }
-                    },
-                    prop.value);
-            }
-
-            for (auto&& [child_name, child_prop] : prop.props) {
-                visit(j[name], child_name, child_prop);
-            }
-        };
-
-    std::function<void(nlohmann::json&)> erase_null = [&erase_null](nlohmann::json& j) {
-        if (!j.is_object()) {
-            return;
-        }
-
-        for (auto it = j.begin(); it != j.end();) {
-            if (it->is_null()) {
-                it = j.erase(it);
-            } else {
-                erase_null(it.value());
-                ++it;
-            }
-        }
-    };
-
-    m_project["props"].clear();
-
-    try {
-        for (auto&& [type_name, props] : m_props) {
-            visit(m_project["props"], type_name, props);
-        }
-
-        for (auto it = m_project["props"].begin(); it != m_project["props"].end(); ++it) {
-            erase_null(it.value());
-        }
-    } catch (const nlohmann::json::exception& e) {
-        spdlog::error(e.what());
-    }
-
     auto proj_filepath = m_open_filepath;
 
     proj_filepath.replace_extension("json");
     spdlog::info("Saving {}...", proj_filepath.string());
 
-    m_project["chosen_type"] = m_ui.type_name;
-    m_project["process_filter"] = m_ui.process_filter;
-    m_project["process_id"] = m_ui.process_id;
-    m_project["process_name"] = m_ui.process_name;
-    m_project["extension_header"] = m_ui.header_extension;
-    m_project["extension_source"] = m_ui.source_extension;
+    try {
+        std::ofstream f{proj_filepath, std::ofstream::out};
+        nlohmann::json j = m_project;
 
-    std::ofstream f{proj_filepath, std::ofstream::out};
-
-    f << std::setw(4) << m_project;
+        f << std::setw(4) << j;
+    } catch (const nlohmann::json::exception& e) {
+        spdlog::error(e.what());
+    }
 }
 
 void ReGenny::file_save_as() {
@@ -483,7 +400,7 @@ void ReGenny::action_generate_sdk() {
     }
 
     spdlog::info("Generating SDK at {}...", sdk_path);
-    m_sdk->header_extension(m_ui.header_extension)->source_extension(m_ui.source_extension)->generate(sdk_path);
+    m_sdk->header_extension(m_project.extension_header)->source_extension(m_project.extension_source)->generate(sdk_path);
     free(sdk_path);
 }
 
@@ -492,22 +409,22 @@ void ReGenny::attach_ui() {
         m_ui.processes = m_helpers->processes();
     }
 
-    ImGui::InputText("Filter", &m_ui.process_filter);
+    ImGui::InputText("Filter", &m_project.process_filter);
 
     if (ImGui::BeginListBox("Processes")) {
         for (auto&& [pid, name] : m_ui.processes) {
-            if (!m_ui.process_filter.empty()) {
-                if (auto it = std::search(name.begin(), name.end(), m_ui.process_filter.begin(),
-                        m_ui.process_filter.end(), [](auto a, auto b) { return tolower(a) == tolower(b); });
+            if (!m_project.process_filter.empty()) {
+                if (auto it = std::search(name.begin(), name.end(), m_project.process_filter.begin(),
+                        m_project.process_filter.end(), [](auto a, auto b) { return tolower(a) == tolower(b); });
                     it == name.end()) {
                     continue;
                 }
             }
-            auto is_selected = pid == m_ui.process_id;
+            auto is_selected = pid == m_project.process_id;
 
             if (ImGui::Selectable(fmt::format("{} - {}", pid, name).c_str(), is_selected)) {
-                m_ui.process_name = name;
-                m_ui.process_id = pid;
+                m_project.process_name = name;
+                m_project.process_id = pid;
             }
 
             if (is_selected) {
@@ -530,7 +447,7 @@ void ReGenny::attach_ui() {
 }
 
 void ReGenny::attach() {
-    if (m_ui.process_id == 0) {
+    if (m_project.process_id == 0) {
         return;
     }
 
@@ -538,7 +455,7 @@ void ReGenny::attach() {
     auto is_valid = false;
 
     for (auto&& [pid, name] : m_ui.processes) {
-        if (pid == m_ui.process_id && name == m_ui.process_name) {
+        if (pid == m_project.process_id && name == m_project.process_name) {
             is_valid = true;
         }
     }
@@ -547,9 +464,9 @@ void ReGenny::attach() {
         return;
     }
 
-    spdlog::info("Attatching to {} PID: {}...", m_ui.process_name, m_ui.process_id);
+    spdlog::info("Attatching to {} PID: {}...", m_project.process_name, m_project.process_id);
 
-    m_process = arch::open_process(m_ui.process_id);
+    m_process = arch::open_process(m_project.process_id);
 
     if (!m_process->ok()) {
         m_ui.error_msg = "Couldn't open the process!";
@@ -559,23 +476,23 @@ void ReGenny::attach() {
     }
 
     parse_editor_text();
-    SDL_SetWindowTitle(m_window, fmt::format("ReGenny - {} PID: {}", m_ui.process_name, m_ui.process_id).c_str());
+    SDL_SetWindowTitle(m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
 }
 
 void ReGenny::memory_ui() {
     assert(m_process != nullptr);
 
-    if (ImGui::BeginCombo("Typename", m_ui.type_name.c_str())) {
+    if (ImGui::BeginCombo("Typename", m_project.chosen_type.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
-            auto is_selected = type_name == m_ui.type_name;
+            auto is_selected = type_name == m_project.chosen_type;
 
             if (ImGui::Selectable(type_name.c_str(), is_selected)) {
                 // Save the previously selected type's props.
                 if (m_mem_ui != nullptr) {
-                    m_props[m_ui.type_name] = m_mem_ui->props();
+                    m_project.props[m_project.chosen_type] = m_mem_ui->props();
                 }
 
-                m_ui.type_name = type_name;
+                m_project.chosen_type = type_name;
                 set_type();
             }
 
@@ -655,7 +572,7 @@ void ReGenny::set_type() {
     }
 
     genny::Object* parent = m_sdk->global_ns();
-    std::string type_name = m_ui.type_name;
+    std::string type_name = m_project.chosen_type;
     size_t pos{};
 
     while ((pos = type_name.find('.')) != std::string::npos) {
@@ -674,14 +591,16 @@ void ReGenny::set_type() {
         return;
     }
 
-    if (auto& type_addresses = m_project["type_addresses"]; type_addresses.is_object()) {
-        m_ui.address = type_addresses.value(m_ui.type_name, "");
+    if (auto search = m_project.type_addresses.find(m_project.chosen_type); search != m_project.type_addresses.end()) {
+        m_ui.address = search->second;
+    } else {
+        m_ui.address.clear();
     }
 
     set_address();
 
     m_mem_ui =
-        std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_props[m_ui.type_name]);
+        std::make_unique<MemoryUi>(*m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.chosen_type]);
 }
 
 void ReGenny::editor_ui() {
@@ -713,7 +632,7 @@ void ReGenny::parse_editor_text() {
             m_sdk = std::move(sdk);
 
             if (m_mem_ui != nullptr) {
-                m_props[m_ui.type_name] = m_mem_ui->props();
+                m_project.props[m_project.chosen_type] = m_mem_ui->props();
                 m_mem_ui.reset();
             }
 
@@ -832,5 +751,5 @@ void ReGenny::remember_type_and_address() {
         return;
     }
 
-    m_project["type_addresses"][m_ui.type_name] = m_ui.address;
+    m_project.type_addresses[m_project.chosen_type] = m_ui.address;
 }
