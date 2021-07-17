@@ -31,7 +31,7 @@ public:
     };
 
     bool read(uintptr_t address, void* buffer, size_t size);
-    virtual bool write(uintptr_t address, const void* buffer, size_t size) = 0;
+    bool write(uintptr_t address, const void* buffer, size_t size);
     virtual uint32_t process_id() = 0;
     virtual bool ok() = 0;
 
@@ -58,5 +58,6 @@ protected:
     std::vector<Allocation> m_allocations{};
     std::vector<ReadOnlyAllocation> m_read_only_allocations{};
 
+    virtual bool handle_write(uintptr_t address, const void* buffer, size_t size) = 0;
     virtual bool handle_read(uintptr_t address, void* buffer, size_t size) = 0;
 };

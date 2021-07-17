@@ -20,6 +20,10 @@ bool Process::read(uintptr_t address, void* buffer, size_t size) {
     return handle_read(address, buffer, size);
 }
 
+bool Process::write(uintptr_t address, const void* buffer, size_t size) {
+    return handle_write(address, buffer, size);
+}
+
 const Process::Module* Process::get_module_within(uintptr_t addr) const {
     for (auto& mod : modules()) {
         if (addr >= mod.start && addr <= mod.end) {
@@ -29,3 +33,4 @@ const Process::Module* Process::get_module_within(uintptr_t addr) const {
 
     return nullptr;
 }
+

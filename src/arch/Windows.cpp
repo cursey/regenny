@@ -43,18 +43,10 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
         CloseHandle(snapshot);
     }
 
-    auto record_allocation = [this](uintptr_t address) -> uintptr_t {
-        // Skip over allocations we already know about.
-        for (auto&& allocation : m_allocations) {
-            if (allocation.start == address) {
-                return allocation.end;
-            }
-        }
+    uintptr_t address = 0;
+    MEMORY_BASIC_INFORMATION mbi{};
 
-        MEMORY_BASIC_INFORMATION mbi{};
-
-        VirtualQueryEx(m_process, (LPCVOID)address, &mbi, sizeof(mbi));
-
+    while (VirtualQueryEx(m_process, (LPCVOID)address, &mbi, sizeof(mbi)) != 0) {
         auto protect = mbi.Protect;
         Allocation a{};
 
@@ -88,36 +80,20 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
             m_allocations.emplace_back(std::move(a));
         }
 
-        return (uintptr_t)mbi.BaseAddress + mbi.RegionSize;
-    };
-
-    // Iterate module memory.
-    for (auto&& mod : m_modules) {
-        for (auto i = mod.start; i < mod.end;) {
-            i = record_allocation(i);
-        }
-    }
-
-    // Iterate memory.
-    SYSTEM_INFO si{};
-
-    GetSystemInfo(&si);
-
-    for (auto i = (uintptr_t)si.lpMinimumApplicationAddress; i < (uintptr_t)si.lpMaximumApplicationAddress;) {
-        i = record_allocation(i);
+        address += mbi.RegionSize;
     }
 }
 
-bool WindowsProcess::write(uintptr_t address, const void* buffer, size_t size) {
+uint32_t WindowsProcess::process_id() {
+    return GetProcessId(m_process);
+}
+
+bool WindowsProcess::handle_write(uintptr_t address, const void* buffer, size_t size) {
     SIZE_T bytes_written{};
 
     WriteProcessMemory(m_process, (LPVOID)address, buffer, size, &bytes_written);
 
     return bytes_written == size;
-}
-
-uint32_t WindowsProcess::process_id() {
-    return GetProcessId(m_process);
 }
 
 bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {

@@ -14,7 +14,6 @@ class WindowsProcess : public Process {
 public:
     WindowsProcess(DWORD process_id);
 
-    bool write(uintptr_t address, const void* buffer, size_t size) override;
     uint32_t process_id() override;
     bool ok() override { return m_process != nullptr; }
 
@@ -26,6 +25,7 @@ public:
     std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> get_typeinfo(uintptr_t ptr); // __RTtypeid
 
 protected:
+    bool handle_write(uintptr_t address, const void* buffer, size_t size) override;
     bool handle_read(uintptr_t address, void* buffer, size_t size) override;
 
 private:
