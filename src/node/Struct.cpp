@@ -156,6 +156,7 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
 void Struct::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     Base::update(address, offset, mem);
+    m_display_str.clear();
 
     // RTTI
     if (auto tn = m_process.get_typename(address); tn) {
