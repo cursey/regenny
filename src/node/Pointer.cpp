@@ -192,6 +192,11 @@ void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     auto addr = *(uintptr_t*)mem;
 
+    // RTTI
+    if (auto tn = m_process.get_typename(addr); tn) {
+        fmt::format_to(std::back_inserter(m_address_str), "obj*:{:s} ", *tn);
+    }
+
     for (auto&& mod : m_process.modules()) {
         if (mod.start <= addr && addr <= mod.end) {
             fmt::format_to(std::back_inserter(m_address_str), "<{}>+0x{:X}", mod.name, addr - mod.start);

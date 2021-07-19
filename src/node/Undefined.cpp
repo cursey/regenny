@@ -58,8 +58,12 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         auto addr = *(uintptr_t*)mem;
 
         // RTTI
-        if (auto tn = m_process.get_typename(addr); tn) {
+        if (auto tn = m_process.get_typename(address); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj:{:s} ", *tn);
+        }
+
+        if (auto tn = m_process.get_typename(addr); tn) {
+            fmt::format_to(std::back_inserter(m_preview_str), "obj*:{:s} ", *tn);
         }
 
         for (auto&& mod : m_process.modules()) {

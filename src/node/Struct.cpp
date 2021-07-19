@@ -71,6 +71,10 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         display_type();
         ImGui::SameLine();
         display_name();
+        ImGui::SameLine();
+        ImGui::PushStyleColor(ImGuiCol_Text, {0.6f, 0.6f, 0.6f, 1.0f});
+        ImGui::TextUnformatted(m_display_str.c_str());
+        ImGui::PopStyleColor();
         ImGui::EndGroup();
 
         m_is_hovered = ImGui::IsItemHovered();
@@ -152,6 +156,11 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
 void Struct::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     Base::update(address, offset, mem);
+
+    // RTTI
+    if (auto tn = m_process.get_typename(address); tn) {
+        fmt::format_to(std::back_inserter(m_display_str), "obj:{:s} ", *tn);
+    }
 
     if (is_collapsed() && !m_is_hovered) {
         return;

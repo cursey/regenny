@@ -29,6 +29,7 @@ private:
     genny::Struct* m_struct{};
     std::multimap<uintptr_t, std::unique_ptr<Base>> m_nodes{};
     bool m_is_hovered{};
+    std::string m_display_str{};
 
     void fill_space(uintptr_t last_offset, int delta);
 };
