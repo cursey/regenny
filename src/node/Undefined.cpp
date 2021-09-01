@@ -1,9 +1,17 @@
 #include <fmt/format.h>
 #include <imgui.h>
 
+#include "Pointer.hpp"
+
 #include "Undefined.hpp"
 
 namespace node {
+static genny::Namespace g_preview_ns{""};
+static genny::Variable g_preview_ptr{"preview_ptr"};
+static Property g_preview_props{};
+static std::unique_ptr<Pointer> g_preview_node{};
+static Process* g_preview_node_process{};
+
 Undefined::Undefined(Process& process, Property& props, size_t size)
     : Base{process, props}, m_size{size}, m_original_size{size} {
     m_props["__size"].set_default(0);
@@ -11,6 +19,14 @@ Undefined::Undefined(Process& process, Property& props, size_t size)
     // If our inherited size_override isn't 0 we apply the override now.
     if (size_override() != 0) {
         m_size = size_override();
+    }
+
+    if (g_preview_node == nullptr || g_preview_node_process != &process) {
+        auto preview_struct = g_preview_ns.struct_("preview")->size(8 * 16);
+        g_preview_ptr.type(preview_struct->ptr());
+        g_preview_node = std::make_unique<Pointer>(process, &g_preview_ptr, g_preview_props);
+        g_preview_node->is_collapsed() = false;
+        g_preview_node_process = &process;
     }
 }
 
@@ -23,6 +39,8 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::SameLine();
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, m_preview_str.c_str());
     ImGui::EndGroup();
+
+    auto is_hovered = ImGui::IsItemHovered();
 
     if (ImGui::BeginPopupContextItem("UndefinedNodes")) {
         if (ImGui::InputInt("Size Override", &size_override())) {
@@ -37,6 +55,17 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
         ImGui::EndPopup();
     }
+
+    if (is_hovered && m_is_pointer) {
+        auto backup_indentation_level = indentation_level;
+
+        ImGui::BeginTooltip();
+        indentation_level = 0;
+        g_preview_node->display(*(uintptr_t*)mem, 0, &mem[0]);
+        ImGui::EndTooltip();
+
+        indentation_level = backup_indentation_level;
+    }
 }
 
 size_t Undefined::size() {
@@ -45,6 +74,8 @@ size_t Undefined::size() {
 
 void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     Base::update(address, offset, mem);
+
+    m_is_pointer = false;
 
     // Normal unsplit refresh.
     m_bytes_str.clear();
@@ -69,6 +100,7 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         for (auto&& mod : m_process.modules()) {
             if (mod.start <= addr && addr <= mod.end) {
                 fmt::format_to(std::back_inserter(m_preview_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
+                m_is_pointer = true;
                 // Bail here so we don't try previewing this pointer as something else.
                 return;
             }
@@ -77,6 +109,7 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         for (auto&& allocation : m_process.allocations()) {
             if (allocation.start <= addr && addr <= allocation.end) {
                 fmt::format_to(std::back_inserter(m_preview_str), "heap:0x{:X}", addr);
+                m_is_pointer = true;
 
                 // Bail here so we don't try previewing this pointer as something else.
                 return;

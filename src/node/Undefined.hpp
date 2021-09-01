@@ -22,5 +22,6 @@ protected:
     size_t m_original_size{};
     std::string m_bytes_str{};
     std::string m_preview_str{};
+    bool m_is_pointer{};
 };
 } // namespace node
