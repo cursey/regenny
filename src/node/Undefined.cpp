@@ -60,7 +60,7 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         auto backup_indentation_level = indentation_level;
 
         ImGui::BeginTooltip();
-        indentation_level = 0;
+        indentation_level = -1;
         g_preview_node->display(*(uintptr_t*)mem, 0, &mem[0]);
         ImGui::EndTooltip();
 
