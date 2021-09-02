@@ -22,7 +22,7 @@ Undefined::Undefined(Process& process, Property& props, size_t size)
     }
 
     if (g_preview_node == nullptr || g_preview_node_process != &process) {
-        auto preview_struct = g_preview_ns.struct_("preview")->size(8 * 16);
+        auto preview_struct = g_preview_ns.struct_("preview")->size(sizeof(uintptr_t) * 16);
         g_preview_ptr.type(preview_struct->ptr());
         g_preview_node = std::make_unique<Pointer>(process, &g_preview_ptr, g_preview_props);
         g_preview_node->is_collapsed() = false;
