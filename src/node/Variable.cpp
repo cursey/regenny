@@ -57,6 +57,7 @@ void Variable::display_name() {
 void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     display_address_offset(address, offset);
     ImGui::SameLine();
+    ImGui::BeginGroup();
     display_type();
     ImGui::SameLine();
     display_name();
@@ -64,6 +65,12 @@ void Variable::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::PushStyleColor(ImGuiCol_Text, {181.0f / 255.0f, 206.0f / 255.0f, 168.0f / 255.0f, 1.0f});
     ImGui::TextUnformatted(m_value_str.c_str());
     ImGui::PopStyleColor();
+    ImGui::EndGroup();
+
+    if (ImGui::BeginPopupContextItem("VariableNodes")) {
+        write_display(address, mem);
+        ImGui::EndPopup();
+    }
 }
 
 size_t Variable::size() {
@@ -160,6 +167,74 @@ void Variable::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         case 8:
             display_enum<uint64_t>(m_value_str, mem, enum_);
             break;
+        }
+    }
+}
+
+template <typename T> void handle_write(Process& process, uintptr_t address, std::byte* mem) {
+    auto value = *(T*)mem;
+    ImGuiDataType datatype;
+
+    if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, bool>) {
+        datatype = ImGuiDataType_U8;
+    } else if (std::is_same_v<T, uint16_t>) {
+        datatype = ImGuiDataType_U16;
+    } else if (std::is_same_v<T, uint32_t>) {
+        datatype = ImGuiDataType_U32;
+    } else if (std::is_same_v<T, uint64_t>) {
+        datatype = ImGuiDataType_U64;
+    } else if (std::is_same_v<T, int8_t>) {
+        datatype = ImGuiDataType_S8;
+    } else if (std::is_same_v<T, int16_t>) {
+        datatype = ImGuiDataType_S16;
+    } else if (std::is_same_v<T, int32_t>) {
+        datatype = ImGuiDataType_S32;
+    } else if (std::is_same_v<T, int64_t>) {
+        datatype = ImGuiDataType_S64;
+    } else if (std::is_same_v<T, float>) {
+        datatype =  ImGuiDataType_Float;
+    } else if (std::is_same_v<T, double>) {
+        datatype = ImGuiDataType_Double;
+    }
+
+    if (ImGui::InputScalar("Value", datatype, (void*)&value)) {
+        process.write(address, (const void*)&value, sizeof(T));
+
+        // Write it back to the mem so the next frame it displays the new value (if user hit enter).
+        *(T*)mem = value;
+    } 
+}
+
+void Variable::write_display(uintptr_t address, std::byte* mem) {
+    std::array<std::vector<std::string>*, 2> metadatas{&m_var->metadata(), &m_var->type()->metadata()};
+
+    for (auto&& metadata : metadatas) {
+        for (auto&& md : *metadata) {
+            if (md == "u8") {
+                handle_write<uint8_t>(m_process, address, mem);
+            } else if (md == "u16") {
+                handle_write<uint16_t>(m_process, address, mem);
+            } else if (md == "u32") {
+                handle_write<uint32_t>(m_process, address, mem);
+            } else if (md == "u64") {
+                handle_write<uint64_t>(m_process, address, mem);
+            } else if (md == "i8") {
+                handle_write<int8_t>(m_process, address, mem);
+            } else if (md == "i16") {
+                handle_write<int16_t>(m_process, address, mem);
+            } else if (md == "i32") {
+                handle_write<int32_t>(m_process, address, mem);
+            } else if (md == "i64") {
+                handle_write<int64_t>(m_process, address, mem);
+            } else if (md == "f32") {
+                handle_write<float>(m_process, address, mem);
+            } else if (md == "f64") {
+                handle_write<double>(m_process, address, mem); 
+            } else if (md == "bool") {
+                handle_write<bool>(m_process, address, mem);
+            } else {
+                ImGui::Text("Unable to write to this data type");
+            }
         }
     }
 }

@@ -21,5 +21,7 @@ protected:
     std::string m_utf8{};
     std::u16string m_utf16{};
     std::u32string m_utf32{};
+
+    void write_display(uintptr_t address, std::byte* mem);
 };
 } // namespace node
