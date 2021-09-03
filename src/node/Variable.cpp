@@ -197,7 +197,7 @@ template <typename T> void handle_write(Process& process, uintptr_t address, std
         datatype = ImGuiDataType_Double;
     }
 
-    if (ImGui::InputScalar("Value", datatype, (void*)&value)) {
+    if (ImGui::InputScalar("Value", datatype, (void*)&value, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
         process.write(address, (const void*)&value, sizeof(T));
 
         // Write it back to the mem so the next frame it displays the new value (if user hit enter).
