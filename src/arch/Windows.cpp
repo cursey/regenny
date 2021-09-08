@@ -157,6 +157,11 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 
     if (locator->signature == COL_SIG_REV0) {
         auto module_within = get_module_within(*locator_ptr);
+        
+        if (!module_within) {
+            return std::nullopt;
+        }
+
         image_base = module_within->start;
     } else {
         image_base = *locator_ptr - locator->pSelf;
