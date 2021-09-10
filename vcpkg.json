@@ -5,13 +5,17 @@
   "dependencies": [
     {
         "name": "imgui",
-        "features": ["docking-experimental", "freetype", "sdl2-binding", "opengl3-glad-binding"]
+        "features": ["docking-experimental", "freetype", "sdl2-binding", "opengl3-binding"]
     },
     "fmt",
     "pegtl",
     "nativefiledialog",
     "spdlog",
     "utfcpp",
-    "nlohmann-json"
+    "nlohmann-json",
+    {
+        "name": "glad",
+        "features": ["gl-api-30"]
+    }
   ]
 }

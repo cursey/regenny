@@ -26,6 +26,7 @@ find_package(spdlog CONFIG REQUIRED)
 find_package(utf8cpp CONFIG REQUIRED)
 find_package(SDL2 CONFIG REQUIRED)
 find_package(nlohmann_json CONFIG REQUIRED)
+find_package(glad CONFIG REQUIRED)
 
 if(MSVC)
     set(EXE_TYPE WIN32)
@@ -84,17 +85,18 @@ target_link_libraries(regenny PRIVATE
     utf8cpp
     SDL2::SDL2
     SDL2::SDL2main
-    nlohmann_json::nlohmann_json)
+    nlohmann_json::nlohmann_json
+    glad::glad)
 target_compile_definitions(regenny PRIVATE 
     GENNY_INCLUDE_PARSER # The SdkGenny parser is required
     UTF_CPP_CPLUSPLUS=201103L # utf8cpp doesn't properly recognize modern msvc
     TOML_WINDOWS_COMPAT=0 # toml++ linker errors when compiled w/ compatability enabled
     )
-set_target_properties(regenny 
-    PROPERTIES 
-    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+#set_target_properties(regenny 
+#    PROPERTIES 
+#    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+#    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+#    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(MSVC)
     if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
@@ -106,11 +108,11 @@ endif()
 
 macro(regenny_add_test test_name test_files)
     add_executable(${test_name} ${test_files})
-    set_target_properties(${test_name}
-        PROPERTIES 
-        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    #set_target_properties(${test_name}
+    #    PROPERTIES 
+    #    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    #    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    #    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
     if(MSVC)
         if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
