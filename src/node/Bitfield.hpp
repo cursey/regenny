@@ -14,5 +14,7 @@ public:
 
 private:
     std::string m_display_str{};
+
+    void write_display(uintptr_t address, std::byte* mem);
 };
 } // namespace node
