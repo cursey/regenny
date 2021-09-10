@@ -92,11 +92,11 @@ target_compile_definitions(regenny PRIVATE
     UTF_CPP_CPLUSPLUS=201103L # utf8cpp doesn't properly recognize modern msvc
     TOML_WINDOWS_COMPAT=0 # toml++ linker errors when compiled w/ compatability enabled
     )
-#set_target_properties(regenny 
-#    PROPERTIES 
-#    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-#    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-#    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+set_target_properties(regenny 
+    PROPERTIES 
+    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
 if(MSVC)
     if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
@@ -108,11 +108,11 @@ endif()
 
 macro(regenny_add_test test_name test_files)
     add_executable(${test_name} ${test_files})
-    #set_target_properties(${test_name}
-    #    PROPERTIES 
-    #    ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    #    LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
-    #    RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
+    set_target_properties(${test_name}
+        PROPERTIES 
+        ARCHIVE_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        LIBRARY_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/lib
+        RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/bin)
 
     if(MSVC)
         if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static")
