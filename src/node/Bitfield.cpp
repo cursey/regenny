@@ -123,19 +123,19 @@ template <typename T> void handle_write(Process& process, size_t num_bits, uintp
 
     if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, bool>) {
         datatype = ImGuiDataType_U8;
-    } else if (std::is_same_v<T, uint16_t>) {
+    } else if constexpr (std::is_same_v<T, uint16_t>) {
         datatype = ImGuiDataType_U16;
-    } else if (std::is_same_v<T, uint32_t>) {
+    } else if constexpr (std::is_same_v<T, uint32_t>) {
         datatype = ImGuiDataType_U32;
-    } else if (std::is_same_v<T, uint64_t>) {
+    } else if constexpr (std::is_same_v<T, uint64_t>) {
         datatype = ImGuiDataType_U64;
-    } else if (std::is_same_v<T, int8_t>) {
+    } else if constexpr (std::is_same_v<T, int8_t>) {
         datatype = ImGuiDataType_S8;
-    } else if (std::is_same_v<T, int16_t>) {
+    } else if constexpr (std::is_same_v<T, int16_t>) {
         datatype = ImGuiDataType_S16;
-    } else if (std::is_same_v<T, int32_t>) {
+    } else if constexpr (std::is_same_v<T, int32_t>) {
         datatype = ImGuiDataType_S32;
-    } else if (std::is_same_v<T, int64_t>) {
+    } else if constexpr (std::is_same_v<T, int64_t>) {
         datatype = ImGuiDataType_S64;
     } 
 
