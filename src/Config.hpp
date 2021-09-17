@@ -1,7 +1,7 @@
 #pragma once
 
-#include <string>
 #include <deque>
+#include <string>
 
 #include <nlohmann/json.hpp>
 
@@ -13,4 +13,3 @@ struct Config {
 
 void to_json(nlohmann::json& j, const Config& c);
 void from_json(const nlohmann::json& j, Config& c);
-

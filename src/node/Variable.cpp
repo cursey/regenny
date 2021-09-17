@@ -192,17 +192,18 @@ template <typename T> void handle_write(Process& process, uintptr_t address, std
     } else if constexpr (std::is_same_v<T, int64_t>) {
         datatype = ImGuiDataType_S64;
     } else if constexpr (std::is_same_v<T, float>) {
-        datatype =  ImGuiDataType_Float;
+        datatype = ImGuiDataType_Float;
     } else if constexpr (std::is_same_v<T, double>) {
         datatype = ImGuiDataType_Double;
     }
 
-    if (ImGui::InputScalar("Value", datatype, (void*)&value, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+    if (ImGui::InputScalar(
+            "Value", datatype, (void*)&value, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
         process.write(address, (const void*)&value, sizeof(T));
 
         // Write it back to the mem so the next frame it displays the new value (if user hit enter).
         *(T*)mem = value;
-    } 
+    }
 }
 
 void Variable::write_display(uintptr_t address, std::byte* mem) {
@@ -229,7 +230,7 @@ void Variable::write_display(uintptr_t address, std::byte* mem) {
             } else if (md == "f32") {
                 handle_write<float>(m_process, address, mem);
             } else if (md == "f64") {
-                handle_write<double>(m_process, address, mem); 
+                handle_write<double>(m_process, address, mem);
             } else if (md == "bool") {
                 handle_write<bool>(m_process, address, mem);
             } else {

@@ -106,7 +106,8 @@ void Bitfield::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     }
 }
 
-template <typename T> void handle_write(Process& process, size_t num_bits, uintptr_t offset, uintptr_t address, std::byte* mem) {
+template <typename T>
+void handle_write(Process& process, size_t num_bits, uintptr_t offset, uintptr_t address, std::byte* mem) {
     T mask{};
     auto data = *(T*)mem;
     auto start = offset;
@@ -137,16 +138,17 @@ template <typename T> void handle_write(Process& process, size_t num_bits, uintp
         datatype = ImGuiDataType_S32;
     } else if constexpr (std::is_same_v<T, int64_t>) {
         datatype = ImGuiDataType_S64;
-    } 
+    }
 
-    if (ImGui::InputScalar("Value", datatype, (void*)&data, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+    if (ImGui::InputScalar(
+            "Value", datatype, (void*)&data, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
         value &= ~mask;
         value |= (data << start) & mask;
         process.write(address, (const void*)&value, sizeof(T));
 
         // Write it back to the mem so the next frame it displays the new value (if user hit enter).
         *(T*)mem = value;
-    } 
+    }
 }
 
 void Bitfield::write_display(uintptr_t address, std::byte* mem) {

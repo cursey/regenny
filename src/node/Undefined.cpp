@@ -99,21 +99,41 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
         for (auto&& mod : m_process.modules()) {
             if (mod.start <= addr && addr <= mod.end) {
-                fmt::format_to(std::back_inserter(m_preview_str), "<{}>+0x{:X}", mod.name, addr - mod.start);
+                fmt::format_to(std::back_inserter(m_preview_str), "<{}>+0x{:X} ", mod.name, addr - mod.start);
                 m_is_pointer = true;
-                // Bail here so we don't try previewing this pointer as something else.
-                return;
             }
         }
 
         for (auto&& allocation : m_process.allocations()) {
             if (allocation.start <= addr && addr <= allocation.end) {
-                fmt::format_to(std::back_inserter(m_preview_str), "heap:0x{:X}", addr);
+                fmt::format_to(std::back_inserter(m_preview_str), "heap:0x{:X} ", addr);
                 m_is_pointer = true;
-
-                // Bail here so we don't try previewing this pointer as something else.
-                return;
             }
+        }
+
+        if (m_is_pointer) {
+            // See if it looks like its pointing to a string.
+            static std::string str{};
+            str.resize(256);
+            str.clear();
+            m_process.read(addr, str.data(), 255 * sizeof(char));
+            str.resize(strlen(str.data()));
+
+            auto is_str = true;
+
+            for (auto&& c : str) {
+                if (!isprint(c)) {
+                    is_str = false;
+                    break;
+                }
+            }
+
+            if (is_str) {
+                fmt::format_to(std::back_inserter(m_preview_str), "\"{}\" ", str);
+            }
+
+            // Bail here so we don't try previewing this pointer as something else.
+            return;
         }
     }
 

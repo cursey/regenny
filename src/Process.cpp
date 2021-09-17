@@ -33,4 +33,3 @@ const Process::Module* Process::get_module_within(uintptr_t addr) const {
 
     return nullptr;
 }
-
