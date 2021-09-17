@@ -15,7 +15,7 @@ public:
     WindowsProcess(DWORD process_id);
 
     uint32_t process_id() override;
-    bool ok() override { return m_process != nullptr; }
+    bool ok() override;
 
     std::optional<std::string> get_typename(uintptr_t ptr) override;
 

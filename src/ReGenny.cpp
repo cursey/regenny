@@ -53,6 +53,13 @@ void ReGenny::update() {
         ImGui_ImplOpenGL3_CreateFontsTexture();
         m_load_font = false;
     }
+
+    // Auto detach from closed processes.
+    if (m_process != nullptr) {
+        if (!m_process->ok()) {
+            action_detach();
+        }
+    }
 }
 
 void ReGenny::ui() {

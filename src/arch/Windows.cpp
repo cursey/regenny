@@ -88,6 +88,18 @@ uint32_t WindowsProcess::process_id() {
     return GetProcessId(m_process);
 }
 
+bool WindowsProcess::ok() {
+    if (m_process == nullptr) {
+        return false;
+    }
+
+    DWORD exitcode{};
+
+    GetExitCodeProcess(m_process, &exitcode);
+
+    return exitcode == STILL_ACTIVE;
+}
+
 bool WindowsProcess::handle_write(uintptr_t address, const void* buffer, size_t size) {
     SIZE_T bytes_written{};
 
