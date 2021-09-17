@@ -32,11 +32,11 @@ public:
 
     bool read(uintptr_t address, void* buffer, size_t size);
     bool write(uintptr_t address, const void* buffer, size_t size);
-    virtual uint32_t process_id() = 0;
-    virtual bool ok() = 0;
+    virtual uint32_t process_id() { return 0; }
+    virtual bool ok() { return true; }
 
     // RTTI
-    virtual std::optional<std::string> get_typename(uintptr_t ptr) = 0;
+    virtual std::optional<std::string> get_typename(uintptr_t ptr) { return std::nullopt; }
 
     auto&& modules() const { return m_modules; }
     auto&& allocations() const { return m_allocations; }
@@ -58,6 +58,6 @@ protected:
     std::vector<Allocation> m_allocations{};
     std::vector<ReadOnlyAllocation> m_read_only_allocations{};
 
-    virtual bool handle_write(uintptr_t address, const void* buffer, size_t size) = 0;
-    virtual bool handle_read(uintptr_t address, void* buffer, size_t size) = 0;
+    virtual bool handle_write(uintptr_t address, const void* buffer, size_t size) { return true; }
+    virtual bool handle_read(uintptr_t address, void* buffer, size_t size) { return true; }
 };

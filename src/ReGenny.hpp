@@ -54,8 +54,8 @@ private:
 
         std::string editor_text{};
         std::string editor_error_msg{};
-        bool editor_has_saved{};
 
+        ImGuiID attach_popup{};
         ImGuiID font_popup{};
         ImGuiID about_popup{};
         ImGuiID extensions_popup{};

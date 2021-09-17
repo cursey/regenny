@@ -18,7 +18,8 @@
 
 #include "ReGenny.hpp"
 
-ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
+ReGenny::ReGenny(SDL_Window* window)
+    : m_window{window}, m_helpers{arch::make_helpers()}, m_process{std::make_unique<Process>()} {
     spdlog::set_default_logger(m_logger.logger());
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Start of log.");
@@ -32,8 +33,6 @@ ReGenny::ReGenny(SDL_Window* window) : m_window{window} {
     m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
-
-    m_helpers = arch::make_helpers();
 }
 
 ReGenny::~ReGenny() {
@@ -99,26 +98,37 @@ void ReGenny::ui() {
 
     menu_ui();
 
-    if (m_process == nullptr) {
-        ImGui::Begin("Attach");
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    ImGui::SetNextWindowSize(ImVec2{600.0f, 0.0f}, ImGuiCond_Appearing);
+    m_ui.attach_popup = ImGui::GetID("Attach");
+    if (ImGui::BeginPopupModal("Attach")) {
         attach_ui();
-        ImGui::End();
-    } else {
-        ImGui::Begin("Memory View");
-        memory_ui();
-        ImGui::End();
-        ImGui::Begin("Editor");
-        editor_ui();
-        ImGui::End();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
     }
+
+    ImGui::Begin("Memory View");
+    memory_ui();
+    ImGui::End();
+
+    ImGui::Begin("Editor");
+    editor_ui();
+    ImGui::End();
 
     ImGui::Begin("Log");
     m_logger.ui();
     ImGui::End();
 
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
     m_ui.error_popup = ImGui::GetID("Error");
     if (ImGui::BeginPopupModal("Error")) {
-        ImGui::Text(m_ui.error_msg.c_str());
+        ImGui::TextUnformatted(m_ui.error_msg.c_str());
 
         if (ImGui::Button("Ok")) {
             ImGui::CloseCurrentPopup();
@@ -127,7 +137,8 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
-    ImGui::SetNextWindowSize(ImVec2{500.0f, 150.0f}, ImGuiCond_Appearing);
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    ImGui::SetNextWindowSize(ImVec2{600.0f, 0.0f}, ImGuiCond_Appearing);
     m_ui.font_popup = ImGui::GetID("Set Font");
     if (ImGui::BeginPopupModal("Set Font")) {
         if (ImGui::Button("Browse")) {
@@ -152,24 +163,39 @@ void ReGenny::ui() {
             save_cfg();
         }
 
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+
         ImGui::EndPopup();
     }
 
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    ImGui::SetNextWindowSize(ImVec2{600.0f, 350.0f}, ImGuiCond_Appearing);
     m_ui.about_popup = ImGui::GetID("About");
     if (ImGui::BeginPopup("About")) {
         about_ui();
         ImGui::EndPopup();
     }
 
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    ImGui::SetNextWindowSize(ImVec2{600.0f, 0.0f}, ImGuiCond_Appearing);
     m_ui.extensions_popup = ImGui::GetID("Set SDK Extensions");
-    if (ImGui::BeginPopup("Set SDK Extensions")) {
-
+    if (ImGui::BeginPopupModal("Set SDK Extensions")) {
         ImGui::InputText("Header Extension", &m_project.extension_header);
         ImGui::InputText("Source Extension", &m_project.extension_source);
 
         if (ImGui::Button("OK")) {
             ImGui::CloseCurrentPopup();
             save_project();
+        }
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
         }
 
         ImGui::EndPopup();
@@ -215,6 +241,10 @@ void ReGenny::menu_ui() {
         }
 
         if (ImGui::BeginMenu("Action")) {
+            if (ImGui::MenuItem("Attach")) {
+                ImGui::OpenPopup(m_ui.attach_popup);
+            }
+
             if (ImGui::MenuItem("Detach")) {
                 action_detach();
             }
@@ -379,9 +409,10 @@ void ReGenny::file_quit() {
 }
 
 void ReGenny::action_detach() {
-    spdlog::info("Detatching...");
-    m_process.reset();
-    m_mem_ui.reset();
+    spdlog::info("Detaching...");
+    m_process = std::make_unique<Process>();
+    m_mem_ui = std::make_unique<MemoryUi>(
+        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
     m_ui.processes.clear();
     SDL_SetWindowTitle(m_window, "ReGenny");
 }
@@ -442,6 +473,7 @@ void ReGenny::attach_ui() {
     ImGui::SameLine();
 
     if (ImGui::Button("Attach")) {
+        ImGui::CloseCurrentPopup();
         attach();
     }
 }
@@ -464,7 +496,7 @@ void ReGenny::attach() {
         return;
     }
 
-    spdlog::info("Attatching to {} PID: {}...", m_project.process_name, m_project.process_id);
+    spdlog::info("Attaching to {} PID: {}...", m_project.process_name, m_project.process_id);
 
     m_process = arch::open_process(m_project.process_id);
 
@@ -481,7 +513,7 @@ void ReGenny::attach() {
 }
 
 void ReGenny::memory_ui() {
-    assert(m_process != nullptr);
+    // assert(m_process != nullptr);
 
     if (ImGui::BeginCombo("Typename", m_project.type_chosen.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
@@ -513,19 +545,19 @@ void ReGenny::memory_ui() {
 
     if (!m_is_address_valid) {
         ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
-        return;
+        // return;
+    } else {
+        ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
     }
 
-    ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
-
     if (m_mem_ui != nullptr) {
-        m_mem_ui->display(m_address);
+        m_mem_ui->display(m_is_address_valid ? m_address : 0);
     }
 }
 
 void ReGenny::set_address() {
-    // We need to access the modules and allocations of the attatched process to determine if the parsed address is
-    // valid. If there is no process we can't do that so we just bail.
+    // We need to access the modules and allocations of the attached process to determine if the parsed address is
+    // valid. If there is no process we can't do that, so we just bail.
     if (m_process == nullptr) {
         return;
     }
