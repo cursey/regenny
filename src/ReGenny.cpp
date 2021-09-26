@@ -18,6 +18,8 @@
 
 #include "ReGenny.hpp"
 
+using namespace std::literals;
+
 ReGenny::ReGenny(SDL_Window* window)
     : m_window{window}, m_helpers{arch::make_helpers()}, m_process{std::make_unique<Process>()} {
     spdlog::set_default_logger(m_logger.logger());
@@ -443,8 +445,11 @@ void ReGenny::action_generate_sdk() {
 }
 
 void ReGenny::attach_ui() {
-    if (m_ui.processes.empty()) {
+    auto now = std::chrono::steady_clock::now();
+
+    if (m_ui.processes.empty() || now >= m_ui.next_attach_refresh_time) {
         m_ui.processes = m_helpers->processes();
+        m_ui.next_attach_refresh_time = now + 1s;
     }
 
     ImGui::InputText("Filter", &m_project.process_filter);
@@ -472,12 +477,6 @@ void ReGenny::attach_ui() {
 
         ImGui::EndListBox();
     }
-
-    if (ImGui::Button("Refresh")) {
-        m_ui.processes.clear();
-    }
-
-    ImGui::SameLine();
 
     if (ImGui::Button("Attach")) {
         ImGui::CloseCurrentPopup();

@@ -1,5 +1,6 @@
 #pragma once
 
+#include <chrono>
 #include <deque>
 #include <filesystem>
 #include <map>
@@ -45,6 +46,7 @@ private:
     struct {
         // Process ID -> process name.
         std::map<uint32_t, std::string> processes{};
+        std::chrono::steady_clock::time_point next_attach_refresh_time{};
 
         std::string error_msg{};
         ImGuiID error_popup{};
