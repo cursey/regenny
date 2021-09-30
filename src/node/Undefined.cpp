@@ -73,6 +73,8 @@ size_t Undefined::size() {
 }
 
 void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    std::scoped_lock _{ m_update_mtx };
+
     Base::update(address, offset, mem);
 
     m_is_pointer = false;
@@ -114,18 +116,24 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         if (m_is_pointer) {
             // See if it looks like its pointing to a string.
             static std::string str{};
-            str.resize(256);
             str.clear();
+            str.resize(256);
             m_process.read(addr, str.data(), 255 * sizeof(char));
-            str.resize(strlen(str.data()));
+            str.resize(std::min<size_t>(256, strlen(str.data())));
 
             auto is_str = true;
 
-            for (auto&& c : str) {
-                if (!isprint(c)) {
-                    is_str = false;
-                    break;
+            try {
+                for (auto&& c : str) {
+                    // because isprint throws exceptions in debug mode...
+                    if (c < 0 || c >= 0x80) {
+                        is_str = false;
+                        break;
+                    }
                 }
+            }
+            catch (std::exception& e) {
+                is_str = false;
             }
 
             if (is_str) {

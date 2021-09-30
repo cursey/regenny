@@ -3,6 +3,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <unordered_map>
+#include <mutex>
 
 #include "../Process.hpp"
 #include "Property.hpp"
@@ -24,6 +25,8 @@ protected:
     Property& m_props;
     std::string m_preamble_str{};
     std::string m_bytes_str{};
+
+    std::recursive_mutex m_update_mtx{};
 
     void display_address_offset(uintptr_t address, uintptr_t offset);
 };

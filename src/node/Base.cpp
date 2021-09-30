@@ -12,6 +12,8 @@ Base::Base(Process& process, Property& props) : m_process{process}, m_props{prop
 }
 
 void Base::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    std::scoped_lock _{ m_update_mtx };
+
     m_preamble_str.clear();
     m_bytes_str.clear();
 

@@ -78,6 +78,8 @@ size_t Variable::size() {
 }
 
 void Variable::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    std::scoped_lock _{ m_update_mtx };
+
     Base::update(address, offset, mem);
 
     m_value_str.clear();

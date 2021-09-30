@@ -1,6 +1,8 @@
 #pragma once
 
 #include <map>
+#include <future>
+#include <functional>
 
 #include "Variable.hpp"
 
@@ -8,6 +10,7 @@ namespace node {
 class Struct : public Variable {
 public:
     Struct(Process& process, genny::Variable* var, Property& props);
+    virtual ~Struct();
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
@@ -27,9 +30,13 @@ public:
 private:
     bool m_display_self{true};
     genny::Struct* m_struct{};
-    std::multimap<uintptr_t, std::unique_ptr<Base>> m_nodes{};
+    std::multimap<uintptr_t, std::shared_ptr<Base>> m_nodes{};
     bool m_is_hovered{};
     std::string m_display_str{};
+
+    std::vector<std::byte> m_task_data{};
+    std::future<bool> m_update_result{};
+    std::unique_ptr<std::thread> m_update_thread{};
 
     void fill_space(uintptr_t last_offset, int delta);
 };

@@ -16,19 +16,19 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
     m_props["__collapsed"].set_default(true);
 
     // Build the node map.
-    auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {
+    auto make_node = [&](genny::Variable* var) -> std::shared_ptr<Base> {
         auto&& props = m_props[var->name()];
 
         if (var->type()->is_a<genny::Array>()) {
-            return std::make_unique<Array>(m_process, var, props);
+            return std::make_shared<Array>(m_process, var, props);
         } else if (var->type()->is_a<genny::Struct>()) {
-            return std::make_unique<Struct>(m_process, var, props);
+            return std::make_shared<Struct>(m_process, var, props);
         } else if (var->type()->is_a<genny::Pointer>()) {
-            return std::make_unique<Pointer>(m_process, var, props);
+            return std::make_shared<Pointer>(m_process, var, props);
         } else if (var->is_bitfield()) {
-            return std::make_unique<Bitfield>(m_process, var, props);
+            return std::make_shared<Bitfield>(m_process, var, props);
         } else {
-            return std::make_unique<Variable>(m_process, var, props);
+            return std::make_shared<Variable>(m_process, var, props);
         }
     };
     std::function<void(genny::Struct*)> add_vars = [&](genny::Struct* s) {
@@ -63,7 +63,15 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
     }
 }
 
+ Struct::~Struct() {
+     if (m_update_thread != nullptr) {
+         m_update_thread->join();
+     }
+}
+
 void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    std::scoped_lock _{ m_update_mtx };
+
     if (m_display_self) {
         display_address_offset(address, offset);
         ImGui::SameLine();
@@ -155,6 +163,8 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 }
 
 void Struct::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    std::scoped_lock _{ m_update_mtx };
+
     Base::update(address, offset, mem);
     m_display_str.clear();
 
@@ -167,8 +177,35 @@ void Struct::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         return;
     }
 
-    for (auto&& [node_offset, node] : m_nodes) {
-        node->update(address + node_offset, offset + node_offset, &mem[node_offset]);
+    if (m_update_thread == nullptr) {
+        auto task = std::packaged_task<bool()>{ ([=]() -> bool {
+            auto node_copy = m_nodes;
+
+            for (auto&& [node_offset, node] : node_copy) {
+                node->update(address + node_offset, offset + node_offset, &m_task_data[node_offset]);
+            }
+
+            return true;
+        }) };
+
+        m_task_data.resize(m_size);
+        std::copy(mem, mem + m_size, m_task_data.begin());
+
+        m_update_result = task.get_future();
+        m_update_thread = std::make_unique<std::thread>(std::move(task));
+    }
+    else {
+        if (m_update_result.valid() && m_update_result.wait_for(std::chrono::seconds(0)) == std::future_status::ready) {
+            m_update_result.get();
+        }
+
+        if (!m_update_result.valid()) {
+            if (m_update_thread->joinable()) {
+                m_update_thread->join();
+            }
+
+            m_update_thread.reset();
+        }
     }
 }
 
@@ -180,7 +217,7 @@ void Struct::fill_space(uintptr_t last_offset, int delta) {
         }
 
         auto& props = m_props[fmt::format("undefined_{:x}", offset)];
-        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
+        m_nodes.emplace(offset, std::make_shared<Undefined>(m_process, props, size));
     };
 
     auto start = last_offset;
