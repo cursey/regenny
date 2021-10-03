@@ -70,7 +70,7 @@ void ReGenny::ui() {
     ImGui::SetNextWindowSize({(float)m_window_w, (float)m_window_h}, ImGuiCond_Always);
     ImGui::Begin("ReGenny", nullptr,
         ImGuiWindowFlags_NoTitleBar | ImGuiWindowFlags_MenuBar | ImGuiWindowFlags_NoDocking |
-            ImGuiWindowFlags_NoBringToFrontOnFocus);
+            ImGuiWindowFlags_NoBringToFrontOnFocus | ImGuiWindowFlags_NoResize);
     auto dock = ImGui::GetID("MainDockSpace");
 
     if (ImGui::DockBuilderGetNode(dock) == nullptr) {
@@ -92,18 +92,6 @@ void ReGenny::ui() {
     }
 
     ImGui::DockSpace(dock, ImGui::GetContentRegionAvail(), ImGuiDockNodeFlags_AutoHideTabBar);
-
-    // Resizing gets kinda wonky because the ImGui window will try to resize more often than the actual window (atleast
-    // on Windows 10). If we add the ImGuiWindowFlags_NoResize option to the window flags above, the window becomes even
-    // harder to resize for some reason. So we fix that by letting the ImGui resize normally and then just setting the
-    // actual window size to whatever the ImGui window size is.
-    auto win_w = (int)ImGui::GetWindowWidth();
-    auto win_h = (int)ImGui::GetWindowHeight();
-
-    if (win_w != m_window_w || win_h != m_window_h) {
-        SDL_SetWindowSize(m_window, win_w, win_h);
-        SDL_GetWindowSize(m_window, &m_window_w, &m_window_h);
-    }
 
     menu_ui();
 
