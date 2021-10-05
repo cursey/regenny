@@ -335,7 +335,7 @@ void ReGenny::load_project() {
         spdlog::error(e.what());
     }
 
-    if (m_process == nullptr) {
+    if (m_process->process_id() == 0) { // Invalid PID (aka not attached).
         attach();
     }
 
@@ -476,6 +476,9 @@ void ReGenny::attach() {
     if (m_project.process_id == 0) {
         return;
     }
+
+    // Make sure we have an up-to-date process list.
+    m_ui.processes = m_helpers->processes();
 
     // Validate that the chosen process_id and process_name match.
     auto is_valid = false;
