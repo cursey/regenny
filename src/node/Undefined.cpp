@@ -115,9 +115,8 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             // See if it looks like its pointing to a string.
             static std::string str{};
             str.resize(256);
-            str.clear();
             m_process.read(addr, str.data(), 255 * sizeof(char));
-            str.resize(strlen(str.data()));
+            str.resize(std::min<size_t>(256, strlen(str.data())));
 
             auto is_str = true;
 
