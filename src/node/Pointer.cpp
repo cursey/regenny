@@ -31,6 +31,12 @@ Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Vari
     m_props["__collapsed"].set_default(true);
     m_props["__array"].set_default(false);
     m_props["__count"].set_default(1);
+
+    // Make sure the array count is never < 1 (can happen if the node was previously an array node or a user hand-edited
+    // the props).
+    if (array_count() < 1) {
+        array_count() = 1;
+    }
 }
 
 void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
