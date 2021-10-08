@@ -15,6 +15,7 @@
 #include "AboutUi.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
+#include "node/Undefined.hpp"
 
 #include "ReGenny.hpp"
 
@@ -234,6 +235,11 @@ void ReGenny::menu_ui() {
                 file_quit();
             }
 
+            ImGui::EndMenu();
+        }
+
+        if (ImGui::BeginMenu("View")) {
+            ImGui::Checkbox("Hide Undefined Nodes", &node::Undefined::is_hidden);
             ImGui::EndMenu();
         }
 

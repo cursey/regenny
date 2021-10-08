@@ -11,6 +11,7 @@ static genny::Variable g_preview_ptr{"preview_ptr"};
 static Property g_preview_props{};
 static std::unique_ptr<Pointer> g_preview_node{};
 static Process* g_preview_node_process{};
+bool Undefined::is_hidden{};
 
 Undefined::Undefined(Process& process, Property& props, size_t size)
     : Base{process, props}, m_size{size}, m_original_size{size} {
@@ -31,6 +32,10 @@ Undefined::Undefined(Process& process, Property& props, size_t size)
 }
 
 void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
+    if (is_hidden) {
+        return;
+    }
+
     // Normal unsplit display.
     display_address_offset(address, offset);
     ImGui::SameLine();
