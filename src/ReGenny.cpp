@@ -532,20 +532,15 @@ void ReGenny::update_address() {
     m_is_address_valid = false;
 
     // Get the starting point.
-    if (m_parsed_address.name.empty()) {
-        m_address = m_parsed_address.offsets.front();
-    } else {
+    m_address = m_parsed_address.offsets.front();
+
+    if (!m_parsed_address.name.empty()) {
         auto& modname = m_parsed_address.name;
 
         for (auto&& mod : m_process->modules()) {
             if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
                            [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
-                m_address = mod.start;
-
-                if (!m_parsed_address.offsets.empty()) {
-                    m_address += m_parsed_address.offsets.front();
-                }
-
+                m_address += mod.start;
                 break;
             }
         }
