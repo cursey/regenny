@@ -541,6 +541,11 @@ void ReGenny::update_address() {
             if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
                            [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
                 m_address = mod.start;
+
+                if (!m_parsed_address.offsets.empty()) {
+                    m_address += m_parsed_address.offsets.front();
+                }
+
                 break;
             }
         }
