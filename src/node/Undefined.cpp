@@ -126,7 +126,7 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             auto is_str = true;
 
             for (auto&& c : str) {
-                if (!isprint(c)) {
+                if (!isprint((uint8_t)c)) {
                     is_str = false;
                     break;
                 }
