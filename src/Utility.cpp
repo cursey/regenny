@@ -9,41 +9,36 @@ struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
 struct Name : seq<plus<alnum>, opt<one<'.'>, plus<alnum>>> {};
-struct ModOffset : seq<one<'<'>, Name, one<'>'>, opt<one<'+'>, Num>> {};
-struct Grammar : sor<Num, ModOffset> {};
-
-struct State {
-    std::string name{};
-    uintptr_t num{};
-};
+struct Offset : seq<Num, opt<one<'-'>, one<'>'>, struct Offset>> {};
+struct ModOffset : seq<one<'<'>, Name, one<'>'>, opt<one<'+'>, Offset>> {};
+struct Grammar : sor<Offset, ModOffset> {};
 
 template <typename Rule> struct Action : nothing<Rule> {};
 template <> struct Action<Num> {
-    template <typename Input> static void apply(const Input& in, State& s) {
-        s.num = std::stoull(in.string(), nullptr, 0);
+    template <typename Input> static void apply(const Input& in, ParsedAddress& s) {
+        auto num = std::stoull(in.string(), nullptr, 0);
+        s.offsets.push_back(num);
     }
 };
+
 template <> struct Action<Name> {
-    template <typename Input> static void apply(const Input& in, State& s) { s.name = in.string_view(); }
+    template <typename Input> static void apply(const Input& in, ParsedAddress& s) {
+        s.name = in.string_view();
+    }
 };
+
 } // namespace address_parser
 
-std::variant<std::monostate, uintptr_t, ModuleOffset> parse_address(const std::string& str) {
-    std::variant<std::monostate, uintptr_t, ModuleOffset> result{};
-
+std::optional<ParsedAddress> parse_address(const std::string& str) {
     try {
-        address_parser::State s{};
+        ParsedAddress s{};
         tao::pegtl::memory_input in{str, ""};
 
         if (tao::pegtl::parse<address_parser::Grammar, address_parser::Action>(in, s)) {
-            if (s.name.empty()) {
-                result = s.num;
-            } else {
-                result = ModuleOffset{s.name, s.num};
-            }
+            return s;
         }
     } catch (const tao::pegtl::parse_error& e) {
     }
 
-    return result;
+    return std::nullopt;
 }

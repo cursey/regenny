@@ -2,11 +2,12 @@
 
 #include <cstdint>
 #include <string>
-#include <variant>
+#include <optional>
+#include <vector>
 
-struct ModuleOffset {
+struct ParsedAddress {
     std::string name{};
-    uintptr_t offset{};
+    std::vector<uintptr_t> offsets{};
 };
 
-std::variant<std::monostate, uintptr_t, ModuleOffset> parse_address(const std::string& str);
+std::optional<ParsedAddress> parse_address(const std::string& str);

@@ -19,6 +19,7 @@
 #include "Project.hpp"
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
+#include "Utility.hpp"
 
 class ReGenny {
 public:
@@ -42,6 +43,8 @@ private:
     genny::Type* m_type{};
     uintptr_t m_address{};
     bool m_is_address_valid{};
+    ParsedAddress m_parsed_address{};
+    std::chrono::steady_clock::time_point m_next_address_refresh_time{};
 
     struct {
         // Process ID -> process name.
@@ -93,6 +96,7 @@ private:
     void attach_ui();
     void attach();
 
+    void update_address();
     void memory_ui();
     void set_address();
     void set_type();

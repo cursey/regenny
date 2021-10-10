@@ -515,6 +515,55 @@ void ReGenny::attach() {
         m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
 }
 
+void ReGenny::update_address() {
+    // If the parsed address has no offsets then it's not valid at all and there's nothing to update.
+    if (m_parsed_address.offsets.empty()) {
+        return;
+    }
+
+    // Make sure it's time to update.
+    auto now = std::chrono::steady_clock::now();
+
+    if (now < m_next_address_refresh_time) {
+        return;
+    }
+
+    m_next_address_refresh_time = now + 250ms;
+    m_is_address_valid = false;
+
+    // Get the starting point.
+    if (m_parsed_address.name.empty()) {
+        m_address = m_parsed_address.offsets.front();
+    } else {
+        auto& modname = m_parsed_address.name;
+
+        for (auto&& mod : m_process->modules()) {
+            if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
+                           [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
+                m_address = mod.start;
+                break;
+            }
+        }
+    }
+
+    // Dereference and add the offsets.
+    for (auto it = m_parsed_address.offsets.begin() + 1; it != m_parsed_address.offsets.end(); ++it) {
+        m_address = m_process->read<uintptr_t>(m_address + *it).value_or(0);
+
+        if (m_address == 0) {
+            return;
+        }
+    }
+
+    // Validate the final address.
+    for (auto&& allocation : m_process->allocations()) {
+        if (allocation.start <= m_address && m_address <= allocation.end) {
+            m_is_address_valid = true;
+            break;
+        }
+    }
+}
+
 void ReGenny::memory_ui() {
     // assert(m_process != nullptr);
 
@@ -553,6 +602,8 @@ void ReGenny::memory_ui() {
         ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
     }
 
+    update_address();
+
     if (m_mem_ui != nullptr) {
         m_mem_ui->display(m_is_address_valid ? m_address : 0);
     }
@@ -565,39 +616,10 @@ void ReGenny::set_address() {
         return;
     }
 
-    auto addr = parse_address(m_ui.address);
-
-    switch (addr.index()) {
-    case 1:
-        m_address = std::get<uintptr_t>(addr);
-        break;
-    case 2: {
-        auto& modoffset = std::get<ModuleOffset>(addr);
-        auto& modname = modoffset.name;
-
-        for (auto&& mod : m_process->modules()) {
-            if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
-                    [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
-                m_address = mod.start + modoffset.offset;
-                break;
-            }
-        }
-
-        break;
-    }
-    default:
-        m_address = 0;
-        break;
+    if (auto addr = parse_address(m_ui.address)) {
+        m_parsed_address = *addr;
     }
 
-    m_is_address_valid = false;
-
-    for (auto&& allocation : m_process->allocations()) {
-        if (allocation.start <= m_address && m_address <= allocation.end) {
-            m_is_address_valid = true;
-            break;
-        }
-    }
 
     remember_type_and_address();
 }
