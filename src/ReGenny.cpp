@@ -548,11 +548,13 @@ void ReGenny::update_address() {
 
     // Dereference and add the offsets.
     for (auto it = m_parsed_address.offsets.begin() + 1; it != m_parsed_address.offsets.end(); ++it) {
-        m_address = m_process->read<uintptr_t>(m_address + *it).value_or(0);
+        m_address = m_process->read<uintptr_t>(m_address).value_or(0);
 
         if (m_address == 0) {
             return;
         }
+
+        m_address += *it;
     }
 
     // Validate the final address.
