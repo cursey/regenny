@@ -405,7 +405,7 @@ SOFTWARE.
 
 
 )"
-                           R"(### bottle.png (app icon)
+                           R"(### bottle.png/potion.png (app icon)
 
 Icon made by Freepik from www.flaticon.com
 )");

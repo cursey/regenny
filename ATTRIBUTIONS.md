@@ -47,3 +47,5 @@ to open source.
 ### [bottle.png](https://www.flaticon.com/free-icon/bottle_867876)
 - Icon made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)
 
+### [potion.png](https://www.flaticon.com/free-icon/potion_1205587)
+- Icon made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)
