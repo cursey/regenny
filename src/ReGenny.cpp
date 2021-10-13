@@ -788,7 +788,7 @@ void ReGenny::remember_file() {
 }
 
 void ReGenny::remember_type_and_address() {
-    if (m_type == nullptr || !m_is_address_valid) {
+    if (m_type == nullptr) {
         return;
     }
 
