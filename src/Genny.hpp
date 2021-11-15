@@ -71,12 +71,12 @@ private:
 class Object {
 public:
     Object() = delete;
-    explicit Object(std::string_view name) : m_name{name} {}
+    explicit Object(std::string_view name) : m_name{fix_name(name)} {}
     virtual ~Object() = default;
 
     const auto& name() const { return m_name; }
     auto name(std::string name) {
-        m_name = std::move(name);
+        m_name = fix_name(name);
         return this;
     }
 
@@ -182,7 +182,9 @@ public:
         return (T*)m_children.emplace_back(std::move(object)).get();
     }
 
-    template <typename T> T* find(std::string_view name) const {
+    template <typename T> T* find(std::string_view desired_name) const {
+        auto name = fix_name(desired_name);
+
         for (auto&& child : m_children) {
             if (child->is_a<T>() && child->m_name == name) {
                 return (T*)child.get();
@@ -231,6 +233,27 @@ protected:
     std::string m_name{};
     std::vector<std::unique_ptr<Object>> m_children{};
     std::vector<std::string> m_metadata{};
+
+    // Will fix up a desired name so that it's usable as a C++ identifier. Things like spaces get converted to
+    // underscores, and we make sure it doesn't begin with a number. More checks could be done here in the future if
+    // necessary.
+    std::string fix_name(std::string_view desired_name) const {
+        std::string name{};
+
+        for (auto&& c : desired_name) {
+            if (c == ' ') {
+                name += '_';
+            } else {
+                name += c;
+            } 
+        }
+
+        if (!name.empty() && isdigit(name[0])) {
+            name = "_" + name;
+        }
+
+        return name;
+    }
 };
 
 template <typename T> T* cast(const Object* object) {
@@ -878,6 +901,7 @@ protected:
 
     void generate_bitfield(std::ostream& os, uintptr_t offset) const {
         auto last_bit = 0;
+        Type* bitfield_type{};
 
         for (auto&& [bit_offset, var] : bitfield(offset)) {
             if (bit_offset - last_bit > 0) {
@@ -888,6 +912,18 @@ protected:
 
             var->generate(os);
             last_bit = bit_offset + var->bit_size();
+            bitfield_type = var->type();
+        }
+
+        // Fill out the remaining space in the bitfield if necessary.
+         auto num_bits = bitfield_type->size() * CHAR_BIT;
+
+        if (last_bit != num_bits) {
+            auto bit_offset = num_bits;
+
+            bitfield_type->generate_typename_for(os, nullptr);
+            os << " pad_bitfield_" << std::hex << offset << "_" << std::hex << last_bit << " : " << std::dec
+               << bit_offset - last_bit << ";\n";
         }
     }
 
