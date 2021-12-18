@@ -16,6 +16,7 @@
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
 #include "node/Undefined.hpp"
+#include "GennyParser.hpp"
 
 #include "ReGenny.hpp"
 

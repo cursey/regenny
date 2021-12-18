@@ -34,6 +34,7 @@ endif()
 
 add_executable(regenny ${EXE_TYPE} 
     "src/Genny.hpp" 
+    "src/GennyParser.hpp"
     "src/Main.cpp" 
     "src/ReGenny.hpp" 
     "src/ReGenny.cpp" 
@@ -88,7 +89,6 @@ target_link_libraries(regenny PRIVATE
     nlohmann_json::nlohmann_json
     glad::glad)
 target_compile_definitions(regenny PRIVATE 
-    GENNY_INCLUDE_PARSER # The SdkGenny parser is required
     UTF_CPP_CPLUSPLUS=201103L # utf8cpp doesn't properly recognize modern msvc
     TOML_WINDOWS_COMPAT=0 # toml++ linker errors when compiled w/ compatability enabled
     )
