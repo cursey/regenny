@@ -10,6 +10,12 @@ public:
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
+    auto is_collapsed(bool is_collapsed) {
+        m_props["__collapsed"].set(is_collapsed);
+        return this;
+    }
+    auto& is_collapsed() { return m_props["__collapsed"].as_bool(); }
+
     auto start_element(int start_element) {
         m_props["__start"].set(start_element);
         return this;

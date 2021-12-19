@@ -26,8 +26,9 @@ Array::Array(Process& process, genny::Variable* var, Property& props)
     : Variable{process, var, props}, m_arr{dynamic_cast<genny::Array*>(var->type())} {
     assert(m_arr != nullptr);
 
+    m_props["__collapsed"].set_default(true);
     m_props["__start"].set_default(0);
-    m_props["__count"].set_default(0);
+    m_props["__count"].set_default(std::min(10, (int)m_arr->count()));
 
     // Make sure inherited props are within acceptable ranges.
     start_element() = std::clamp(start_element(), 0, (int)m_arr->count());
@@ -54,6 +55,10 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     ImGui::EndGroup();
 
+	if (ImGui::IsItemClicked()) {
+		is_collapsed() = !is_collapsed();
+	}
+
     if (ImGui::BeginPopupContextItem("ArrayNode")) {
         if (ImGui::InputInt("Start element", &start_element())) {
             start_element() = std::clamp(start_element(), 0, (int)m_arr->count());
@@ -66,6 +71,10 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
 
         ImGui::EndPopup();
+    }
+
+    if (is_collapsed()) {
+        return;
     }
 
     auto start = start_element();
