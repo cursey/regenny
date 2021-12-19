@@ -62,11 +62,13 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
         ImGui::EndGroup();
 
+        if (ImGui::IsItemClicked()) {
+            is_collapsed() = !is_collapsed();
+        }
+
         m_is_hovered = ImGui::IsItemHovered();
 
         if (ImGui::BeginPopupContextItem("PointerNode")) {
-            ImGui::Checkbox("Collpase", &is_collapsed());
-
             if (ImGui::Checkbox("Is Array", &is_array())) {
                 m_ptr_node = nullptr;
             }

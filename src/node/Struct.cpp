@@ -77,12 +77,11 @@ void Struct::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         ImGui::PopStyleColor();
         ImGui::EndGroup();
 
-        m_is_hovered = ImGui::IsItemHovered();
-
-        if (ImGui::BeginPopupContextItem("ArrayNode")) {
-            ImGui::Checkbox("Collpase", &is_collapsed());
-            ImGui::EndPopup();
+        if (ImGui::IsItemClicked()) {
+            is_collapsed() = !is_collapsed();
         }
+
+        m_is_hovered = ImGui::IsItemHovered();
 
         if (is_collapsed() && !m_is_hovered) {
             return;
