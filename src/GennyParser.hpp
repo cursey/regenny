@@ -80,9 +80,9 @@ struct VarTypeName : list_must<VarTypeNamePart, one<'.'>> {};
 struct VarTypePtr : one<'*'> {};
 struct VarTypeArrayCount : Num {};
 struct VarTypeArray : if_must<one<'['>, VarTypeArrayCount, one<']'>> {};
-struct VarTypeHint : sor<TAO_PEGTL_STRING("struct"), TAO_PEGTL_STRING("class"), TAO_PEGTL_STRING("enum class"),
-                         TAO_PEGTL_STRING("enum")> {};
-struct VarType : seq<opt<VarTypeHint>, Seps, VarTypeName, Seps, star<VarTypePtr>, star<VarTypeArray>> {};
+struct VarTypeHintId : sor<TAO_PEGTL_STRING("struct"), TAO_PEGTL_STRING("class"), TAO_PEGTL_STRING("enum class"),
+                           TAO_PEGTL_STRING("enum")> {};
+struct VarType : seq<opt<VarTypeHintId>, Seps, VarTypeName, Seps, star<VarTypePtr>, star<VarTypeArray>> {};
 struct VarName : identifier {};
 struct VarOffset : Num {};
 struct VarOffsetDecl : if_must<one<'@'>, Seps, VarOffset> {};
@@ -106,7 +106,9 @@ struct FnParams : if_must<one<'('>, Seps, opt<FnParamList>, Seps, one<')'>> {};
 struct FnStaticId : TAO_PEGTL_STRING("static") {};
 struct FnVirtualId : TAO_PEGTL_STRING("virtual") {};
 struct FnPrefix : sor<FnStaticId, FnVirtualId> {};
-struct FnDecl : seq<opt<FnPrefix>, Seps, FnRet, Seps, FnName, Seps, FnParams, Endl> {};
+struct FnVirtualIndex : Num {};
+struct FnDecl
+    : seq<opt<FnPrefix>, Seps, FnRet, Seps, FnName, Seps, FnParams, Seps, opt_must<one<'@'>, Seps, FnVirtualIndex>, Endl> {};
 
 struct StaticAssert : disable<TAO_PEGTL_STRING("static_assert"), until<one<';'>>> {};
 
@@ -157,6 +159,7 @@ struct State {
     std::string fn_name{};
     bool fn_is_static{};
     bool fn_is_virtual{};
+    std::optional<uint32_t> fn_virtual_index{};
 
     struct Param {
         genny::Type* type{};
@@ -458,7 +461,7 @@ template <> struct Action<StructExpr> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.parents.pop_back(); }
 };
 
-template <> struct Action<VarTypeHint> {
+template <> struct Action<VarTypeHintId> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         s.var_type_hint = in.string_view();
     }
@@ -641,6 +644,16 @@ template <> struct Action<FnVirtualId> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) { s.fn_is_virtual = true; }
 };
 
+template <> struct Action<FnVirtualIndex> {
+    template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
+        if (!s.fn_is_virtual) {
+            throw parse_error{"Only virtual methods can specify a virtual index", in};
+        }
+
+        s.fn_virtual_index = std::stoul(in.string(), nullptr, 0); 
+    }
+};
+
 template <> struct Action<FnDecl> {
     template <typename ActionInput> static void apply(const ActionInput& in, State& s) {
         if (auto struct_ = dynamic_cast<Struct*>(s.parents.back())) {
@@ -650,6 +663,10 @@ template <> struct Action<FnDecl> {
                 fn = struct_->static_function(s.fn_name);
             } else if (s.fn_is_virtual) {
                 fn = struct_->virtual_function(s.fn_name);
+
+                if (s.fn_virtual_index) {
+                    dynamic_cast<VirtualFunction*>(fn)->vtable_index(*s.fn_virtual_index);
+                }
             } else {
                 fn = struct_->function(s.fn_name);
             }
@@ -669,6 +686,7 @@ template <> struct Action<FnDecl> {
             s.fn_params.clear();
             s.fn_is_static = false;
             s.fn_is_virtual = false;
+            s.fn_virtual_index = std::nullopt;
         } else {
             throw parse_error{"Can't declare a function outside of a struct", in};
         }

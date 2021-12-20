@@ -722,7 +722,7 @@ public:
     explicit VirtualFunction(std::string_view name) : Function{name} {}
 
     auto vtable_index() const { return m_vtable_index; }
-    auto vtable_index(int vtable_index) {
+    auto vtable_index(uint32_t vtable_index) {
         m_vtable_index = vtable_index;
         return this;
     }
@@ -737,7 +737,7 @@ public:
     }
 
 protected:
-    int m_vtable_index{};
+    uint32_t m_vtable_index{};
 };
 
 class StaticFunction : public Function {
