@@ -1,38 +1,28 @@
-name: GitHub Build Action
 on: [push, pull_request]
 jobs:
-  build64:
+  build:
     runs-on: windows-2022
+    strategy:
+      matrix:
+        arch: [x64, Win32]
+        include:
+          - arch: x64
+            triplet: x64-windows-static
+          - arch: Win32
+            triplet: x86-windows-static
+
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
       - name: Build
         run: |
-          cmake -B build64 -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=x64-windows-static 
-          cmake --build build64 --config Release --parallel
-          cmake --install build64 --prefix ./install64 --config Release
+          cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
+          cmake --build build-${{matrix.arch}} --config Release --parallel
+          cmake --install build-${{matrix.arch}} --prefix ./install-${{matrix.arch}} --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
-          name: ${{github.event.repository.name}}-win64
-          path: install64/bin/*
-
-  build32:
-    runs-on: windows-2022
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v2
-
-      - name: Build
-        run: |
-          cmake -B build32 -A Win32 -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=x86-windows-static 
-          cmake --build build32 --config Release --parallel
-          cmake --install build32 --prefix ./install32 --config Release
-
-      - name: Upload artifacts
-        uses: actions/upload-artifact@v2
-        with:
-          name: ${{github.event.repository.name}}-win32
-          path: install32/bin/*
+          name: ${{github.event.repository.name}}-${{matrix.arch}}
+          path: install-${{matrix.arch}}/bin/*
