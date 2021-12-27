@@ -27,7 +27,6 @@ nlohmann_json = {}
 glad = {}
 
 [conditions]
-windows = "WIN32"
 static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
 
 [target.regenny]
