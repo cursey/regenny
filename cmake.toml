@@ -54,3 +54,7 @@ link-libraries = [
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
+
+[target.test0]
+type = "executable"
+sources = ["examples/test0.cpp"]

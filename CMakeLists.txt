@@ -153,3 +153,32 @@ target_link_libraries(regenny PRIVATE
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
+# Target test0
+set(CMKR_TARGET test0)
+set(test0_SOURCES "")
+
+list(APPEND test0_SOURCES
+	"examples/test0.cpp"
+)
+
+list(APPEND test0_SOURCES
+	cmake.toml
+)
+
+set(CMKR_SOURCES ${test0_SOURCES})
+add_executable(test0)
+
+if(test0_SOURCES)
+	target_sources(test0 PRIVATE ${test0_SOURCES})
+endif()
+
+get_directory_property(CMKR_VS_STARTUP_PROJECT DIRECTORY ${PROJECT_SOURCE_DIR} DEFINITION VS_STARTUP_PROJECT)
+if(NOT CMKR_VS_STARTUP_PROJECT)
+	set_property(DIRECTORY ${PROJECT_SOURCE_DIR} PROPERTY VS_STARTUP_PROJECT test0)
+endif()
+
+source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test0_SOURCES})
+
+unset(CMKR_TARGET)
+unset(CMKR_SOURCES)
+
