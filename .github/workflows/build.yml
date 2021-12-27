@@ -1,16 +1,12 @@
 name: GitHub Build Action
 on: [push, pull_request]
 jobs:
-  checkout:
+  build64:
     runs-on: windows-2022
     steps:
       - name: Checkout
         uses: actions/checkout@v2
 
-  build64:
-    runs-on: windows-2022
-    needs: checkout
-    steps:
       - name: Build
         run: |
           cmake -B build64 -A x64 -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=x64-windows-static 
@@ -25,8 +21,10 @@ jobs:
 
   build32:
     runs-on: windows-2022
-    needs: checkout
     steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+
       - name: Build
         run: |
           cmake -B build32 -A Win32 -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=x86-windows-static 
