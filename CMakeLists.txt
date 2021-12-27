@@ -100,11 +100,16 @@ list(APPEND regenny_SOURCES
 	"src/node/Struct.hpp"
 	"src/node/Undefined.hpp"
 	"src/node/Variable.hpp"
-	"src/arch/Windows.rc"
 	"thirdparty/SDL_Trigger/sdl_trigger.cpp"
 	"thirdparty/scope_gaurd/scope_guard.hpp"
 	"thirdparty/SDL_Trigger/sdl_trigger.h"
 )
+
+if(WIN32) # windows
+	list(APPEND regenny_SOURCES
+		"src/arch/Windows.rc"
+	)
+endif()
 
 list(APPEND regenny_SOURCES
 	cmake.toml

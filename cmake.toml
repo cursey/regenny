@@ -26,16 +26,19 @@ SDL2 = {}
 nlohmann_json = {}
 glad = {}
 
+[conditions]
+windows = "WIN32"
+
 [target.regenny]
 type = "executable"
 sources = [
     "src/**.cpp",
     "src/**.hpp",
-    "src/**.rc",
     "thirdparty/**.cpp",
     "thirdparty/**.hpp",
     "thirdparty/**.h",
 ]
+windows.sources = ["src/**.rc"]
 include-directories = [
     "src/",
     "thirdparty/scope_gaurd/",
