@@ -4,3 +4,4 @@ out
 build
 .idea
 cmake-build*
+install
