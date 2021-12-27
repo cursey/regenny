@@ -1,6 +1,6 @@
 # ReGenny
 
-[![Build status](https://ci.appveyor.com/api/projects/status/jvdskxgecc9filim?svg=true)](https://ci.appveyor.com/project/cursey/regenny)
+[![GitHub Build Action](https://github.com/cursey/regenny/actions/workflows/build.yml/badge.svg)](https://github.com/cursey/regenny/actions/workflows/build.yml)
 
 ReGenny is a reverse engineering tool to interactively reconstruct structures and generate usable C++ header files. Header file generation is done by the sister project [SdkGenny](https://github.com/cursey/sdkgenny). 
 
