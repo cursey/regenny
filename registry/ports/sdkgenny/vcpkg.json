@@ -1,0 +1,6 @@
+{
+    "name": "sdkgenny",
+    "version": "0.1.0",
+    "description": "A single file header framework for generating C++ compatible SDKs",
+    "homepage": "https://github.com/cursey/sdkgenny"
+}

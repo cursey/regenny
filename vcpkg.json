@@ -16,7 +16,8 @@
     {
       "name": "glad",
       "features": ["gl-api-30"]
-    }
+    },
+    "sdkgenny"
   ],
   "description": "",
   "name": "regenny",

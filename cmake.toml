@@ -13,6 +13,7 @@ packages = [
     "utfcpp",
     "nlohmann-json",
     "glad[gl-api-30]",
+    "sdkgenny",
 ]
 
 [find-package]

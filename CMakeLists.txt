@@ -81,8 +81,6 @@ list(APPEND regenny_SOURCES
 	"src/node/Variable.cpp"
 	"src/AboutUi.hpp"
 	"src/Config.hpp"
-	"src/Genny.hpp"
-	"src/GennyParser.hpp"
 	"src/Helpers.hpp"
 	"src/LoggerUi.hpp"
 	"src/MemoryUi.hpp"
