@@ -100,6 +100,7 @@ list(APPEND regenny_SOURCES
 	"src/node/Struct.hpp"
 	"src/node/Undefined.hpp"
 	"src/node/Variable.hpp"
+	"src/arch/Windows.rc"
 	"thirdparty/SDL_Trigger/sdl_trigger.cpp"
 	"thirdparty/scope_gaurd/scope_guard.hpp"
 	"thirdparty/SDL_Trigger/sdl_trigger.h"
