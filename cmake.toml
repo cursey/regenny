@@ -28,6 +28,7 @@ glad = {}
 
 [conditions]
 windows = "WIN32"
+static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
 
 [target.regenny]
 type = "executable"
@@ -59,6 +60,13 @@ link-libraries = [
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
 
+[target.regenny.properties]
+static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
+
 [target.test0]
 type = "executable"
 sources = ["examples/test0.cpp"]
+
+[[install]]
+targets = ["regenny"]
+destination = "bin"

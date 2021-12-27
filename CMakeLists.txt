@@ -156,6 +156,13 @@ target_link_libraries(regenny PRIVATE
 	glad::glad
 )
 
+if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
+	set_target_properties(regenny PROPERTIES
+		MSVC_RUNTIME_LIBRARY
+			MultiThreaded$<$<CONFIG:Debug>:Debug>
+	)
+endif()
+
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
@@ -188,3 +195,11 @@ source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test0_SOURCES})
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
+install(
+	TARGETS
+		regenny
+	DESTINATION
+		bin
+	COMPONENT
+		regenny
+)
