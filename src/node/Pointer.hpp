@@ -46,5 +46,7 @@ protected:
     bool m_is_hovered{};
 
     void refresh_memory();
+
+    static void display_str(std::string& s, const std::string& str);
 };
 } // namespace node

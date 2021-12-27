@@ -8,7 +8,7 @@
 #include "Array.hpp"
 
 namespace node {
-static void display_str(std::string& s, const std::string& str) {
+void Array::display_str(std::string& s, const std::string& str) {
     s += "\"";
 
     for (auto&& c : str) {
@@ -55,9 +55,9 @@ void Array::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     ImGui::EndGroup();
 
-	if (ImGui::IsItemClicked()) {
-		is_collapsed() = !is_collapsed();
-	}
+    if (ImGui::IsItemClicked()) {
+        is_collapsed() = !is_collapsed();
+    }
 
     if (ImGui::BeginPopupContextItem("ArrayNode")) {
         if (ImGui::InputInt("Start element", &start_element())) {

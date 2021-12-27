@@ -36,5 +36,7 @@ protected:
     std::string m_value_str{};
 
     void create_nodes();
+
+    static void display_str(std::string& s, const std::string& str);
 };
 } // namespace node

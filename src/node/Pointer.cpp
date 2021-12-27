@@ -10,7 +10,7 @@
 using namespace std::literals;
 
 namespace node {
-static void display_str(std::string& s, const std::string& str) {
+void Pointer::display_str(std::string& s, const std::string& str) {
     s += "\"";
 
     for (auto&& c : str) {
