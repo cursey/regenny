@@ -12,21 +12,17 @@ ReGenny is still early in development but is usable. Things may change unexpecte
 
 ## Download
 
-ReGenny is under active development. Any published builds (or lack thereof) may be out of date. It is advised that if you want to use ReGenny in its current form that you build ReGenny yourself. However, you may be able to grab the latest artifact from AppVeyor [here](https://ci.appveyor.com/project/cursey/regenny/build/artifacts).
+ReGenny is under active development. Any published builds (or lack thereof) may be out of date. It is advised that if you want to use ReGenny in its current form that you build ReGenny yourself. However, you may be able to grab the latest artifact from GitHub actions [here](https://github.com/cursey/regenny/actions).
 
 ## Building
 
-ReGenny uses [CMake](https://cmake.org/) and [vcpkg](https://vcpkg.io/en/index.html). Both need to be installed and properly configured. Currently ReGenny is only tested on Visual Studio 2019 for Windows 10 environments.
+ReGenny uses [CMake](https://cmake.org/) via the help of [cmkr](https://github.com/build-cpp/cmkr).
 
 From the command line:
 ```
-mkdir build
-cd build
-cmake .. -G "Visual Studio 16 2019" -A "x64" -DCMAKE_BUILD_TYPE="Release" -DCMAKE_TOOLCHAIN_FILE="<path to vcpkg>\scripts\buildsystems\vcpkg.cmake" -DVCPKG_TARGET_TRIPLET="x64-windows-static"
-cmake --build . --config "Release"
+cmake -B build
+cmake --build build
 ```
-
-Alternatively, if vcpkg is integrated with Visual Studio and you have the Visual Studio CMake integration, you can just open the ReGenny folder.
 
 ## Design decisions
 
