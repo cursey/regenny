@@ -4,8 +4,8 @@
   "$schema": "https://raw.githubusercontent.com/microsoft/vcpkg/master/scripts/vcpkg.schema.json",
   "dependencies": [
     {
-        "name": "imgui",
-        "features": ["docking-experimental","freetype","sdl2-binding","opengl3-binding"]
+      "name": "imgui",
+      "features": ["docking-experimental","freetype","sdl2-binding","opengl3-binding"]
     },
     "fmt",
     "pegtl",
@@ -14,8 +14,8 @@
     "utfcpp",
     "nlohmann-json",
     {
-        "name": "glad",
-        "features": ["gl-api-30"]
+      "name": "glad",
+      "features": ["gl-api-30"]
     }
   ],
   "description": "",
