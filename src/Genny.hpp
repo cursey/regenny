@@ -1213,8 +1213,13 @@ public:
         os << "class " << usable_name_decl();
         generate_inheritance(os);
         os << " {\n";
-        os << "public:\n";
+
+        if (!m_children.empty()) {
+            os << "public:\n";
+        }
+
         generate_internal(os);
+
         os << "}; // Size: 0x" << std::hex << size() << "\n";
     }
 };
@@ -1359,6 +1364,7 @@ protected:
         std::unordered_set<Constant*> constants{};
         std::unordered_set<Variable*> variables{};
         std::unordered_set<Function*> functions{};
+        std::unordered_set<Struct*> structs{};
         std::unordered_set<Type*> types_to_include{};
         std::unordered_set<Struct*> structs_to_forward_decl{};
         std::function<void(Type*)> add_type = [&](Type* t) {
@@ -1386,6 +1392,7 @@ protected:
         obj->get_all_in_children<Constant>(constants);
         obj->get_all_in_children<Variable>(variables);
         obj->get_all_in_children<Function>(functions);
+        obj->get_all_in_children<Struct>(structs);
 
         for (auto&& c : constants) {
             add_type(c->type());
@@ -1400,6 +1407,12 @@ protected:
                 add_type(param->type());
             }
             add_type(fn->returns());
+        }
+
+        for (auto&& s : structs) {
+            for (auto&& parent : s->parents()) {
+                types_to_include.emplace(parent); 
+            } 
         }
 
         if (auto s = dynamic_cast<Struct*>(obj)) {
