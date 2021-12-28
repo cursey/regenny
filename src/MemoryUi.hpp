@@ -5,7 +5,8 @@
 #include <unordered_map>
 #include <vector>
 
-#include "Genny.hpp"
+#include <Genny.hpp>
+
 #include "Process.hpp"
 #include "node/Base.hpp"
 #include "node/Property.hpp"

@@ -37,6 +37,18 @@ if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
 endif()
 
+include(FetchContent)
+
+message(STATUS "Fetching sdkgenny...")
+FetchContent_Declare(
+	sdkgenny
+	GIT_REPOSITORY
+		https://github.com/cursey/sdkgenny.git
+	GIT_TAG
+		f7ab3cab9565dbe6c189a5ce70167862870751fa
+)
+FetchContent_MakeAvailable(sdkgenny)
+
 # Packages
 find_package(imgui REQUIRED)
 
@@ -81,8 +93,6 @@ list(APPEND regenny_SOURCES
 	"src/node/Variable.cpp"
 	"src/AboutUi.hpp"
 	"src/Config.hpp"
-	"src/Genny.hpp"
-	"src/GennyParser.hpp"
 	"src/Helpers.hpp"
 	"src/LoggerUi.hpp"
 	"src/MemoryUi.hpp"
@@ -154,6 +164,7 @@ target_link_libraries(regenny PRIVATE
 	SDL2::SDL2main
 	nlohmann_json::nlohmann_json
 	glad::glad
+	sdkgenny::sdkgenny
 )
 
 if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
