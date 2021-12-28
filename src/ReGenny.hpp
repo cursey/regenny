@@ -8,18 +8,18 @@
 #include <string>
 #include <unordered_map>
 
+#include <Genny.hpp>
 #include <SDL.h>
 
 #include "Config.hpp"
-#include "Genny.hpp"
 #include "Helpers.hpp"
 #include "LoggerUi.hpp"
 #include "MemoryUi.hpp"
 #include "Process.hpp"
 #include "Project.hpp"
+#include "Utility.hpp"
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
-#include "Utility.hpp"
 
 class ReGenny {
 public:

@@ -1,6 +1,7 @@
 #pragma once
 
-#include "../Genny.hpp"
+#include <Genny.hpp>
+
 #include "Base.hpp"
 
 namespace node {
