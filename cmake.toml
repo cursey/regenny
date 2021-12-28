@@ -15,6 +15,9 @@ packages = [
     "glad[gl-api-30]",
 ]
 
+[fetch-content]
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "f7ab3cab9565dbe6c189a5ce70167862870751fa" }
+
 [find-package]
 imgui = {}
 fmt = {}
@@ -55,6 +58,7 @@ link-libraries = [
     "SDL2::SDL2main",
     "nlohmann_json::nlohmann_json",
     "glad::glad",
+    "sdkgenny::sdkgenny",
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
