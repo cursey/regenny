@@ -2,6 +2,8 @@
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_internal.h>
+// msvc 15 errors about min/max
+#include <algorithm>
 
 #include "Base.hpp"
 

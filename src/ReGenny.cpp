@@ -13,10 +13,10 @@
 #include <spdlog/spdlog.h>
 
 #include "AboutUi.hpp"
+#include "GennyParser.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
 #include "node/Undefined.hpp"
-#include "GennyParser.hpp"
 
 #include "ReGenny.hpp"
 
@@ -56,6 +56,9 @@ void ReGenny::update() {
         ImGui_ImplOpenGL3_DestroyFontsTexture();
         ImGui_ImplOpenGL3_CreateFontsTexture();
         m_load_font = false;
+    }
+    if (m_reload_file) {
+        file_reload();
     }
 
     // Auto detach from closed processes.
@@ -199,7 +202,6 @@ void ReGenny::ui() {
 
         ImGui::EndPopup();
     }
-
     ImGui::End();
 }
 
@@ -269,7 +271,7 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Set SDK Extensions")) {
                 ImGui::OpenPopup(m_ui.extensions_popup);
             }
-
+            ImGui::Checkbox("Reload current .genny file on changes", &m_reload_file);
             ImGui::EndMenu();
         }
 
@@ -283,6 +285,33 @@ void ReGenny::menu_ui() {
 
         ImGui::EndMenuBar();
     }
+}
+
+void ReGenny::file_reload() {
+    // Check if a file was modified
+    if (m_open_filepath.empty()) {
+        return;
+    }
+    auto cwt = std::filesystem::last_write_time(m_open_filepath);
+    if (cwt != m_file_lwt) {
+        spdlog::info("Reopening {}...", m_open_filepath.string());
+
+        std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
+
+        if (!f) {
+            spdlog::error("Failed to open {}!", m_open_filepath.string());
+            return;
+        }
+
+        m_ui.editor_text.resize(f.tellg());
+        f.seekg(0, std::ifstream::beg);
+        f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
+
+        m_log_parse_errors = true;
+        parse_editor_text();
+        m_log_parse_errors = false;
+    }
+    m_file_lwt = cwt;
 }
 
 void ReGenny::file_open(const std::filesystem::path& filepath) {
@@ -540,7 +569,7 @@ void ReGenny::update_address() {
 
         for (auto&& mod : m_process->modules()) {
             if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
-                           [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
+                    [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
                 m_address += mod.start;
                 break;
             }
@@ -622,7 +651,6 @@ void ReGenny::set_address() {
     if (auto addr = parse_address(m_ui.address)) {
         m_parsed_address = *addr;
     }
-
 
     remember_type_and_address();
 }

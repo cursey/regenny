@@ -69,11 +69,14 @@ private:
     std::unique_ptr<MemoryUi> m_mem_ui{};
 
     std::filesystem::path m_open_filepath{};
+    std::filesystem::file_time_type m_file_lwt;
 
     LoggerUi m_logger{};
     bool m_log_parse_errors{};
 
     bool m_load_font{};
+
+    bool m_reload_file{};
 
     std::filesystem::path m_app_path{};
     Trigger::Group m_triggers{};
@@ -84,6 +87,7 @@ private:
     void menu_ui();
 
     void file_open(const std::filesystem::path& filepath = {});
+    void file_reload();
     void load_project();
     void file_save();
     void save_project();

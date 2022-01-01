@@ -22,9 +22,7 @@ template <> struct Action<Num> {
 };
 
 template <> struct Action<Name> {
-    template <typename Input> static void apply(const Input& in, ParsedAddress& s) {
-        s.name = in.string_view();
-    }
+    template <typename Input> static void apply(const Input& in, ParsedAddress& s) { s.name = in.string_view(); }
 };
 
 } // namespace address_parser
