@@ -45,7 +45,7 @@ FetchContent_Declare(
 	GIT_REPOSITORY
 		https://github.com/cursey/sdkgenny.git
 	GIT_TAG
-		f7ab3cab9565dbe6c189a5ce70167862870751fa
+		53c2d5e9e59548156edabe1666b4056c559086e0
 )
 FetchContent_MakeAvailable(sdkgenny)
 
