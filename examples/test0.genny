@@ -41,7 +41,24 @@ struct Thing {
     int abc
 }
 
+struct Person {
+    int age
+}
+
+struct Student : Person {
+    float gpa
+}
+
+struct Faculty : Person {
+    int wage
+}
+
+struct TA : Student, Faculty {
+    int hours
+}
+
 struct Baz : Bar 0x100 {
+	TA ta
     int e
     int thing
     int* f
@@ -59,3 +76,4 @@ struct Baz : Bar 0x100 {
 struct RTTITest 0x100 {
 	uintptr_t** vtable
 }
+

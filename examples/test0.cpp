@@ -56,7 +56,24 @@ struct E : C, D {
     virtual ~E() {}
 };
 
+struct Person {
+    int age{20};
+};
+
+struct Student : Person {
+    float gpa{3.9};
+};
+
+struct Faculty : Person {
+    int wage{30000};
+};
+
+struct TA : Student, Faculty {
+    int hours{40};
+};
+
 struct Baz : Bar {
+    TA ta{};
     int e{};
     int thing{};
     int* f{};

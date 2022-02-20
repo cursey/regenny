@@ -31,17 +31,20 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
             return std::make_unique<Variable>(m_process, var, props);
         }
     };
-    std::function<void(genny::Struct*)> add_vars = [&](genny::Struct* s) {
+    std::function<void(uintptr_t, genny::Struct*)> add_vars = [&](uintptr_t offset, genny::Struct* s) {
+        auto parent_offset = offset;
+
         for (auto&& parent : s->parents()) {
-            add_vars(parent);
+            add_vars(parent_offset, parent);
+            parent_offset += parent->size();
         }
 
         for (auto&& var : s->get_all<genny::Variable>()) {
-            m_nodes.emplace(var->offset(), make_node(var));
+            m_nodes.emplace(offset + var->offset(), make_node(var));
         }
     };
 
-    add_vars(m_struct);
+    add_vars(0, m_struct);
 
     // Fill in the rest of the offsets with undefined nodes.
     if (!m_nodes.empty()) {
