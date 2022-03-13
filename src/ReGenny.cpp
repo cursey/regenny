@@ -115,6 +115,20 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
+    m_ui.rtti_popup = ImGui::GetID("RTTI");
+
+    if (ImGui::BeginPopupModal("RTTI")) {
+        rtti_ui();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     ImGui::Begin("Memory View");
     memory_ui();
     ImGui::End();
@@ -257,6 +271,11 @@ void ReGenny::menu_ui() {
 
             if (ImGui::MenuItem("Generate SDK")) {
                 action_generate_sdk();
+            }
+
+            if (ImGui::MenuItem("Autogenerate RTTI Struct")) {
+                m_ui.rtti_text.clear();
+                ImGui::OpenPopup(m_ui.rtti_popup);
             }
 
             ImGui::EndMenu();
@@ -543,6 +562,73 @@ void ReGenny::attach() {
     parse_editor_text();
     SDL_SetWindowTitle(
         m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
+}
+
+void ReGenny::rtti_ui() {
+    if (m_process == nullptr || !m_process->ok() || m_process->process_id() == 0) {
+        ImGui::Text("Error: No Process");
+        return;
+    }
+
+    if (!m_is_address_valid) {
+        ImGui::Text("Error: Invalid Address");
+        return;
+    }
+
+    if (m_type == nullptr) {
+        ImGui::Text("Error: No Type");
+        return;
+    }
+
+    if (m_type->size() == 0) {
+        ImGui::Text("Error: Empty Type");
+        return;
+    }
+
+    auto size = ImGui::GetContentRegionAvail();
+
+    size.y -= 16;
+    size.y = std::clamp(size.y, 0.0f, 128.0f);
+
+    if (ImGui::InputTextMultiline(
+            "##source_rtti", &m_ui.rtti_text, size, ImGuiInputTextFlags_AllowTabInput)) {
+    }
+
+    if (ImGui::Button("Generate")) {
+        m_ui.rtti_text.clear();
+        std::vector<uint8_t> data(m_type->size());
+
+        m_process->read(m_address, data.data(), data.size());
+
+        std::unordered_map<std::string, uint32_t> counts{};
+
+        for (size_t i = 0; i < data.size(); i++) {
+            if (i + sizeof(void*) >= data.size()) {
+                break;
+            }
+
+            const auto deref = *(uintptr_t*)(data.data() + i);
+
+            if (deref == 0) {
+                continue;
+            }
+
+            const auto tname = m_process->get_typename(deref);
+
+            if (!tname || tname->length() < 5) {
+                continue;
+            }
+
+            const auto demangled = tname->substr(4, tname->find_first_of("@@") - 4);
+
+            counts[demangled] += 1;
+            const auto count = counts[demangled];
+
+            const auto variable_name = demangled + "_" + std::to_string(count);
+
+            m_ui.rtti_text += fmt::format("struct {:s}* {:s} @ 0x{:x}\n", demangled, variable_name, (uintptr_t)i);
+        }
+    }
 }
 
 void ReGenny::update_address() {
