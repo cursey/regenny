@@ -60,7 +60,10 @@ private:
         std::string editor_text{};
         std::string editor_error_msg{};
 
+        std::string rtti_text{};
+
         ImGuiID attach_popup{};
+        ImGuiID rtti_popup{};
         ImGuiID font_popup{};
         ImGuiID about_popup{};
         ImGuiID extensions_popup{};
@@ -99,6 +102,8 @@ private:
 
     void attach_ui();
     void attach();
+    
+    void rtti_ui();
 
     void update_address();
     void memory_ui();
