@@ -3,7 +3,7 @@
 name = "regenny"
 
 [vcpkg]
-version = "2021.12.01"
+version = "2022.04.12"
 packages = [
     "imgui[docking-experimental,freetype,sdl2-binding,opengl3-binding]",
     "fmt",
