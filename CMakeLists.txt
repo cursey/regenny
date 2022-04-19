@@ -31,7 +31,7 @@ project(regenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg...")
+	message(STATUS "Fetching vcpkg (2021.12.01)...")
 	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2021.12.01.tar.gz")
 	FetchContent_MakeAvailable(vcpkg)
 	include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
@@ -39,13 +39,12 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny...")
-FetchContent_Declare(
-	sdkgenny
+message(STATUS "Fetching sdkgenny (56b7336bab16757913e19603f412e87c70ee4d75)...")
+FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
-		https://github.com/cursey/sdkgenny.git
+		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		53c2d5e9e59548156edabe1666b4056c559086e0
+		56b7336bab16757913e19603f412e87c70ee4d75
 )
 FetchContent_MakeAvailable(sdkgenny)
 
