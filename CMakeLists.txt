@@ -31,20 +31,23 @@ project(regenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg (2022.04.12)...")
-	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.04.12.tar.gz")
-	FetchContent_MakeAvailable(vcpkg)
-	include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
+	message(STATUS "Fetching vcpkg (2022.05.10)...")
+	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.05.10.tar.gz")
+	FetchContent_GetProperties(vcpkg)
+	if(NOT vcpkg_POPULATED)
+		FetchContent_Populate(vcpkg)
+		include("${vcpkg_SOURCE_DIR}/scripts/buildsystems/vcpkg.cmake")
+	endif()
 endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (56b7336bab16757913e19603f412e87c70ee4d75)...")
+message(STATUS "Fetching sdkgenny (a36fe4c6f16041602be302c2a2e623e43ea92108)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		56b7336bab16757913e19603f412e87c70ee4d75
+		a36fe4c6f16041602be302c2a2e623e43ea92108
 )
 FetchContent_MakeAvailable(sdkgenny)
 
@@ -169,7 +172,7 @@ target_link_libraries(regenny PRIVATE
 if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
 	set_target_properties(regenny PROPERTIES
 		MSVC_RUNTIME_LIBRARY
-			MultiThreaded$<$<CONFIG:Debug>:Debug>
+			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
 	)
 endif()
 

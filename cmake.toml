@@ -3,7 +3,7 @@
 name = "regenny"
 
 [vcpkg]
-version = "2022.04.12"
+version = "2022.05.10"
 packages = [
     "imgui[docking-experimental,freetype,sdl2-binding,opengl3-binding]",
     "fmt",
@@ -16,7 +16,7 @@ packages = [
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "56b7336bab16757913e19603f412e87c70ee4d75" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "a36fe4c6f16041602be302c2a2e623e43ea92108" }
 
 [find-package]
 imgui = {}
