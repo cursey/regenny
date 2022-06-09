@@ -47,7 +47,7 @@ void Bitfield::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     display_address_offset(address, offset);
     ImGui::SameLine();
     ImGui::BeginGroup();
-    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
+    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, "%s", m_var->type()->name().c_str());
     ImGui::SameLine();
     ImGui::Text("%s : %d", m_var->name().c_str(), m_var->bit_size());
     ImGui::SameLine();

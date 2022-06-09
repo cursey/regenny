@@ -47,7 +47,7 @@ Variable::Variable(Process& process, genny::Variable* var, Property& props)
 }
 
 void Variable::display_type() {
-    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, m_var->type()->name().c_str());
+    ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, "%s", m_var->type()->name().c_str());
 }
 
 void Variable::display_name() {
