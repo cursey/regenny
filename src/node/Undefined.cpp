@@ -42,7 +42,7 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::BeginGroup();
     ImGui::TextUnformatted(m_bytes_str.c_str());
     ImGui::SameLine();
-    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, m_preview_str.c_str());
+    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%s", m_preview_str.c_str());
     ImGui::EndGroup();
 
     auto is_hovered = ImGui::IsItemHovered();
