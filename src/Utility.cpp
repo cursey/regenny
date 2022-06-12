@@ -16,8 +16,12 @@ struct Grammar : sor<Offset, ModOffset> {};
 template <typename Rule> struct Action : nothing<Rule> {};
 template <> struct Action<Num> {
     template <typename Input> static void apply(const Input& in, ParsedAddress& s) {
-        auto num = std::stoull(in.string(), nullptr, 0);
-        s.offsets.push_back(num);
+        try {
+            auto num = std::stoull(in.string(), nullptr, 0);
+            s.offsets.push_back(num);
+        } catch (...) {
+            // Failed to convert.
+        }
     }
 };
 
