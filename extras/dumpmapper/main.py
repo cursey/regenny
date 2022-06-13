@@ -8,11 +8,32 @@ import os
 import fire
 import ctypes
 
+PROCESS_ALL_ACCESS = 0x101ffb
+
 VirtualAlloc = ctypes.windll.kernel32.VirtualAlloc
 VirtualAlloc.restype = ctypes.c_uint64
 VirtualAlloc.argtypes = [
     ctypes.c_uint64, ctypes.c_uint64, ctypes.wintypes.DWORD, ctypes.wintypes.DWORD
 ]
+
+VirtualAllocEx = ctypes.windll.kernel32.VirtualAllocEx
+VirtualAllocEx.restype = ctypes.c_uint64
+VirtualAllocEx.argtypes = [
+    ctypes.wintypes.HANDLE,
+    ctypes.c_uint64, ctypes.c_uint64, ctypes.wintypes.DWORD, ctypes.wintypes.DWORD
+]
+
+OpenProcess = ctypes.windll.kernel32.OpenProcess
+OpenProcess.restype = ctypes.wintypes.HANDLE
+OpenProcess.argtypes = [ctypes.wintypes.DWORD, ctypes.wintypes.BOOL, ctypes.c_int]
+
+WriteProcessMemory = ctypes.windll.kernel32.WriteProcessMemory
+WriteProcessMemory.restype = ctypes.wintypes.BOOL
+WriteProcessMemory.argtypes = [
+    ctypes.wintypes.HANDLE, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_uint64, ctypes.POINTER(ctypes.c_uint64)
+]
+
+PROCESS_ALL_ACCESS = 0x1F0FFF
 
 MEM_COMMIT = 0x1000
 MEM_RESERVE = 0x2000
@@ -22,11 +43,24 @@ PAGE_READWRITE = 0x04
 PAGE_READWRITE_EXECUTE = 0x40
 PAGE_READ_EXECUTE = 0x20
 
-def main(input=None):
+def main(input=None, pid=None):
     # Check if the file exists
     if input is None or not os.path.isfile(input):
         print("[-] File does not exist")
         return
+
+    has_process = False
+
+    if pid is not None:
+        process = OpenProcess(PROCESS_ALL_ACCESS, False, int(pid))
+
+        if process is None or process == 0 or process == -1:
+            print("[-] Failed to open process")
+            return
+        else:
+            print("[+] Opened process " + str(pid) + " with handle " + str(hex(process)))
+            has_process = True
+
 
     print("[+] Parsing file")
 
@@ -66,7 +100,10 @@ def main(input=None):
         total_virtual_size = pe.OPTIONAL_HEADER.SizeOfImage
         print("[+] Fixed total virtual size to: " + str(hex(total_virtual_size)))
 
-    addr = VirtualAlloc(imagebase, total_virtual_size, MEM_COMMIT_RESERVE, PAGE_READWRITE_EXECUTE)
+    if not has_process:
+        addr = VirtualAlloc(imagebase, total_virtual_size, MEM_COMMIT_RESERVE, PAGE_READWRITE_EXECUTE)
+    else:
+        addr = VirtualAllocEx(process, imagebase, total_virtual_size, MEM_COMMIT_RESERVE, PAGE_READWRITE_EXECUTE)
 
     if addr == 0:
         print("[-] Failed to allocate memory for " + input)
@@ -96,7 +133,13 @@ def main(input=None):
 
         # Copy the section data into buf (aka the allocated space)
         print("[+]  Writing section " + section.Name.decode("utf-8") + " to: " + str(hex(addr + section.VirtualAddress)) + " to " + str(hex(addr + section.VirtualAddress + size)))
-        ctypes.memmove(addr + section.VirtualAddress, section_data, size)
+
+        if not has_process:
+            ctypes.memmove(addr + section.VirtualAddress, section_data, size)
+        else:
+            written = ctypes.c_uint64(0)
+            WriteProcessMemory(process, addr + section.VirtualAddress, section_data, size, ctypes.byref(written))
+
 
     print("[+] Memory is allocated at " + str(hex(addr)))
     os.system("pause")
