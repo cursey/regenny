@@ -8,8 +8,6 @@ import os
 import fire
 import ctypes
 
-PROCESS_ALL_ACCESS = 0x101ffb
-
 VirtualAlloc = ctypes.windll.kernel32.VirtualAlloc
 VirtualAlloc.restype = ctypes.c_uint64
 VirtualAlloc.argtypes = [
@@ -33,7 +31,7 @@ WriteProcessMemory.argtypes = [
     ctypes.wintypes.HANDLE, ctypes.c_uint64, ctypes.c_void_p, ctypes.c_uint64, ctypes.POINTER(ctypes.c_uint64)
 ]
 
-PROCESS_ALL_ACCESS = 0x1F0FFF
+PROCESS_ALL_ACCESS = 0x101ffb
 
 MEM_COMMIT = 0x1000
 MEM_RESERVE = 0x2000
