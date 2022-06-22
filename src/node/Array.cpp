@@ -22,8 +22,8 @@ void Array::display_str(std::string& s, const std::string& str) {
     s += "\" ";
 }
 
-Array::Array(Process& process, genny::Variable* var, Property& props)
-    : Variable{process, var, props}, m_arr{dynamic_cast<genny::Array*>(var->type())} {
+Array::Array(Config& cfg, Process& process, genny::Variable* var, Property& props)
+    : Variable{cfg, process, var, props}, m_arr{dynamic_cast<genny::Array*>(var->type())} {
     assert(m_arr != nullptr);
 
     m_props["__collapsed"].set_default(true);
@@ -168,15 +168,15 @@ void Array::create_nodes() {
         std::unique_ptr<Variable> node{};
 
         if (proxy_variable->type()->is_a<genny::Array>()) {
-            node = std::make_unique<Array>(m_process, proxy_variable.get(), proxy_props);
+            node = std::make_unique<Array>(m_cfg, m_process, proxy_variable.get(), proxy_props);
         } else if (proxy_variable->type()->is_a<genny::Struct>()) {
-            auto struct_ = std::make_unique<Struct>(m_process, proxy_variable.get(), proxy_props);
+            auto struct_ = std::make_unique<Struct>(m_cfg, m_process, proxy_variable.get(), proxy_props);
             struct_->is_collapsed(false);
             node = std::move(struct_);
         } else if (proxy_variable->type()->is_a<genny::Pointer>()) {
-            node = std::make_unique<Pointer>(m_process, proxy_variable.get(), proxy_props);
+            node = std::make_unique<Pointer>(m_cfg, m_process, proxy_variable.get(), proxy_props);
         } else {
-            node = std::make_unique<Variable>(m_process, proxy_variable.get(), proxy_props);
+            node = std::make_unique<Variable>(m_cfg, m_process, proxy_variable.get(), proxy_props);
         }
 
         m_proxy_variables.emplace_back(std::move(proxy_variable));

@@ -39,7 +39,8 @@ template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t
     fmt::format_to(std::back_inserter(s), " {}", data);
 }
 
-Bitfield::Bitfield(Process& process, genny::Variable* var, Property& props) : Variable{process, var, props} {
+Bitfield::Bitfield(Config& cfg, Process& process, genny::Variable* var, Property& props)
+    : Variable{cfg, process, var, props} {
     assert(var->is_bitfield());
 }
 

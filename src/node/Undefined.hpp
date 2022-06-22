@@ -7,7 +7,7 @@ class Undefined : public Base {
 public:
     static bool is_hidden;
 
-    Undefined(Process& process, Property& props, size_t size);
+    Undefined(Config& cfg, Process& process, Property& props, size_t size);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     size_t size() override;
@@ -23,7 +23,6 @@ protected:
     size_t m_size{};
     size_t m_original_size{};
     std::string m_bytes_str{};
-    std::string m_print_str{};
     std::string m_preview_str{};
     bool m_is_pointer{};
 };

@@ -102,7 +102,7 @@ private:
 
     void attach_ui();
     void attach();
-    
+
     void rtti_ui();
 
     void update_address();

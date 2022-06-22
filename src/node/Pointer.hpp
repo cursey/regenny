@@ -8,7 +8,7 @@
 namespace node {
 class Pointer : public Variable {
 public:
-    Pointer(Process& process, genny::Variable* var, Property& props);
+    Pointer(Config& cfg, Process& process, genny::Variable* var, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;

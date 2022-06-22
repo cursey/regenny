@@ -7,7 +7,7 @@
 namespace node {
 class Variable : public Base {
 public:
-    Variable(Process& process, genny::Variable* var, Property& props);
+    Variable(Config& cfg, Process& process, genny::Variable* var, Property& props);
 
     virtual void display_type();
     virtual void display_name();

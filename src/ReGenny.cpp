@@ -257,6 +257,23 @@ void ReGenny::menu_ui() {
 
         if (ImGui::BeginMenu("View")) {
             ImGui::Checkbox("Hide Undefined Nodes", &node::Undefined::is_hidden);
+
+            if (ImGui::Checkbox("Display Address", &m_cfg.display_address)) {
+                save_cfg();
+            }
+
+            if (ImGui::Checkbox("Display Offset", &m_cfg.display_offset)) {
+                save_cfg();
+            }
+
+            if (ImGui::Checkbox("Display Bytes", &m_cfg.display_bytes)) {
+                save_cfg();
+            }
+
+            if (ImGui::Checkbox("Display Print", &m_cfg.display_print)) {
+                save_cfg();
+            }
+
             ImGui::EndMenu();
         }
 
@@ -464,7 +481,7 @@ void ReGenny::action_detach() {
     spdlog::info("Detaching...");
     m_process = std::make_unique<Process>();
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+        m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
     m_ui.processes.clear();
     SDL_SetWindowTitle(m_window, "ReGenny");
 }
@@ -590,8 +607,7 @@ void ReGenny::rtti_ui() {
     size.y -= 16;
     size.y = std::clamp(size.y, 0.0f, 128.0f);
 
-    if (ImGui::InputTextMultiline(
-            "##source_rtti", &m_ui.rtti_text, size, ImGuiInputTextFlags_AllowTabInput)) {
+    if (ImGui::InputTextMultiline("##source_rtti", &m_ui.rtti_text, size, ImGuiInputTextFlags_AllowTabInput)) {
     }
 
     if (ImGui::Button("Generate")) {
@@ -775,7 +791,7 @@ void ReGenny::set_type() {
     set_address();
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+        m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
 }
 
 void ReGenny::editor_ui() {

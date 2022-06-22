@@ -42,8 +42,8 @@ template <typename T> void display_enum(std::string& s, std::byte* mem, genny::E
     }
 }
 
-Variable::Variable(Process& process, genny::Variable* var, Property& props)
-    : Base{process, props}, m_var{var}, m_size{var->size()} {
+Variable::Variable(Config& cfg, Process& process, genny::Variable* var, Property& props)
+    : Base{cfg, process, props}, m_var{var}, m_size{var->size()} {
 }
 
 void Variable::display_type() {

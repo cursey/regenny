@@ -9,8 +9,8 @@
 #include "Struct.hpp"
 
 namespace node {
-Struct::Struct(Process& process, genny::Variable* var, Property& props)
-    : Variable{process, var, props}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
+Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& props)
+    : Variable{cfg, process, var, props}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
     assert(m_struct != nullptr);
 
     m_props["__collapsed"].set_default(true);
@@ -20,15 +20,15 @@ Struct::Struct(Process& process, genny::Variable* var, Property& props)
         auto&& props = m_props[var->name()];
 
         if (var->type()->is_a<genny::Array>()) {
-            return std::make_unique<Array>(m_process, var, props);
+            return std::make_unique<Array>(m_cfg, m_process, var, props);
         } else if (var->type()->is_a<genny::Struct>()) {
-            return std::make_unique<Struct>(m_process, var, props);
+            return std::make_unique<Struct>(m_cfg, m_process, var, props);
         } else if (var->type()->is_a<genny::Pointer>()) {
-            return std::make_unique<Pointer>(m_process, var, props);
+            return std::make_unique<Pointer>(m_cfg, m_process, var, props);
         } else if (var->is_bitfield()) {
-            return std::make_unique<Bitfield>(m_process, var, props);
+            return std::make_unique<Bitfield>(m_cfg, m_process, var, props);
         } else {
-            return std::make_unique<Variable>(m_process, var, props);
+            return std::make_unique<Variable>(m_cfg, m_process, var, props);
         }
     };
     std::function<void(uintptr_t, genny::Struct*)> add_vars = [&](uintptr_t offset, genny::Struct* s) {
@@ -182,7 +182,7 @@ void Struct::fill_space(uintptr_t last_offset, int delta) {
         }
 
         auto& props = m_props[fmt::format("undefined_{:x}", offset)];
-        m_nodes.emplace(offset, std::make_unique<Undefined>(m_process, props, size));
+        m_nodes.emplace(offset, std::make_unique<Undefined>(m_cfg, m_process, props, size));
     };
 
     auto start = last_offset;

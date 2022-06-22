@@ -24,7 +24,8 @@ void Pointer::display_str(std::string& s, const std::string& str) {
     s += "\" ";
 }
 
-Pointer::Pointer(Process& process, genny::Variable* var, Property& props) : Variable{process, var, props} {
+Pointer::Pointer(Config& cfg, Process& process, genny::Variable* var, Property& props)
+    : Variable{cfg, process, var, props} {
     m_ptr = dynamic_cast<genny::Pointer*>(m_var->type());
     assert(m_ptr != nullptr);
 
@@ -106,19 +107,19 @@ void Pointer::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
         if (is_array()) {
             m_proxy_var = std::make_unique<genny::Variable>(var_name);
             m_proxy_var->type(m_ptr->to()->array_(array_count()));
-            m_ptr_node = std::make_unique<Array>(m_process, m_proxy_var.get(), props);
+            m_ptr_node = std::make_unique<Array>(m_cfg, m_process, m_proxy_var.get(), props);
         } else {
             m_proxy_var = std::make_unique<genny::Variable>(var_name);
             m_proxy_var->type(m_ptr->to());
 
             if (m_ptr->to()->is_a<genny::Struct>()) {
-                auto struct_ = std::make_unique<Struct>(m_process, m_proxy_var.get(), props);
+                auto struct_ = std::make_unique<Struct>(m_cfg, m_process, m_proxy_var.get(), props);
                 struct_->display_self(false)->is_collapsed(false);
                 m_ptr_node = std::move(struct_);
             } else if (m_ptr->to()->is_a<genny::Pointer>()) {
-                m_ptr_node = std::make_unique<Pointer>(m_process, m_proxy_var.get(), props);
+                m_ptr_node = std::make_unique<Pointer>(m_cfg, m_process, m_proxy_var.get(), props);
             } else {
-                m_ptr_node = std::make_unique<Variable>(m_process, m_proxy_var.get(), props);
+                m_ptr_node = std::make_unique<Variable>(m_cfg, m_process, m_proxy_var.get(), props);
             }
         }
     }
