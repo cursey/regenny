@@ -11,11 +11,19 @@ void to_json(nlohmann::json& j, const Config& c) {
 }
 
 void from_json(const nlohmann::json& j, Config& c) {
-    c.font_file = j.at("font").value("file", "");
-    c.font_size = j.at("font").value("size", 16.0f);
-    c.file_history = j.at("file").value<decltype(c.file_history)>("history", {});
-    c.display_address = j.at("display").value("address", true);
-    c.display_offset = j.at("display").value("offset", true);
-    c.display_bytes = j.at("display").value("bytes", true);
-    c.display_print = j.at("display").value("print", true);
+    if (j.find("font") != j.end()) {
+        c.font_file = j.at("font").value("file", "");
+        c.font_size = j.at("font").value("size", 16.0f);
+    }
+
+    if (j.find("file") != j.end()) {
+        c.file_history = j.at("file").value<decltype(c.file_history)>("history", {});
+    }
+
+    if (j.find("display") != j.end()) {
+        c.display_address = j.at("display").value("address", true);
+        c.display_offset = j.at("display").value("offset", true);
+        c.display_bytes = j.at("display").value("bytes", true);
+        c.display_print = j.at("display").value("print", true);
+    }
 }
