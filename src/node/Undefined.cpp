@@ -42,6 +42,8 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::BeginGroup();
     ImGui::TextUnformatted(m_bytes_str.c_str());
     ImGui::SameLine();
+    ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%s", m_print_str.c_str());
+    ImGui::SameLine();
     ImGui::TextColored({0.6f, 0.6f, 0.6f, 1.0f}, "%s", m_preview_str.c_str());
     ImGui::EndGroup();
 
@@ -84,10 +86,21 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
 
     // Normal unsplit refresh.
     m_bytes_str.clear();
+    m_print_str.clear();
     m_preview_str.clear();
 
     for (auto i = 0; i < m_size; ++i) {
         fmt::format_to(std::back_inserter(m_bytes_str), "{:02X}", *(uint8_t*)&mem[i]);
+    }
+
+    for (auto i = 0; i < m_size; ++i) {
+        auto c = *(char*)(mem + i);
+
+        if (c >= 0 && isprint(c)) {
+            m_print_str += c;
+        } else {
+            m_print_str += '.';
+        }
     }
 
     if (m_size == sizeof(uintptr_t)) {
