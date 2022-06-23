@@ -42,12 +42,12 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (a36fe4c6f16041602be302c2a2e623e43ea92108)...")
+message(STATUS "Fetching sdkgenny (f60d156f7b9b4d11b8c91ea14b255edf0a1158c9)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		a36fe4c6f16041602be302c2a2e623e43ea92108
+		f60d156f7b9b4d11b8c91ea14b255edf0a1158c9
 )
 FetchContent_MakeAvailable(sdkgenny)
 
