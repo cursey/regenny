@@ -502,6 +502,7 @@ void ReGenny::action_generate_sdk() {
         ->source_extension(m_project.extension_source)
         ->generate(sdk_path);
     free(sdk_path);
+    spdlog::info("SDK generated!");
 }
 
 void ReGenny::attach_ui() {
