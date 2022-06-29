@@ -205,6 +205,10 @@ endif()
 
 source_group(TREE ${CMAKE_CURRENT_SOURCE_DIR} FILES ${test0_SOURCES})
 
+target_compile_features(test0 PRIVATE
+	cxx_std_17
+)
+
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 

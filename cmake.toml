@@ -69,6 +69,7 @@ static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
 [target.test0]
 type = "executable"
 sources = ["examples/test0.cpp"]
+compile-features = ["cxx_std_17"]
 
 [[install]]
 targets = ["regenny"]

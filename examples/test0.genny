@@ -28,6 +28,8 @@ struct Foo {
     int b
     float c
     Place p
+    Place bf1 : 4
+    Place bf2 : 2
 }
 
 struct Bar {
@@ -65,9 +67,9 @@ struct Baz : Bar 0x100 {
     Foo g
     Thing* things
     char* hello [[utf8*]]
-    wchar_t* wide_hello [[utf16*]]
-    char[32] intrusive_hello [[utf8*]]
-    bool im_true
+    //wchar_t* wide_hello [[utf16*]]
+    //char[32] intrusive_hello [[utf8*]]
+    bool im_true +40
     bool im_false
     bool im_also_true
 	//RTTITest* test + 5

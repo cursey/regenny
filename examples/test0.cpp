@@ -16,6 +16,8 @@ struct Foo {
     int b{};
     float c{};
     Place p{};
+    int bf1 : 4;
+    Place bf2 : 2;
 };
 
 struct Bar {
@@ -96,6 +98,8 @@ int main(int argc, char* argv[]) {
     foo->b = 1337;
     foo->c = 77.7f;
     foo->p = Place::MARS;
+    foo->bf1 = Place::MOON;
+    foo->bf2 = Place::MARS;
 
     auto baz = new Baz{};
     baz->d = 123;
@@ -123,8 +127,8 @@ int main(int argc, char* argv[]) {
     for (auto i = 0; i < 10; ++i) {
         baz->things[i].abc = i * 2;
     }
-    baz->hello = "Hello, world!";
-    baz->wide_hello = L"Hello, wide world!";
+    baz->hello = (char*)"Hello, world!";
+    baz->wide_hello = (wchar_t*)L"Hello, wide world!";
 
     auto rtti = new RTTITest{};
     baz->rtti = rtti;
