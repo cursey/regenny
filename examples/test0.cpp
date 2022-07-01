@@ -18,6 +18,7 @@ struct Foo {
     Place p{};
     int bf1 : 4;
     Place bf2 : 2;
+    int rest : 26;
 };
 
 struct Bar {
@@ -100,6 +101,7 @@ int main(int argc, char* argv[]) {
     foo->p = Place::MARS;
     foo->bf1 = Place::MOON;
     foo->bf2 = Place::MARS;
+    foo->rest = 12345678;
 
     auto baz = new Baz{};
     baz->d = 123;

@@ -5,6 +5,7 @@
 #include "Bitfield.hpp"
 #include "Pointer.hpp"
 #include "Undefined.hpp"
+#include "UndefinedBitfield.hpp"
 
 #include "Struct.hpp"
 
@@ -14,6 +15,8 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
     assert(m_struct != nullptr);
 
     m_props["__collapsed"].set_default(true);
+
+    std::set<uintptr_t> bitfield_offsets{};
 
     // Build the node map.
     auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {
@@ -40,11 +43,43 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
         }
 
         for (auto&& var : s->get_all<genny::Variable>()) {
-            m_nodes.emplace(offset + var->offset(), make_node(var));
+            if (var->is_bitfield()) {
+                bitfield_offsets.emplace(offset + var->offset());
+            } else {
+                m_nodes.emplace(offset + var->offset(), make_node(var));
+            }
         }
     };
 
     add_vars(0, m_struct);
+
+    // Fill in all the bitfields (padding becomes UndefinedBitfield nodes).
+    for (auto offset : bitfield_offsets) {
+        auto last_bit = 0;
+        genny::Type* bitfield_type = nullptr;
+
+        for (auto&& [bit_offset, var] : m_struct->bitfield(offset)) {
+            if (bit_offset - last_bit > 0) {
+                auto& props = m_props[fmt::format("pad_bitfield__{:x}_{:x}", offset, last_bit)];
+                m_nodes.emplace(offset, std::make_unique<UndefinedBitfield>(
+                                            m_cfg, m_process, props, var->size(), bit_offset - last_bit, last_bit));
+            }
+
+            m_nodes.emplace(offset, make_node(var));
+
+            last_bit = bit_offset + var->bit_size();
+            bitfield_type = var->type();
+        }
+
+        auto num_bits = bitfield_type->size() * CHAR_BIT;
+
+        if (last_bit != num_bits) {
+            auto bit_offset = num_bits;
+            auto& props = m_props[fmt::format("pad_bitfield__{:x}_{:x}", offset, last_bit)];
+            m_nodes.emplace(offset, std::make_unique<UndefinedBitfield>(m_cfg, m_process, props, bitfield_type->size(),
+                                        bit_offset - last_bit, last_bit));
+        }
+    }
 
     // Fill in the rest of the offsets with undefined nodes.
     if (!m_nodes.empty()) {

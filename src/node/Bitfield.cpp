@@ -39,7 +39,8 @@ template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t
     fmt::format_to(std::back_inserter(s), " {}", data);
 }
 
-template <typename T> void display_enum(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem, genny::Enum* enum_) {
+template <typename T>
+void display_enum(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem, genny::Enum* enum_) {
     T mask{};
     auto data = *(T*)mem;
     auto start = offset;
@@ -135,7 +136,7 @@ void Bitfield::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
     }
 
     if (auto enum_ = dynamic_cast<genny::Enum*>(m_var->type())) {
-        switch (m_var->type()->size()) { 
+        switch (m_var->type()->size()) {
         case 1:
             display_enum<uint8_t>(m_display_str, m_var->bit_size(), m_var->bit_offset(), mem, enum_);
             break;
