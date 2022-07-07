@@ -318,6 +318,11 @@ void ReGenny::menu_ui() {
                 m_cfg_save_time = std::chrono::system_clock::now() + 1s;
             }
 
+            if (ImGui::Checkbox("Always on top", &m_cfg.always_on_top)) {
+                save_cfg();
+                SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
+            }
+
             ImGui::EndMenu();
         }
 
@@ -890,6 +895,8 @@ void ReGenny::load_cfg() {
         if (!m_cfg.font_file.empty()) {
             m_load_font = true;
         }
+
+        SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
     } catch (const nlohmann::json::exception& e) {
         spdlog::error(e.what());
         m_cfg = {};
