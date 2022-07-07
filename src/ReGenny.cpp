@@ -586,9 +586,9 @@ void ReGenny::attach() {
     m_process = arch::open_process(m_project.process_id);
 
     if (!m_process->ok()) {
+        action_detach();
         m_ui.error_msg = "Couldn't open the process!";
         ImGui::OpenPopup(m_ui.error_popup);
-        m_process.reset();
         return;
     }
 
@@ -760,12 +760,6 @@ void ReGenny::memory_ui() {
 }
 
 void ReGenny::set_address() {
-    // We need to access the modules and allocations of the attached process to determine if the parsed address is
-    // valid. If there is no process we can't do that, so we just bail.
-    if (m_process == nullptr) {
-        return;
-    }
-
     if (auto addr = parse_address(m_ui.address)) {
         m_parsed_address = *addr;
     }
