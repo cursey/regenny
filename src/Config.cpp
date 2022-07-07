@@ -8,6 +8,7 @@ void to_json(nlohmann::json& j, const Config& c) {
     j["display"]["offset"] = c.display_offset;
     j["display"]["bytes"] = c.display_bytes;
     j["display"]["print"] = c.display_print;
+    j["refresh_rate"] = c.refresh_rate;
 }
 
 void from_json(const nlohmann::json& j, Config& c) {
@@ -26,4 +27,6 @@ void from_json(const nlohmann::json& j, Config& c) {
         c.display_bytes = j.at("display").value("bytes", true);
         c.display_print = j.at("display").value("print", true);
     }
+
+    c.refresh_rate = j.value("refresh_rate", 500);
 }

@@ -67,6 +67,11 @@ void ReGenny::update() {
             action_detach();
         }
     }
+
+    if (m_cfg_save_time && std::chrono::system_clock::now() > *m_cfg_save_time) {
+        save_cfg();
+        m_cfg_save_time = std::nullopt;
+    }
 }
 
 void ReGenny::ui() {
@@ -308,6 +313,11 @@ void ReGenny::menu_ui() {
                 ImGui::OpenPopup(m_ui.extensions_popup);
             }
             ImGui::Checkbox("Reload current .genny file on changes", &m_reload_file);
+
+            if (ImGui::SliderInt("Refresh delay", &m_cfg.refresh_rate, 0, 1000)) {
+                m_cfg_save_time = std::chrono::system_clock::now() + 1s;
+            }
+
             ImGui::EndMenu();
         }
 

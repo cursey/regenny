@@ -229,7 +229,7 @@ void Pointer::refresh_memory() {
     }
 
     if (auto now = std::chrono::steady_clock::now(); now >= m_mem_refresh_time) {
-        m_mem_refresh_time = now + 500ms;
+        m_mem_refresh_time = now + std::chrono::milliseconds(m_cfg.refresh_rate);
 
         // Make sure our memory buffer is large enough (since the first refresh it wont be).
         m_mem.resize(m_ptr->to()->size() * array_count());

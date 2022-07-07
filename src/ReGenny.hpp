@@ -85,6 +85,8 @@ private:
     Trigger::Group m_triggers{};
 
     Config m_cfg{};
+    std::optional<std::chrono::system_clock::time_point> m_cfg_save_time{};
+
     Project m_project{};
 
     void menu_ui();

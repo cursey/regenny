@@ -13,6 +13,7 @@ struct Config {
     bool display_offset{true};
     bool display_bytes{true};
     bool display_print{true};
+    int refresh_rate{500};
 };
 
 void to_json(nlohmann::json& j, const Config& c);
