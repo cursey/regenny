@@ -16,7 +16,7 @@ packages = [
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "f60d156f7b9b4d11b8c91ea14b255edf0a1158c9" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "7ea654693f4b66c3593669ad17031719e9872b84" }
 
 [find-package]
 imgui = {}
