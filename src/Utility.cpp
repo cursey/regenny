@@ -8,10 +8,11 @@ using namespace tao::pegtl;
 struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
-struct Name : seq<plus<alnum>, opt<one<'.'>, plus<alnum>>> {};
+struct ValidFile : internal::one< internal::result_on_found::success, internal::peek_char, ' ', '(', ')', '_', '-', ',' > {};
+struct Name : seq<plus<sor<alnum, ValidFile>>, opt<one<'.'>, plus<sor<alnum, ValidFile>>>> {};
 struct Offset : seq<Num, opt<one<'-'>, one<'>'>, struct Offset>> {};
 struct ModOffset : seq<one<'<'>, Name, one<'>'>, opt<one<'+'>, Offset>> {};
-struct Grammar : sor<Offset, ModOffset> {};
+struct Grammar : sor<ModOffset, Offset> {};
 
 template <typename Rule> struct Action : nothing<Rule> {};
 template <> struct Action<Num> {
