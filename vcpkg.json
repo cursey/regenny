@@ -16,7 +16,9 @@
     {
       "name": "glad",
       "features": ["gl-api-30"]
-    }
+    },
+    "lua",
+    "sol2"
   ],
   "description": "",
   "name": "regenny",

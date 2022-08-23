@@ -42,14 +42,23 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (f03026eaced3bd033e201bc7d1c9d9d348054113)...")
+message(STATUS "Fetching sdkgenny (eb06f76d72454394c4ef4f2da4fae05bb82db82a)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		f03026eaced3bd033e201bc7d1c9d9d348054113
+		eb06f76d72454394c4ef4f2da4fae05bb82db82a
 )
 FetchContent_MakeAvailable(sdkgenny)
+
+message(STATUS "Fetching luagenny (351c4f2bc9a99bf9e91a997d39fe3dca48713941)...")
+FetchContent_Declare(luagenny
+	GIT_REPOSITORY
+		"https://github.com/praydog/luagenny.git"
+	GIT_TAG
+		351c4f2bc9a99bf9e91a997d39fe3dca48713941
+)
+FetchContent_MakeAvailable(luagenny)
 
 # Packages
 find_package(imgui REQUIRED)
@@ -69,6 +78,10 @@ find_package(SDL2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 find_package(glad REQUIRED)
+
+find_package(sol2 REQUIRED)
+
+find_package(lua REQUIRED)
 
 # Target regenny
 set(CMKR_TARGET regenny)
@@ -169,6 +182,9 @@ target_link_libraries(regenny PRIVATE
 	nlohmann_json::nlohmann_json
 	glad::glad
 	sdkgenny::sdkgenny
+	lua
+	sol2::sol2
+	luagenny::luagenny
 )
 
 if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static

@@ -13,10 +13,13 @@ packages = [
     "utfcpp",
     "nlohmann-json",
     "glad[gl-api-30]",
+    "lua",
+    "sol2"
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "f03026eaced3bd033e201bc7d1c9d9d348054113" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "eb06f76d72454394c4ef4f2da4fae05bb82db82a" }
+luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "351c4f2bc9a99bf9e91a997d39fe3dca48713941" }
 
 [find-package]
 imgui = {}
@@ -28,6 +31,8 @@ utf8cpp = {}
 SDL2 = {}
 nlohmann_json = {}
 glad = {}
+sol2 = {}
+lua = {}
 
 [target.regenny]
 type = "executable"
@@ -56,6 +61,9 @@ link-libraries = [
     "nlohmann_json::nlohmann_json",
     "glad::glad",
     "sdkgenny::sdkgenny",
+    "lua",
+    "sol2::sol2",
+    "luagenny::luagenny",
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]

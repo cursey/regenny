@@ -10,6 +10,7 @@
 
 #include <Genny.hpp>
 #include <SDL.h>
+#include <sol/sol.hpp>
 
 #include "Config.hpp"
 #include "Helpers.hpp"
@@ -31,6 +32,9 @@ public:
     void ui();
 
     auto&& window() const { return m_window; }
+    auto& lua() const { return *m_lua; }
+    auto& sdk() const { return m_sdk; }
+    auto type() const { return m_type; }
 
 private:
     int m_window_w{};
@@ -87,6 +91,9 @@ private:
     Config m_cfg{};
     std::optional<std::chrono::system_clock::time_point> m_cfg_save_time{};
 
+    std::recursive_mutex m_lua_lock{};
+    std::unique_ptr<sol::state> m_lua{};
+
     Project m_project{};
 
     void menu_ui();
@@ -114,6 +121,7 @@ private:
 
     void editor_ui();
     void parse_editor_text();
+    void reset_lua_state();
 
     void load_cfg();
     void save_cfg();

@@ -11,6 +11,7 @@
 #include <imgui_stdlib.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
+#include <LuaGenny.hpp>
 
 #include "AboutUi.hpp"
 #include "GennyParser.hpp"
@@ -27,6 +28,8 @@ ReGenny::ReGenny(SDL_Window* window)
     spdlog::set_default_logger(m_logger.logger());
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Start of log.");
+
+    reset_lua_state();
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
@@ -90,13 +93,17 @@ void ReGenny::ui() {
         ImGuiID left{}, right{};
         ImGuiID top{}, bottom{};
 
+        ImGuiID bottom_top{}, bottom_bottom{};
+
         ImGui::DockBuilderSplitNode(dock, ImGuiDir_Up, 1.61f * 0.5f, &top, &bottom);
         ImGui::DockBuilderSplitNode(top, ImGuiDir_Left, 0.66f, &left, &right);
+        ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Up, 1.61f * 0.5f, &bottom_top, &bottom_bottom);
 
         ImGui::DockBuilderDockWindow("Attach", left);
         ImGui::DockBuilderDockWindow("Memory View", left);
         ImGui::DockBuilderDockWindow("Editor", right);
-        ImGui::DockBuilderDockWindow("Log", bottom);
+        ImGui::DockBuilderDockWindow("Log", bottom_top);
+        ImGui::DockBuilderDockWindow("LuaEval", bottom_bottom);
 
         ImGui::DockBuilderFinish(dock);
     }
@@ -144,6 +151,25 @@ void ReGenny::ui() {
 
     ImGui::Begin("Log");
     m_logger.ui();
+    ImGui::End();
+
+    ImGui::Begin("LuaEval");
+
+    ImGui::BeginChild("luaeval");
+    char eval[256]{};
+    ImGui::PushItemWidth(ImGui::GetWindowWidth());
+    if (ImGui::InputText("eval", eval, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        try {
+            sol::protected_function_result result = m_lua->safe_script(eval);
+        } catch(const std::exception& e) {
+            spdlog::error("{}", e.what());
+        } catch(...) {
+            spdlog::error("Unknown exception");
+        }
+    }
+    ImGui::PopItemWidth();
+    ImGui::EndChild();
+
     ImGui::End();
 
     ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
@@ -817,7 +843,38 @@ void ReGenny::editor_ui() {
     }
 }
 
+void ReGenny::reset_lua_state() {
+    std::scoped_lock _{m_lua_lock};
+
+    m_lua.reset();
+    m_lua = std::make_unique<sol::state>();
+
+    m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
+    sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
+
+    luagenny::open(*m_lua);
+    (*m_lua)["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
+    (*m_lua)["print"] = [](const char* text) {
+        spdlog::info("{}", text);
+    };
+    
+    m_lua->new_usertype<ReGenny>("ReGennyClass",
+        sol::no_constructor,
+        "sdk", [](sol::this_state s, ReGenny* rg) { 
+            if (rg->sdk() == nullptr) {
+                sol::make_object(s, sol::nil);
+            }
+
+            return sol::make_object(s, rg->sdk().get());
+        },
+        "type", &ReGenny::type
+    );
+
+    (*m_lua)["regenny"] = this;
+}
+
 void ReGenny::parse_editor_text() {
+    reset_lua_state();
     m_ui.editor_error_msg.clear();
 
     auto sdk = std::make_unique<genny::Sdk>();
