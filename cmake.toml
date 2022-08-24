@@ -18,8 +18,8 @@ packages = [
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "eb06f76d72454394c4ef4f2da4fae05bb82db82a" }
-luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "351c4f2bc9a99bf9e91a997d39fe3dca48713941" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "2bf398fdcc48346486b0e754a93da21fb788e245" }
+luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "e1e2138eb24481687ad642d449ce47b758e00c8c" }
 
 [find-package]
 imgui = {}

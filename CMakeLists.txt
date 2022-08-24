@@ -42,21 +42,21 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (eb06f76d72454394c4ef4f2da4fae05bb82db82a)...")
+message(STATUS "Fetching sdkgenny (2bf398fdcc48346486b0e754a93da21fb788e245)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		eb06f76d72454394c4ef4f2da4fae05bb82db82a
+		2bf398fdcc48346486b0e754a93da21fb788e245
 )
 FetchContent_MakeAvailable(sdkgenny)
 
-message(STATUS "Fetching luagenny (351c4f2bc9a99bf9e91a997d39fe3dca48713941)...")
+message(STATUS "Fetching luagenny (e1e2138eb24481687ad642d449ce47b758e00c8c)...")
 FetchContent_Declare(luagenny
 	GIT_REPOSITORY
 		"https://github.com/praydog/luagenny.git"
 	GIT_TAG
-		351c4f2bc9a99bf9e91a997d39fe3dca48713941
+		e1e2138eb24481687ad642d449ce47b758e00c8c
 )
 FetchContent_MakeAvailable(luagenny)
 
