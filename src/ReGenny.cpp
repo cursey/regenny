@@ -890,7 +890,17 @@ void ReGenny::reset_lua_state() {
         "read_int32", [](Process* p, uintptr_t addr) { return p->read<int32_t>(addr); },
         "read_int64", [](Process* p, uintptr_t addr) { return p->read<int64_t>(addr); },
         "read_float", [](Process* p, uintptr_t addr) { return p->read<float>(addr); },
-        "read_double", [](Process* p, uintptr_t addr) { return p->read<double>(addr); }
+        "read_double", [](Process* p, uintptr_t addr) { return p->read<double>(addr); },
+        "write_uint8", [](Process* p, uintptr_t addr, uint8_t val) { p->write<uint8_t>(addr, val); },
+        "write_uint16", [](Process* p, uintptr_t addr, uint16_t val) { p->write<uint16_t>(addr, val); },
+        "write_uint32", [](Process* p, uintptr_t addr, uint32_t val) { p->write<uint32_t>(addr, val); },
+        "write_uint64", [](Process* p, uintptr_t addr, uint64_t val) { p->write<uint64_t>(addr, val); },
+        "write_int8", [](Process* p, uintptr_t addr, int8_t val) { p->write<int8_t>(addr, val); },
+        "write_int16", [](Process* p, uintptr_t addr, int16_t val) { p->write<int16_t>(addr, val); },
+        "write_int32", [](Process* p, uintptr_t addr, int32_t val) { p->write<int32_t>(addr, val); },
+        "write_int64", [](Process* p, uintptr_t addr, int64_t val) { p->write<int64_t>(addr, val); },
+        "write_float", [](Process* p, uintptr_t addr, float val) { p->write<float>(addr, val); },
+        "write_double", [](Process* p, uintptr_t addr, double val) { p->write<double>(addr, val); }
     );
 
     lua["regenny"] = this;
