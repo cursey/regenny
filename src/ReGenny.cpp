@@ -852,9 +852,11 @@ void ReGenny::reset_lua_state() {
     m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
     sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
 
-    luagenny::open(*m_lua);
-    (*m_lua)["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
-    (*m_lua)["print"] = [](const char* text) {
+    auto& lua = *m_lua;
+
+    luagenny::open(lua);
+    lua["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
+    lua["print"] = [](const char* text) {
         spdlog::info("{}", text);
     };
     
@@ -867,10 +869,88 @@ void ReGenny::reset_lua_state() {
 
             return sol::make_object(s, rg->sdk().get());
         },
-        "type", &ReGenny::type
+        "type", &ReGenny::type,
+        "process", [](sol::this_state s, ReGenny* rg) { 
+            if (rg->process() == nullptr) {
+                sol::make_object(s, sol::nil);
+            }
+
+            return sol::make_object(s, rg->process().get());
+        }
     );
 
-    (*m_lua)["regenny"] = this;
+    m_lua->new_usertype<Process>("ReGennyProcess",
+        sol::no_constructor,
+        "read_uint8", [](Process* p, uintptr_t addr) { return p->read<uint8_t>(addr); },
+        "read_uint16", [](Process* p, uintptr_t addr) { return p->read<uint16_t>(addr); },
+        "read_uint32", [](Process* p, uintptr_t addr) { return p->read<uint32_t>(addr); },
+        "read_uint64", [](Process* p, uintptr_t addr) { return p->read<uint64_t>(addr); },
+        "read_int8", [](Process* p, uintptr_t addr) { return p->read<int8_t>(addr); },
+        "read_int16", [](Process* p, uintptr_t addr) { return p->read<int16_t>(addr); },
+        "read_int32", [](Process* p, uintptr_t addr) { return p->read<int32_t>(addr); },
+        "read_int64", [](Process* p, uintptr_t addr) { return p->read<int64_t>(addr); },
+        "read_float", [](Process* p, uintptr_t addr) { return p->read<float>(addr); },
+        "read_double", [](Process* p, uintptr_t addr) { return p->read<double>(addr); }
+    );
+
+    lua["regenny"] = this;
+
+    lua["sdkgenny_reader"] = [](sol::this_state s, uintptr_t address, size_t size) -> sol::object {
+        // Make this use ReGenny's process reading functions
+        // instead of treating the address as if we're in the same context as the game.
+
+        auto lua = sol::state_view{s};
+        auto rg = lua["regenny"].get<ReGenny*>();
+
+        if (rg == nullptr) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        auto& process = rg->process();
+
+        if (process == nullptr) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        switch (size) {
+        case 8: {
+            auto value = process->read<uint64_t>(address);
+            if (!value) {
+                break;
+            }
+
+            return sol::make_object(s, value);
+        }
+        case 4: {
+            auto value = process->read<uint32_t>(address);
+            if (!value) {
+                break;
+            }
+
+            return sol::make_object(s, value);
+        }
+        case 2: {
+            auto value = process->read<uint16_t>(address);
+            if (!value) {
+                break;
+            }
+
+            return sol::make_object(s, value);
+        }
+        case 1: {
+            auto value = process->read<uint8_t>(address);
+            if (!value) {
+                break;
+            }
+
+            return sol::make_object(s, value);
+        }
+        default:
+            break;
+        }
+
+        return sol::make_object(s, sol::nil);
+    };
 }
 
 void ReGenny::parse_editor_text() {
