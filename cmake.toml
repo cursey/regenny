@@ -19,7 +19,7 @@ packages = [
 
 [fetch-content]
 sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "2bf398fdcc48346486b0e754a93da21fb788e245" }
-luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "e1e2138eb24481687ad642d449ce47b758e00c8c" }
+luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "5cdafd93b175a5aca92b5de935aa5c702a3b6ee7" }
 
 [find-package]
 imgui = {}
@@ -62,7 +62,7 @@ link-libraries = [
     "glad::glad",
     "sdkgenny::sdkgenny",
     "lua",
-    "sol2::sol2",
+    "sol2",
     "luagenny::luagenny",
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]

@@ -51,12 +51,12 @@ FetchContent_Declare(sdkgenny
 )
 FetchContent_MakeAvailable(sdkgenny)
 
-message(STATUS "Fetching luagenny (e1e2138eb24481687ad642d449ce47b758e00c8c)...")
+message(STATUS "Fetching luagenny (5cdafd93b175a5aca92b5de935aa5c702a3b6ee7)...")
 FetchContent_Declare(luagenny
 	GIT_REPOSITORY
 		"https://github.com/praydog/luagenny.git"
 	GIT_TAG
-		e1e2138eb24481687ad642d449ce47b758e00c8c
+		5cdafd93b175a5aca92b5de935aa5c702a3b6ee7
 )
 FetchContent_MakeAvailable(luagenny)
 
@@ -183,16 +183,9 @@ target_link_libraries(regenny PRIVATE
 	glad::glad
 	sdkgenny::sdkgenny
 	lua
-	sol2::sol2
+	sol2
 	luagenny::luagenny
 )
-
-if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
-	set_target_properties(regenny PROPERTIES
-		MSVC_RUNTIME_LIBRARY
-			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
-	)
-endif()
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
@@ -230,11 +223,3 @@ target_compile_features(test0 PRIVATE
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
-install(
-	TARGETS
-		regenny
-	DESTINATION
-		bin
-	COMPONENT
-		regenny
-)
