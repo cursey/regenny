@@ -3,7 +3,7 @@
 name = "regenny"
 
 [vcpkg]
-version = "2022.05.10"
+version = "2022.08.15"
 packages = [
     "imgui[docking-experimental,freetype,sdl2-binding,opengl3-binding]",
     "fmt",
@@ -28,9 +28,6 @@ utf8cpp = {}
 SDL2 = {}
 nlohmann_json = {}
 glad = {}
-
-[conditions]
-static = "${VCPKG_TARGET_TRIPLET} MATCHES \".+static\""
 
 [target.regenny]
 type = "executable"
@@ -63,14 +60,7 @@ link-libraries = [
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
 
-[target.regenny.properties]
-static.MSVC_RUNTIME_LIBRARY = "MultiThreaded$<$<CONFIG:Debug>:Debug>"
-
 [target.test0]
 type = "executable"
 sources = ["examples/test0.cpp"]
 compile-features = ["cxx_std_17"]
-
-[[install]]
-targets = ["regenny"]
-destination = "bin"

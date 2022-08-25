@@ -8,9 +8,9 @@ jobs:
         arch: [x64, Win32]
         include:
           - arch: x64
-            triplet: x64-windows-static
+            triplet: x64-windows
           - arch: Win32
-            triplet: x86-windows-static
+            triplet: x86-windows
 
     steps:
       - name: Checkout
@@ -20,10 +20,9 @@ jobs:
         run: |
           cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
           cmake --build build-${{matrix.arch}} --config Release --parallel
-          cmake --install build-${{matrix.arch}} --prefix ./install-${{matrix.arch}} --config Release
 
       - name: Upload artifacts
         uses: actions/upload-artifact@v2
         with:
           name: ${{github.event.repository.name}}-${{matrix.arch}}
-          path: install-${{matrix.arch}}/bin/*
+          path: build-${{matrix.arch}}/Release/*
