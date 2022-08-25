@@ -859,9 +859,24 @@ void ReGenny::reset_lua_state() {
     lua["print"] = [](const char* text) {
         spdlog::info("{}", text);
     };
+
+    auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
     
     m_lua->new_usertype<ReGenny>("ReGennyClass",
         sol::no_constructor,
+        "type", &ReGenny::type,
+        "address", &ReGenny::address,
+        "overlay", [create_overlay](sol::this_state s, ReGenny* rg) -> sol::object {
+            if (rg->process() == nullptr) {
+                return sol::make_object(s, sol::nil);
+            }
+
+            if (rg->type() == nullptr || !rg->type()->is_a<genny::Struct>()) {
+                return sol::make_object(s, sol::nil);
+            }
+
+            return sol::make_object(s, create_overlay(rg->address(), dynamic_cast<genny::Struct*>(rg->type())));
+        },
         "sdk", [](sol::this_state s, ReGenny* rg) { 
             if (rg->sdk() == nullptr) {
                 sol::make_object(s, sol::nil);
@@ -869,7 +884,6 @@ void ReGenny::reset_lua_state() {
 
             return sol::make_object(s, rg->sdk().get());
         },
-        "type", &ReGenny::type,
         "process", [](sol::this_state s, ReGenny* rg) { 
             if (rg->process() == nullptr) {
                 sol::make_object(s, sol::nil);

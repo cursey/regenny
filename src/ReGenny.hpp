@@ -36,6 +36,7 @@ public:
     auto& sdk() const { return m_sdk; }
     auto type() const { return m_type; }
     auto& process() const { return m_process; }
+    auto address() const { return m_address; }
 
 private:
     int m_window_w{};
