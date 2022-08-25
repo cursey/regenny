@@ -160,16 +160,62 @@ void ReGenny::ui() {
     ImGui::Begin("LuaEval");
 
     ImGui::BeginChild("luaeval");
-    char eval[256]{};
+    std::array<char, 256> eval{};
     ImGui::PushItemWidth(ImGui::GetWindowWidth());
-    if (ImGui::InputText("eval", eval, 256, ImGuiInputTextFlags_EnterReturnsTrue)) {
+
+    if (m_reapply_focus_eval) {
+        ImGui::SetKeyboardFocusHere();
+        m_reapply_focus_eval= false;
+    }
+
+    auto eval_cb = [](ImGuiInputTextCallbackData* data) -> int {
+        auto rg = reinterpret_cast<ReGenny*>(data->UserData);
+
+        if (data->EventFlag == ImGuiInputTextFlags_CallbackHistory) {
+            if (data->EventKey == ImGuiKey_UpArrow) {
+                if (rg->eval_history_index() > 0) {
+                    rg->eval_history_index()--;
+                }
+            } else if (data->EventKey == ImGuiKey_DownArrow) {
+                if (rg->eval_history_index() < rg->eval_history().size()) {
+                    rg->eval_history_index()++;
+                }
+            }
+
+            if (rg->eval_history_index() < rg->eval_history().size()) {
+                data->DeleteChars(0, data->BufTextLen);
+                data->InsertChars(0, rg->eval_history()[rg->eval_history_index()].c_str());
+            }
+        }
+
+        return 0;
+    };
+
+    if (ImGui::InputText("eval", eval.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, eval_cb, this)) {
+        if (m_eval_history.size() >= 20) {
+            m_eval_history.pop_front();
+        }
+
+        m_eval_history.push_back(eval.data());
+        m_eval_history_index = m_eval_history.size();
+
         try {
-            sol::protected_function_result result = m_lua->safe_script(eval);
+            if (std::string_view{eval.data()} == "clear") {
+                m_logger.clear();
+            } else {
+                sol::protected_function_result result = m_lua->safe_script(eval.data());
+
+                if (!result.valid()) {
+                    sol::script_default_on_error(*m_lua, std::move(result));
+                }
+            }
         } catch(const std::exception& e) {
             spdlog::error("{}", e.what());
         } catch(...) {
             spdlog::error("Unknown exception");
         }
+
+        m_reapply_focus_eval = true;
     }
     ImGui::PopItemWidth();
     ImGui::EndChild();

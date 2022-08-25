@@ -7,6 +7,7 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
+#include <deque>
 
 #include <Genny.hpp>
 #include <SDL.h>
@@ -37,6 +38,9 @@ public:
     auto type() const { return m_type; }
     auto& process() const { return m_process; }
     auto address() const { return m_address; }
+
+    auto& eval_history_index() { return m_eval_history_index; }
+    auto& eval_history() const { return m_eval_history; }
 
 private:
     int m_window_w{};
@@ -95,6 +99,9 @@ private:
 
     std::recursive_mutex m_lua_lock{};
     std::unique_ptr<sol::state> m_lua{};
+    std::deque<std::string> m_eval_history{};
+    int32_t m_eval_history_index{};
+    bool m_reapply_focus_eval{false};
 
     Project m_project{};
 

@@ -31,6 +31,10 @@ public:
     auto&& logger() const { return m_logger; }
     auto&& logger() { return m_logger; }
 
+    void clear() {
+        m_buf.clear();
+    }
+
 private:
     ImGuiTextBuffer m_buf{};
     bool m_scroll_to_bottom{};
