@@ -1095,7 +1095,6 @@ void ReGenny::reset_lua_state() {
 }
 
 void ReGenny::parse_editor_text() {
-    reset_lua_state();
     m_ui.editor_error_msg.clear();
 
     auto sdk = std::make_unique<genny::Sdk>();
