@@ -19,6 +19,10 @@
 #include "arch/Arch.hpp"
 #include "node/Undefined.hpp"
 
+#ifdef _WIN32
+#include "arch/Windows.hpp"
+#endif
+
 #include "ReGenny.hpp"
 
 using namespace std::literals;
@@ -884,11 +888,17 @@ void ReGenny::reset_lua_state() {
 
             return sol::make_object(s, rg->sdk().get());
         },
-        "process", [](sol::this_state s, ReGenny* rg) { 
+        "process", [](sol::this_state s, ReGenny* rg) -> sol::object { 
             if (rg->process() == nullptr) {
                 sol::make_object(s, sol::nil);
             }
 
+        #ifdef _WIN32
+            if (auto wp = dynamic_cast<arch::WindowsProcess*>(rg->process().get())) {
+                return sol::make_object(s, wp);
+            }
+        #endif
+            
             return sol::make_object(s, rg->process().get());
         }
     );
@@ -952,6 +962,13 @@ void ReGenny::reset_lua_state() {
         "write_double", [](Process* p, uintptr_t addr, double val) { p->write<double>(addr, val); },
         "read_string", read_string
     );
+
+#ifdef _WIN32
+    m_lua->new_usertype<arch::WindowsProcess>("ReGennyWindowsProcess",
+        sol::base_classes, sol::bases<Process>(),
+        "get_typename", &arch::WindowsProcess::get_typename
+    );
+#endif
 
     lua["regenny"] = this;
 
