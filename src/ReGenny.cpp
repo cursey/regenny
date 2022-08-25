@@ -879,6 +879,41 @@ void ReGenny::reset_lua_state() {
         }
     );
 
+    auto read_string = [](Process* p, uintptr_t addr, bool perform_strlen) -> std::string { 
+        if (!perform_strlen) {
+            std::vector<uint8_t> bytes(256);
+            p->read(addr, bytes.data(), bytes.size());
+
+            return std::string{(const char*)bytes.data()};
+        }
+
+        std::vector<uint8_t> bytes(16);
+
+        for (size_t i = 0; ; i++) {
+            const auto data = p->read<uint8_t>(addr + i);
+
+            if (!data) {
+                break;
+            }
+
+            if (i >= bytes.size()) {
+                bytes.resize(bytes.size() * 2);
+            }
+
+            bytes[i] = *data;
+
+            if (bytes[i] == 0) {
+                break;
+            }
+        }
+
+        if (bytes.empty()) {
+            return std::string{};
+        }
+
+        return std::string{(const char*)bytes.data()};
+    };
+
     m_lua->new_usertype<Process>("ReGennyProcess",
         sol::no_constructor,
         "read_uint8", [](Process* p, uintptr_t addr) { return p->read<uint8_t>(addr); },
@@ -900,7 +935,8 @@ void ReGenny::reset_lua_state() {
         "write_int32", [](Process* p, uintptr_t addr, int32_t val) { p->write<int32_t>(addr, val); },
         "write_int64", [](Process* p, uintptr_t addr, int64_t val) { p->write<int64_t>(addr, val); },
         "write_float", [](Process* p, uintptr_t addr, float val) { p->write<float>(addr, val); },
-        "write_double", [](Process* p, uintptr_t addr, double val) { p->write<double>(addr, val); }
+        "write_double", [](Process* p, uintptr_t addr, double val) { p->write<double>(addr, val); },
+        "read_string", read_string
     );
 
     lua["regenny"] = this;
@@ -960,6 +996,24 @@ void ReGenny::reset_lua_state() {
         }
 
         return sol::make_object(s, sol::nil);
+    };
+
+
+    lua["sdkgenny_string_reader"] = [read_string](sol::this_state s, uintptr_t address) -> sol::object {
+        auto lua = sol::state_view{s};
+        auto rg = lua["regenny"].get<ReGenny*>();
+
+        if (rg == nullptr) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        auto& process = rg->process();
+
+        if (process == nullptr) {
+            return sol::make_object(s, sol::nil);
+        }
+
+        return sol::make_object(s, read_string(process.get(), address, true));
     };
 }
 
