@@ -42,14 +42,23 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (f03026eaced3bd033e201bc7d1c9d9d348054113)...")
+message(STATUS "Fetching sdkgenny (2bf398fdcc48346486b0e754a93da21fb788e245)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		f03026eaced3bd033e201bc7d1c9d9d348054113
+		2bf398fdcc48346486b0e754a93da21fb788e245
 )
 FetchContent_MakeAvailable(sdkgenny)
+
+message(STATUS "Fetching luagenny (5cdafd93b175a5aca92b5de935aa5c702a3b6ee7)...")
+FetchContent_Declare(luagenny
+	GIT_REPOSITORY
+		"https://github.com/praydog/luagenny.git"
+	GIT_TAG
+		5cdafd93b175a5aca92b5de935aa5c702a3b6ee7
+)
+FetchContent_MakeAvailable(luagenny)
 
 # Packages
 find_package(imgui REQUIRED)
@@ -69,6 +78,10 @@ find_package(SDL2 REQUIRED)
 find_package(nlohmann_json REQUIRED)
 
 find_package(glad REQUIRED)
+
+find_package(sol2 REQUIRED)
+
+find_package(lua REQUIRED)
 
 # Target regenny
 set(CMKR_TARGET regenny)
@@ -169,14 +182,10 @@ target_link_libraries(regenny PRIVATE
 	nlohmann_json::nlohmann_json
 	glad::glad
 	sdkgenny::sdkgenny
+	lua
+	sol2
+	luagenny::luagenny
 )
-
-if(${VCPKG_TARGET_TRIPLET} MATCHES ".+static") # static
-	set_target_properties(regenny PROPERTIES
-		MSVC_RUNTIME_LIBRARY
-			"MultiThreaded$<$<CONFIG:Debug>:Debug>"
-	)
-endif()
 
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
@@ -214,11 +223,3 @@ target_compile_features(test0 PRIVATE
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 
-install(
-	TARGETS
-		regenny
-	DESTINATION
-		bin
-	COMPONENT
-		regenny
-)

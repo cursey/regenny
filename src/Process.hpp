@@ -53,6 +53,10 @@ public:
         return out;
     }
 
+    template <typename T> bool write(uintptr_t address, const T& value) {
+        return write(address, &value, sizeof(T));
+    }
+
 protected:
     std::vector<Module> m_modules{};
     std::vector<Allocation> m_allocations{};
