@@ -79,6 +79,10 @@ function do_tests()
         value_expect(bazstruct:is_a("type"), true, "bazstruct:is_a(\"type\")"),
         value_expect(bazstruct:is_struct(), true, "bazstruct:is_struct()"),
         value_expect(bazstruct:is_type(), true, "bazstruct:is_type()"),
+        value_expect(baz.d, 123, "baz.d"),
+        value_expect(baz.foo.a, 42, "baz.foo.a"),
+        value_expect(baz.foo.b, 1337, "baz.foo.b"),
+        value_expect(round(baz.foo.c, 1), 77.7, "round(baz.foo.c)"),
         value_expect(baz.g.a, 43, "baz.g.a"),
         value_expect(baz.g.b, 1338, "baz.g.b"),
         value_expect(round(baz.g.c, 1), 78.7, "round(baz.g.c)"),
@@ -88,6 +92,9 @@ function do_tests()
         value_expect(round(baz.ta.gpa, 1), 3.9, "baz.ta.gpa"),
         value_expect(baz.ta.wage, 30000, "baz.ta.wage"),
         value_expect(baz.ta.hours, 40, "baz.ta.hours"),
+        value_expect(bazstruct:find_variable_in_parents("foo") ~= nil, true, "bazstruct:find_variable(\"foo\") ~= nil"),
+        value_expect(bazstruct:find_variable_in_parents("foo"):name(), "foo", "bazstruct:find_variable(\"foo\"):name()"),
+        value_expect(bazstruct:find_variable_in_parents("foo"):type():is_pointer(), true, "bazstruct:find_variable(\"foo\"):type():is_pointer()"),
         value_expect(bazstruct:find("variable", "e") ~= nil, true, "bazstruct:find(\"variable\", \"e\") ~= nil"),
         value_expect(bazstruct:find_variable("e") == bazstruct:find("variable", "e"), true, "bazstruct:find_variable(\"e\") == bazstruct:find(\"variable\", \"e\")"),
         value_expect(bazstruct:find_variable("e"):is_a("variable"), true, "bazstruct:find(\"variable\", \"e\"):is_a(\"variable\")"),
@@ -161,6 +168,67 @@ function do_tests()
         local ok, val = pcall(mt.__index, baz, v:name())
         table.insert(results, value_expect(ok, true, "pcall baz." .. v:name()))
     end
+
+
+    ----------------------------
+    ------- write tests --------
+    ----------------------------
+    -- baz.g.a modification
+    local old_baz_g_a = baz.g.a
+    baz.g.a = baz.g.a + 1
+
+    table.insert(results, value_expect(baz.g.a, old_baz_g_a + 1, "baz.g.a = baz.g.a + 1"))
+
+    baz.g.a = old_baz_g_a
+
+    table.insert(results, value_expect(baz.g.a, old_baz_g_a, "baz.g.a = old_baz_g_a"))
+
+    -- baz.g.c modification (float/number)
+    local old_baz_g_c = baz.g.c
+
+    baz.g.c = baz.g.c + 13.337
+
+    table.insert(results, value_expect(round(baz.g.c, 3), round(old_baz_g_c + 13.337, 3), "baz.g.c = baz.g.c + 13.337"))
+
+    baz.g.c = old_baz_g_c
+
+    table.insert(results, value_expect(round(baz.g.c, 3), round(old_baz_g_c, 3), "baz.g.c = old_baz_g_c"))
+
+    -- TA age modification
+    local old_ta_age = baz.ta.age
+    baz.ta.age = baz.ta.age + 1
+
+    table.insert(results, value_expect(baz.ta.age, old_ta_age + 1, "baz.ta.age = baz.ta.age + 1"))
+
+    baz.ta.age = old_ta_age
+
+    table.insert(results, value_expect(baz.ta.age, old_ta_age, "baz.ta.age = old_ta_age"))
+
+    -- Testing writing to baz.f[i] (pointer to int array)
+    for i=0, 10-1 do
+        local old_baz_f_i = baz.f[i]
+        baz.f[i] = baz.f[i] * 1337
+
+        table.insert(results, value_expect(baz.f[i], old_baz_f_i * 1337, "baz.f[" .. tostring(i) .. "] = baz.f[" .. tostring(i) .. "] * 1337"))
+
+        baz.f[i] = old_baz_f_i
+
+        table.insert(results, value_expect(baz.f[i], old_baz_f_i, "baz.f[" .. tostring(i) .. "] = old_baz_f_i"))
+    end
+
+    -- Testing writing to baz.foo (pointer to structure)
+    local old_foo_addr = baz.foo:ptr()
+    baz.foo = 123456789
+
+    table.insert(results, value_expect(baz.foo:ptr(), 123456789, "baz.foo = 123456789"))
+
+    baz.foo = nil
+
+    table.insert(results, value_expect(baz.foo:ptr(), 0, "baz.foo = nil (0)"))
+
+    baz.foo = old_foo_addr
+
+    table.insert(results, value_expect(baz.foo:ptr(), old_foo_addr, "baz.foo = old_foo_addr"))
 
     local total_passed = 0
 

@@ -1111,7 +1111,6 @@ void ReGenny::reset_lua_state() {
         return sol::make_object(s, sol::nil);
     };
 
-
     lua["sdkgenny_string_reader"] = [read_string](sol::this_state s, uintptr_t address) -> sol::object {
         auto lua = sol::state_view{s};
         auto rg = lua["regenny"].get<ReGenny*>();
@@ -1127,6 +1126,71 @@ void ReGenny::reset_lua_state() {
         }
 
         return sol::make_object(s, read_string(process.get(), address, true));
+    };
+
+    lua["sdkgenny_writer"] = [](sol::this_state s, uintptr_t address, size_t size, sol::object value) {
+        auto lua = sol::state_view{s};
+        auto rg = lua["regenny"].get<ReGenny*>();
+
+        if (rg == nullptr) {
+            return;
+        }
+
+        auto& process = rg->process();
+
+        if (process == nullptr) {
+            return;
+        }
+
+        switch(size) {
+        case 8:
+            if (!value.is<sol::nil_t>()) {
+                value.push();
+
+                if (lua_isinteger(s, -1)) {
+                    process->write<uint64_t>(address, (uint64_t)lua_tointeger(s, -1));
+                } else if (lua_isnumber(s, -1)) {
+                    process->write<double>(address, lua_tonumber(s, -1));
+                }
+
+                value.pop();
+            } else {
+                process->write<uint64_t>(address, 0);
+            }
+
+            break;
+        case 4:
+            if (!value.is<sol::nil_t>()) {
+                value.push();
+
+                if (lua_isinteger(s, -1)) {
+                    process->write<uint32_t>(address, (uint32_t)lua_tointeger(s, -1));
+                } else if (lua_isnumber(s, -1)) {
+                    process->write<float>(address, (float)lua_tonumber(s, -1));
+                }
+
+                value.pop();
+            } else {
+                process->write<uint32_t>(address, 0);
+            }
+
+            break;
+        case 2:
+            process->write<uint16_t>(address, value.as<uint16_t>());
+            break;
+        case 1:
+            value.push();
+
+            if (lua_isboolean(s, -1)) {
+                process->write<bool>(address, lua_toboolean(s, -1));
+            } else if (lua_isinteger(s, -1)) {
+                process->write<uint8_t>(address, (uint8_t)lua_tointeger(s, -1));
+            }
+
+            value.pop();
+
+            break;
+        }
     };
 }
 
