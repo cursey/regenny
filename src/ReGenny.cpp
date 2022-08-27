@@ -1006,15 +1006,51 @@ void ReGenny::reset_lua_state() {
         "write_int64", [](Process* p, uintptr_t addr, int64_t val) { p->write<int64_t>(addr, val); },
         "write_float", [](Process* p, uintptr_t addr, float val) { p->write<float>(addr, val); },
         "write_double", [](Process* p, uintptr_t addr, double val) { p->write<double>(addr, val); },
-        "read_string", read_string
+        "read_string", read_string,
+        "protect", &Process::protect,
+        "allocate", [](Process* p, uintptr_t addr, size_t size, sol::object flags_obj) {
+            uint64_t flags{};
+
+            if (flags_obj.is<uint64_t>()) {
+                flags = flags_obj.as<uint64_t>();
+            }
+
+            return p->allocate(addr, size, flags);
+        },
+        "get_module_within", &Process::get_module_within,
+        "get_module", &Process::get_module,
+        "modules", &Process::modules,
+        "allocations", &Process::allocations
     );
 
 #ifdef _WIN32
     m_lua->new_usertype<arch::WindowsProcess>("ReGennyWindowsProcess",
         sol::base_classes, sol::bases<Process>(),
-        "get_typename", &arch::WindowsProcess::get_typename
+        "get_typename", &arch::WindowsProcess::get_typename,
+        "allocate_rwx", [](arch::WindowsProcess* p, uintptr_t addr, size_t size) {
+            return p->allocate(addr, size, PAGE_EXECUTE_READWRITE);
+        },
+        "protect_rwx", [](arch::WindowsProcess* p, uintptr_t addr, size_t size) {
+            return p->protect(addr, size, PAGE_EXECUTE_READWRITE);
+        }
     );
 #endif
+
+    m_lua->new_usertype<Process::Module>("ReGennyProcessModule",
+        "name", &Process::Module::name,
+        "start", &Process::Module::start,
+        "end", &Process::Module::end,
+        "size", &Process::Module::size
+    );
+
+    m_lua->new_usertype<Process::Allocation>("ReGennyProcessAllocation",
+        "start", &Process::Allocation::start,
+        "end", &Process::Allocation::end,
+        "size", &Process::Allocation::size,
+        "read", &Process::Allocation::read,
+        "write", &Process::Allocation::write,
+        "execute", &Process::Allocation::execute
+    );
 
     lua["regenny"] = this;
 
