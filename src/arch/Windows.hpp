@@ -27,6 +27,8 @@ public:
 protected:
     bool handle_write(uintptr_t address, const void* buffer, size_t size) override;
     bool handle_read(uintptr_t address, void* buffer, size_t size) override;
+    std::optional<uint64_t> handle_protect(uintptr_t address, size_t size, uint64_t flags) override;
+    std::optional<uintptr_t> handle_allocate(uintptr_t address, size_t size, uint64_t flags) override;
 
 private:
     HANDLE m_process{};

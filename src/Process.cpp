@@ -24,9 +24,27 @@ bool Process::write(uintptr_t address, const void* buffer, size_t size) {
     return handle_write(address, buffer, size);
 }
 
+std::optional<uint64_t> Process::protect(uintptr_t address, size_t size, uint64_t flags) {
+    return handle_protect(address, size, flags);
+}
+
+std::optional<uintptr_t> Process::allocate(uintptr_t address, size_t size, uint64_t flags) {
+    return handle_allocate(address, size, flags);
+}
+
 const Process::Module* Process::get_module_within(uintptr_t addr) const {
     for (auto& mod : modules()) {
         if (addr >= mod.start && addr <= mod.end) {
+            return &mod;
+        }
+    }
+
+    return nullptr;
+}
+
+const Process::Module* Process::get_module(std::string_view name) const {
+    for (auto& mod : modules()) {
+        if (mod.name == name) {
             return &mod;
         }
     }

@@ -10,7 +10,7 @@
 
 namespace arch {
 WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
-    m_process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE, FALSE, process_id);
+    m_process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, process_id);
 
     if (m_process == nullptr) {
         return;
@@ -114,6 +114,24 @@ bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {
 
     return bytes_read == size;
 }
+
+std::optional<uintptr_t> WindowsProcess::handle_allocate(uintptr_t address, size_t size, uint64_t flags) {
+    if (auto ptr = VirtualAllocEx(m_process, (LPVOID)address, size, MEM_COMMIT, (DWORD)flags); ptr != nullptr) {
+        return (uintptr_t)ptr;
+    }
+
+    return std::nullopt;
+}
+
+std::optional<uint64_t> WindowsProcess::handle_protect(uintptr_t address, size_t size, uint64_t flags) {
+    DWORD old_protect{};
+
+    if (VirtualProtectEx(m_process, (LPVOID)address, size, (DWORD)flags, &old_protect) != 0) {
+        return (uint64_t)old_protect;
+    }
+
+    return std::nullopt;
+ }
 
 std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr_t ptr) {
     if (ptr == 0) {
