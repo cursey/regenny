@@ -900,7 +900,7 @@ void ReGenny::reset_lua_state() {
     m_lua = std::make_unique<sol::state>();
 
     m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
-    sol::lib::utf8, sol::lib::os, sol::lib::coroutine);
+    sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
 
     auto& lua = *m_lua;
 
