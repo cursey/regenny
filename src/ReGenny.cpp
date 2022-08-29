@@ -203,14 +203,44 @@ void ReGenny::ui() {
             if (std::string_view{eval.data()} == "clear") {
                 m_logger.clear();
             } else {
-                sol::protected_function_result result = m_lua->safe_script(eval.data());
+                auto result = m_lua->safe_script(std::string{"return "} + eval.data());
 
                 if (!result.valid()) {
-                    sol::script_default_on_error(*m_lua, std::move(result));
+                    result = m_lua->safe_script(eval.data());
+
+                    if (!result.valid()) {
+                        sol::script_default_on_error(*m_lua, std::move(result));
+                    }
+                } else {
+                    auto obj = result.get<sol::object>();
+
+                    obj.push();
+                    auto str = luaL_tolstring(*m_lua, -1, nullptr);
+
+                    if (str != nullptr) {
+                        spdlog::info("{}", str);
+                    }
+                    
+                    obj.pop();
                 }
             }
         } catch(const std::exception& e) {
-            spdlog::error("{}", e.what());
+            if (std::string_view{e.what()}.find("<eof>") != std::string_view::npos) {
+                // Try again without the return
+                try {
+                    auto result = m_lua->safe_script(eval.data());
+
+                    if (!result.valid()) {
+                        sol::script_default_on_error(*m_lua, std::move(result));
+                    }
+                } catch(const std::exception& e) {
+                    spdlog::error("{}", e.what());
+                } catch(...) {
+                    spdlog::error("Unknown exception");
+                }
+            } else {
+                spdlog::error("{}", e.what());
+            }
         } catch(...) {
             spdlog::error("Unknown exception");
         }
