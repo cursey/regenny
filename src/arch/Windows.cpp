@@ -111,7 +111,19 @@ bool WindowsProcess::handle_write(uintptr_t address, const void* buffer, size_t 
 bool WindowsProcess::handle_read(uintptr_t address, void* buffer, size_t size) {
     SIZE_T bytes_read{};
 
-    ReadProcessMemory(m_process, (LPCVOID)address, buffer, size, &bytes_read);
+    if (ReadProcessMemory(m_process, (LPCVOID)address, buffer, size, &bytes_read) == 0) {
+        // Query the page to get the real size, and re-read.
+        MEMORY_BASIC_INFORMATION mbi{};
+        if (VirtualQueryEx(m_process, (LPCVOID)address, &mbi, sizeof(mbi)) == 0) {
+            return false;
+        }
+
+        size = ((uintptr_t)mbi.BaseAddress + mbi.RegionSize) - address;
+
+        if (ReadProcessMemory(m_process, (LPCVOID)address, buffer, size, &bytes_read) == 0) {
+            return false;
+        }
+    }
 
     return bytes_read == size;
 }
