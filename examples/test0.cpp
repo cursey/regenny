@@ -4,6 +4,8 @@
 #pragma pack(push,1)
 enum Place { EARTH = 1, MOON = 2, MARS = 3 };
 
+enum Color : uint8_t { RED = 1, GREEN = 2, BLUE = 3 };
+
 struct Date {
     unsigned short nWeekDay : 3;
     unsigned short nMonthDay : 6;
@@ -19,6 +21,8 @@ struct Foo {
     int bf1 : 4;
     Place bf2 : 2;
     int rest : 26;
+    Place places[3]{EARTH, MOON, MARS};
+    Color colors[3]{RED, GREEN, BLUE};
 };
 
 struct Bar {

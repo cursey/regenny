@@ -7,6 +7,7 @@ type bool 1 [[bool]]
 type uintptr_t 8 [[u64]]
 type char 1
 type wchar_t 2
+type byte 1 [[u8]]
 
 struct RTTITest{}
 
@@ -14,6 +15,12 @@ enum Place {
     EARTH = 1,
     MOON = 2,
     MARS = 3,
+}
+
+enum Color : byte {
+	RED = 1,
+	GREEN = 2,
+	BLUE = 3
 }
 
 struct Date {
@@ -30,6 +37,10 @@ struct Foo {
     Place p
     Place bf1 : 4
     Place bf2 : 2
+    Place places[3]
+	Color colors[3]
+	//Color red
+	//Color blue
 }
 
 struct Bar {
