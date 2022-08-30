@@ -30,7 +30,7 @@ to open source.
 - [MIT License](https://github.com/taocpp/PEGTL/blob/master/LICENSE)
 
 ### [Native File Dialog](https://github.com/mlabbe/nativefiledialog)
-- Copyright © 2014-2019 Frogtoss Games, Inc.
+- Copyright (c) 2014-2019 Frogtoss Games, Inc.
 - [MIT License](https://github.com/mlabbe/nativefiledialog/blob/master/LICENSE)
 
 ### [spdlog](https://github.com/gabime/spdlog)
@@ -43,6 +43,14 @@ to open source.
 ### [JSON for Modern C++](https://github.com/nlohmann/json)
 - Copyright (c) 2013-2021 Niels Lohmann
 - [MIT License](https://github.com/nlohmann/json/blob/develop/LICENSE.MIT)
+
+### [Lua 5.4](https://www.lua.org/)
+- Copyright (C) 1994-2021 Lua.org, PUC-Rio
+- [MIT License](https://www.lua.org/license.html)
+
+### [sol2](https://github.com/ThePhD/sol2)
+- Copyright (c) 2013-2022 Rapptz, ThePhD, and contributors
+- [MIT License](https://github.com/ThePhD/sol2/blob/develop/LICENSE)
 
 ### [bottle.png](https://www.flaticon.com/free-icon/bottle_867876)
 - Icon made by [Freepik](https://www.freepik.com) from [www.flaticon.com](https://www.flaticon.com/)
