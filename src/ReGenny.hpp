@@ -7,7 +7,6 @@
 #include <memory>
 #include <string>
 #include <unordered_map>
-#include <deque>
 
 #include <Genny.hpp>
 #include <SDL.h>

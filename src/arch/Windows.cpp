@@ -10,7 +10,8 @@
 
 namespace arch {
 WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
-    m_process = OpenProcess(PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, process_id);
+    m_process = OpenProcess(
+        PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, process_id);
 
     if (m_process == nullptr) {
         return;
@@ -131,7 +132,7 @@ std::optional<uint64_t> WindowsProcess::handle_protect(uintptr_t address, size_t
     }
 
     return std::nullopt;
- }
+}
 
 std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr_t ptr) {
     if (ptr == 0) {

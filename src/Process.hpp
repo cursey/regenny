@@ -56,9 +56,7 @@ public:
         return out;
     }
 
-    template <typename T> bool write(uintptr_t address, const T& value) {
-        return write(address, &value, sizeof(T));
-    }
+    template <typename T> bool write(uintptr_t address, const T& value) { return write(address, &value, sizeof(T)); }
 
 protected:
     std::vector<Module> m_modules{};
@@ -67,6 +65,10 @@ protected:
 
     virtual bool handle_write(uintptr_t address, const void* buffer, size_t size) { return true; }
     virtual bool handle_read(uintptr_t address, void* buffer, size_t size) { return true; }
-    virtual std::optional<uint64_t> handle_protect(uintptr_t address, size_t size, uint64_t flags) { return std::nullopt; }
-    virtual std::optional<uintptr_t> handle_allocate(uintptr_t address, size_t size, uint64_t flags) { return std::nullopt; }
+    virtual std::optional<uint64_t> handle_protect(uintptr_t address, size_t size, uint64_t flags) {
+        return std::nullopt;
+    }
+    virtual std::optional<uintptr_t> handle_allocate(uintptr_t address, size_t size, uint64_t flags) {
+        return std::nullopt;
+    }
 };

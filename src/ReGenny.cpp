@@ -3,6 +3,7 @@
 #include <cstdlib>
 #include <type_traits>
 
+#include <LuaGenny.hpp>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
@@ -11,7 +12,6 @@
 #include <imgui_stdlib.h>
 #include <nfd.h>
 #include <spdlog/spdlog.h>
-#include <LuaGenny.hpp>
 
 #include "AboutUi.hpp"
 #include "GennyParser.hpp"
@@ -165,7 +165,7 @@ void ReGenny::ui() {
 
     if (m_reapply_focus_eval) {
         ImGui::SetKeyboardFocusHere();
-        m_reapply_focus_eval= false;
+        m_reapply_focus_eval = false;
     }
 
     auto eval_cb = [](ImGuiInputTextCallbackData* data) -> int {
@@ -191,7 +191,8 @@ void ReGenny::ui() {
         return 0;
     };
 
-    if (ImGui::InputText("eval", eval.data(), 256, ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, eval_cb, this)) {
+    if (ImGui::InputText("eval", eval.data(), 256,
+            ImGuiInputTextFlags_EnterReturnsTrue | ImGuiInputTextFlags_CallbackHistory, eval_cb, this)) {
         if (m_eval_history.size() >= 20) {
             m_eval_history.pop_front();
         }
@@ -220,11 +221,11 @@ void ReGenny::ui() {
                     if (str != nullptr) {
                         spdlog::info("{}", str);
                     }
-                    
+
                     obj.pop();
                 }
             }
-        } catch(const std::exception& e) {
+        } catch (const std::exception& e) {
             if (std::string_view{e.what()}.find("<eof>") != std::string_view::npos) {
                 // Try again without the return
                 try {
@@ -233,15 +234,15 @@ void ReGenny::ui() {
                     if (!result.valid()) {
                         sol::script_default_on_error(*m_lua, std::move(result));
                     }
-                } catch(const std::exception& e) {
+                } catch (const std::exception& e) {
                     spdlog::error("{}", e.what());
-                } catch(...) {
+                } catch (...) {
                     spdlog::error("Unknown exception");
                 }
             } else {
                 spdlog::error("{}", e.what());
             }
-        } catch(...) {
+        } catch (...) {
             spdlog::error("Unknown exception");
         }
 
@@ -926,15 +927,15 @@ void ReGenny::editor_ui() {
 void ReGenny::reset_lua_state() {
     std::scoped_lock _{m_lua_lock};
 
-    m_lua.reset();
     m_lua = std::make_unique<sol::state>();
-
-    m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table, sol::lib::bit32,
-    sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
-
     auto& lua = *m_lua;
 
+    m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table,
+        sol::lib::bit32, sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
     luagenny::open(lua);
+
+    // clang-format off
+
     lua["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
     lua["print"] = [](const char* text) {
         spdlog::info("{}", text);
@@ -1222,6 +1223,8 @@ void ReGenny::reset_lua_state() {
             break;
         }
     };
+
+    // clang-format on
 }
 
 void ReGenny::parse_editor_text() {
