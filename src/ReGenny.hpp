@@ -113,6 +113,7 @@ private:
     void save_project();
     void file_save_as();
     void file_quit();
+    void file_run_lua_script();
 
     void action_detach();
     void action_generate_sdk();

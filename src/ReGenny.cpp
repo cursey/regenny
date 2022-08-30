@@ -44,6 +44,7 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
 }
 
 ReGenny::~ReGenny() {
@@ -360,6 +361,10 @@ void ReGenny::menu_ui() {
                 file_save_as();
             }
 
+            if (ImGui::MenuItem("Run Lua Script...", "Ctrl+L")) {
+                file_run_lua_script();
+            }
+
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
                 file_quit();
             }
@@ -597,6 +602,26 @@ void ReGenny::file_quit() {
     event.type = SDL_QUIT;
 
     SDL_PushEvent((SDL_Event*)&event);
+}
+
+void ReGenny::file_run_lua_script() {
+    std::scoped_lock _{m_lua_lock};
+
+    nfdchar_t* lua_path{};
+
+    if (NFD_OpenDialog("lua", nullptr, &lua_path) != NFD_OKAY) {
+        return;
+    }
+
+    try {
+        m_lua->do_file(lua_path);
+    } catch(const std::exception& e) {
+        spdlog::error(e.what());
+        return;
+    } catch(...) {
+        spdlog::error("Unknown error!");
+        return;
+    }
 }
 
 void ReGenny::action_detach() {
