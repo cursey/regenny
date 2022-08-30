@@ -3,7 +3,7 @@
 #include <cstdlib>
 #include <type_traits>
 
-#include <LuaGenny.hpp>
+#include <LuaGenny.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
@@ -932,7 +932,7 @@ void ReGenny::reset_lua_state() {
 
     m_lua->open_libraries(sol::lib::base, sol::lib::package, sol::lib::string, sol::lib::math, sol::lib::table,
         sol::lib::bit32, sol::lib::utf8, sol::lib::os, sol::lib::coroutine, sol::lib::io);
-    luagenny::open(lua);
+    luaopen_luagenny(lua);
 
     // clang-format off
 
