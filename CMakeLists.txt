@@ -51,12 +51,12 @@ FetchContent_Declare(sdkgenny
 )
 FetchContent_MakeAvailable(sdkgenny)
 
-message(STATUS "Fetching luagenny (697214770557cf7fae4d9c5aa24d2cb2d53dca8e)...")
+message(STATUS "Fetching luagenny (2e275aec7dfa9483507bb6f768e8479860064d8b)...")
 FetchContent_Declare(luagenny
 	GIT_REPOSITORY
 		"https://github.com/praydog/luagenny.git"
 	GIT_TAG
-		697214770557cf7fae4d9c5aa24d2cb2d53dca8e
+		2e275aec7dfa9483507bb6f768e8479860064d8b
 )
 FetchContent_MakeAvailable(luagenny)
 
