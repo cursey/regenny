@@ -962,8 +962,16 @@ void ReGenny::reset_lua_state() {
     // clang-format off
 
     lua["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
-    lua["print"] = [](const char* text) {
-        spdlog::info("{}", text);
+    lua["print"] = [](sol::this_state s, sol::object value) {
+        if (value.is<const char*>()) {
+            spdlog::info("{}", value.as<const char*>());
+        } else {
+            auto str = luaL_tolstring(s, lua_gettop(s), nullptr);
+
+            spdlog::info("{}", str != nullptr ? str : "");
+
+            lua_pop(s, 1);
+        }
     };
 
     auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
