@@ -1290,7 +1290,7 @@ void ReGenny::parse_editor_text() {
             for (auto&& struct_ : structs) {
                 std::vector<std::string> parent_names{};
 
-                for (auto p = struct_->owner<genny::Object>(); p != nullptr; p = p->owner<genny::Object>()) {
+                for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>(); p = p->owner<genny::Object>()) {
                     if (auto& name = p->name(); !name.empty()) {
                         parent_names.emplace_back(name);
                     }
