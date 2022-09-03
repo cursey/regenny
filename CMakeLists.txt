@@ -187,6 +187,10 @@ target_link_libraries(regenny PRIVATE
 	luagenny::luagenny
 )
 
+add_custom_command(
+    TARGET regenny POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:luagenny_shared> $<TARGET_FILE_DIR:regenny>)
+
 unset(CMKR_TARGET)
 unset(CMKR_SOURCES)
 

@@ -67,6 +67,11 @@ link-libraries = [
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
+cmake-after="""
+add_custom_command(
+    TARGET regenny POST_BUILD
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different $<TARGET_FILE:luagenny_shared> $<TARGET_FILE_DIR:regenny>)
+"""
 
 [target.test0]
 type = "executable"
