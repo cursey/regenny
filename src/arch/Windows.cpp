@@ -221,6 +221,10 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 #endif
 }
 
+HANDLE WindowsProcess::create_remote_thread(uintptr_t address, uintptr_t param) {
+    return CreateRemoteThread(m_process, nullptr, 0, (LPTHREAD_START_ROUTINE)address, (LPVOID)param, 0, nullptr);
+}
+
 std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
     if (ptr == 0) {
         return std::nullopt;

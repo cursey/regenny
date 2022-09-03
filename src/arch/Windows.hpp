@@ -24,6 +24,8 @@ public:
     std::optional<_s_RTTICompleteObjectLocator> get_complete_object_locator(uintptr_t ptr);
     std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> get_typeinfo(uintptr_t ptr); // __RTtypeid
 
+    HANDLE create_remote_thread(uintptr_t address, uintptr_t param);
+
 protected:
     bool handle_write(uintptr_t address, const void* buffer, size_t size) override;
     bool handle_read(uintptr_t address, void* buffer, size_t size) override;
