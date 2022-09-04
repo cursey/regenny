@@ -35,7 +35,9 @@ public:
     std::optional<uint64_t> protect(uintptr_t address, size_t size, uint64_t flags);
     std::optional<uintptr_t> allocate(uintptr_t address, size_t size, uint64_t flags);
     virtual uint32_t process_id() { return 0; }
-    virtual bool ok() { return true; }
+
+    // NOTE: Return true by default so you can view structures without being attached.
+    virtual bool ok() { return true; } 
 
     // RTTI
     virtual std::optional<std::string> get_typename(uintptr_t ptr) { return std::nullopt; }
