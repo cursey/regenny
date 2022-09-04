@@ -65,8 +65,13 @@ void ReGenny::update() {
         ImGui_ImplOpenGL3_CreateFontsTexture();
         m_load_font = false;
     }
-    if (m_reload_file) {
+
+    auto now = std::chrono::system_clock::now();
+
+    // Auto reload changed files.
+    if (now > m_file_modified_check_time) {
         file_reload();
+        m_file_modified_check_time = now + 1s;
     }
 
     // Auto detach from closed processes.
@@ -76,7 +81,7 @@ void ReGenny::update() {
         }
     }
 
-    if (m_cfg_save_time && std::chrono::system_clock::now() > *m_cfg_save_time) {
+    if (m_cfg_save_time && now > *m_cfg_save_time) {
         save_cfg();
         m_cfg_save_time = std::nullopt;
     }
@@ -148,10 +153,6 @@ void ReGenny::ui() {
 
     ImGui::Begin("Memory View");
     memory_ui();
-    ImGui::End();
-
-    ImGui::Begin("Editor");
-    editor_ui();
     ImGui::End();
 
     ImGui::Begin("Log");
@@ -424,7 +425,6 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Set SDK Extensions")) {
                 ImGui::OpenPopup(m_ui.extensions_popup);
             }
-            ImGui::Checkbox("Reload current .genny file on changes", &m_reload_file);
 
             if (ImGui::SliderInt("Refresh delay", &m_cfg.refresh_rate, 0, 1000)) {
                 m_cfg_save_time = std::chrono::system_clock::now() + 1s;
@@ -452,32 +452,27 @@ void ReGenny::menu_ui() {
 
 void ReGenny::file_reload() {
     // Check if a file was modified
-    if (m_open_filepath.empty()) {
+    if (m_open_filepath.empty() || m_sdk == nullptr) {
         return;
     }
-    auto cwt = std::filesystem::last_write_time(m_open_filepath);
-    if (cwt != m_file_lwt) {
-        spdlog::info("Reopening {}...", m_open_filepath.string());
 
-        std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
+    for (auto&& filepath : m_sdk->imports()) {
+        auto cwt = std::filesystem::last_write_time(filepath);
 
-        if (!f) {
-            spdlog::error("Failed to open {}!", m_open_filepath.string());
+        if (cwt > m_file_lwt) {
+            spdlog::info("Reopening {}...", filepath.string());
+            parse_file();
+            m_file_lwt = cwt;
             return;
         }
-
-        m_ui.editor_text.resize(f.tellg());
-        f.seekg(0, std::ifstream::beg);
-        f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
-
-        m_log_parse_errors = true;
-        parse_editor_text();
-        m_log_parse_errors = false;
     }
-    m_file_lwt = cwt;
 }
 
 void ReGenny::file_open(const std::filesystem::path& filepath) {
+    if (m_process && m_process->process_id() != 0) {
+        action_detach();
+    }
+
     if (filepath.empty()) {
         nfdchar_t* out_path{};
 
@@ -493,24 +488,10 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
 
     spdlog::info("Opening {}...", m_open_filepath.string());
 
-    std::ifstream f{m_open_filepath, std::ifstream::in | std::ifstream::binary | std::ifstream::ate};
-
-    if (!f) {
-        spdlog::error("Failed to open {}!", m_open_filepath.string());
-        return;
-    }
-
-    m_ui.editor_text.resize(f.tellg());
-    f.seekg(0, std::ifstream::beg);
-    f.read(m_ui.editor_text.data(), m_ui.editor_text.size());
-
     load_project();
-
-    m_log_parse_errors = true;
-    parse_editor_text();
-    m_log_parse_errors = false;
-
+    parse_file();
     remember_file();
+    set_window_title();
 }
 
 void ReGenny::load_project() {
@@ -549,16 +530,6 @@ void ReGenny::file_save() {
     }
 
     spdlog::info("Saving {}...", m_open_filepath.string());
-
-    m_log_parse_errors = true;
-    parse_editor_text();
-    m_log_parse_errors = false;
-
-    {
-        std::ofstream f{m_open_filepath, std::ofstream::out | std::ofstream::binary};
-
-        f.write(m_ui.editor_text.c_str(), m_ui.editor_text.size());
-    }
 
     remember_file();
     save_project();
@@ -630,7 +601,7 @@ void ReGenny::action_detach() {
     m_mem_ui = std::make_unique<MemoryUi>(
         m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
     m_ui.processes.clear();
-    SDL_SetWindowTitle(m_window, "ReGenny");
+    set_window_title();
 }
 
 void ReGenny::action_generate_sdk() {
@@ -724,9 +695,8 @@ void ReGenny::attach() {
         return;
     }
 
-    parse_editor_text();
-    SDL_SetWindowTitle(
-        m_window, fmt::format("ReGenny - {} PID: {}", m_project.process_name, m_project.process_id).c_str());
+    parse_file();
+    set_window_title();
 }
 
 void ReGenny::rtti_ui() {
@@ -934,19 +904,6 @@ void ReGenny::set_type() {
 
     m_mem_ui = std::make_unique<MemoryUi>(
         m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
-}
-
-void ReGenny::editor_ui() {
-    if (ImGui::InputTextMultiline(
-            "##source", &m_ui.editor_text, ImGui::GetContentRegionAvail(), ImGuiInputTextFlags_AllowTabInput)) {
-        parse_editor_text();
-    }
-
-    if (!m_ui.editor_error_msg.empty()) {
-        ImGui::BeginTooltip();
-        ImGui::TextColored({1.0f, 0.6f, 0.6f, 1.0f}, "%s", m_ui.editor_error_msg.c_str());
-        ImGui::EndTooltip();
-    }
 }
 
 void ReGenny::reset_lua_state() {
@@ -1261,19 +1218,25 @@ void ReGenny::reset_lua_state() {
     // clang-format on
 }
 
-void ReGenny::parse_editor_text() {
-    m_ui.editor_error_msg.clear();
-
+void ReGenny::parse_file() {
     auto sdk = std::make_unique<genny::Sdk>();
+
+    sdk->import(m_open_filepath);
 
     genny::parser::State s{};
     s.filepath = m_open_filepath;
     s.parents.push_back(sdk->global_ns());
 
-    tao::pegtl::memory_input in{m_ui.editor_text, "editor"};
+    tao::pegtl::file_input in{m_open_filepath};
 
     try {
         if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+            // We just parsed, so record the max last write time for any of the imported files.
+            // This prevents reloading on opening a file for the first time since launch.
+            for (auto&& import : sdk->imports()) {
+                m_file_lwt = std::max(m_file_lwt, std::filesystem::last_write_time(import));
+            }
+
             m_sdk = std::move(sdk);
 
             if (m_mem_ui != nullptr) {
@@ -1311,10 +1274,7 @@ void ReGenny::parse_editor_text() {
             set_type();
         }
     } catch (const tao::pegtl::parse_error& e) {
-        if (m_log_parse_errors) {
-            spdlog::error(e.what());
-        }
-        return;
+        spdlog::error(e.what());
     }
 }
 
@@ -1381,3 +1341,18 @@ void ReGenny::remember_type_and_address() {
 
     m_project.type_addresses[m_project.type_chosen] = m_ui.address;
 }
+
+void ReGenny::set_window_title() {
+    std::string title = "ReGenny";
+
+    if (!m_open_filepath.empty()) {
+        title += fmt::format(" - {}", m_open_filepath.string());
+    }
+
+    if (m_process && m_process->process_id() != 0 && !m_project.process_name.empty()) {
+        title += fmt::format(" - {} PID: {}", m_project.process_name, m_project.process_id);
+    }
+
+    SDL_SetWindowTitle(m_window, title.c_str());
+}
+

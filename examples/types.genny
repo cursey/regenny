@@ -1,0 +1,11 @@
+// Basic types we use throughout the test proj.
+type int 4 [[i32]]
+type float 4 [[f32]]
+type ushort 2 [[u16]]
+type str 8 [[utf8*]]
+type wstr 8 [[utf16*]]
+type bool 1 [[bool]]
+type uintptr_t 8 [[u64]]
+type char 1
+type wchar_t 2
+type byte 1 [[u8]]

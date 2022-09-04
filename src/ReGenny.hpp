@@ -66,9 +66,6 @@ private:
         std::string address{};
         std::set<std::string> type_names{};
 
-        std::string editor_text{};
-        std::string editor_error_msg{};
-
         std::string rtti_text{};
 
         ImGuiID attach_popup{};
@@ -82,13 +79,11 @@ private:
 
     std::filesystem::path m_open_filepath{};
     std::filesystem::file_time_type m_file_lwt;
+    std::chrono::system_clock::time_point m_file_modified_check_time{};
 
     LoggerUi m_logger{};
-    bool m_log_parse_errors{};
 
     bool m_load_font{};
-
-    bool m_reload_file{};
 
     std::filesystem::path m_app_path{};
     Trigger::Group m_triggers{};
@@ -128,8 +123,7 @@ private:
     void set_address();
     void set_type();
 
-    void editor_ui();
-    void parse_editor_text();
+    void parse_file();
     void reset_lua_state();
 
     void load_cfg();
@@ -137,4 +131,6 @@ private:
 
     void remember_file();
     void remember_type_and_address();
+
+    void set_window_title();
 };
