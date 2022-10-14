@@ -459,11 +459,17 @@ void ReGenny::file_reload() {
     for (auto&& filepath : m_sdk->imports()) {
         auto cwt = std::filesystem::last_write_time(filepath);
 
-        if (cwt > m_file_lwt) {
-            spdlog::info("Reopening {}...", filepath.string());
-            parse_file();
-            m_file_lwt = cwt;
-            return;
+        try {
+            if (cwt > m_file_lwt) {
+                spdlog::info("Reopening {}...", filepath.string());
+                parse_file();
+                m_file_lwt = cwt;
+                return;
+            }
+        } catch(const std::exception& e) {
+            spdlog::error("Failed to get last write time for {}: {}", filepath.string(), e.what());
+        } catch(...) {
+            spdlog::error("Failed to get last write time for {} (Unknown reason)", filepath.string());
         }
     }
 }
