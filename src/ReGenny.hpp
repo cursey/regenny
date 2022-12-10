@@ -101,6 +101,7 @@ private:
 
     void menu_ui();
 
+    void file_new();
     void file_open(const std::filesystem::path& filepath = {});
     void file_reload();
     void load_project();

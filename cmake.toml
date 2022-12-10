@@ -18,7 +18,7 @@ packages = [
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "6da5377cf8d59b99ee94ec1ab52e50d934b24166" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "ee6d202ed31bd040bd6d484df6ef90ad3c4d3536" }
 luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "2e275aec7dfa9483507bb6f768e8479860064d8b" }
 
 [find-package]

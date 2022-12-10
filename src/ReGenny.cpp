@@ -41,6 +41,7 @@ ReGenny::ReGenny(SDL_Window* window)
 
     load_cfg();
 
+    m_triggers.on({SDLK_LCTRL, SDLK_n}, [this] { file_new(); });
     m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
@@ -336,6 +337,10 @@ void ReGenny::ui() {
 void ReGenny::menu_ui() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
+            if (ImGui::MenuItem("New", "Ctrl+N")) {
+                file_new();            
+            }
+
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
                 file_open();
             }
@@ -354,6 +359,8 @@ void ReGenny::menu_ui() {
                 ImGui::EndMenu();
             }
 
+            ImGui::BeginDisabled(m_sdk == nullptr);
+
             if (ImGui::MenuItem("Save", "Ctrl+S")) {
                 file_save();
             }
@@ -365,6 +372,8 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Run Lua Script...", "Ctrl+L")) {
                 file_run_lua_script();
             }
+
+            ImGui::EndDisabled();
 
             if (ImGui::MenuItem("Exit", "Ctrl+Q")) {
                 file_quit();
@@ -396,6 +405,8 @@ void ReGenny::menu_ui() {
         }
 
         if (ImGui::BeginMenu("Action")) {
+            ImGui::BeginDisabled(m_sdk == nullptr);
+
             if (ImGui::MenuItem("Attach")) {
                 ImGui::OpenPopup(m_ui.attach_popup);
             }
@@ -413,6 +424,7 @@ void ReGenny::menu_ui() {
                 ImGui::OpenPopup(m_ui.rtti_popup);
             }
 
+            ImGui::EndDisabled();
             ImGui::EndMenu();
         }
 
@@ -472,6 +484,36 @@ void ReGenny::file_reload() {
             spdlog::error("Failed to get last write time for {} (Unknown reason)", filepath.string());
         }
     }
+}
+
+void ReGenny::file_new() {
+    if (m_process && m_process->process_id() != 0) {
+        action_detach(); 
+    }
+
+    nfdchar_t* out_path{};
+
+    if (NFD_SaveDialog("genny", nullptr, &out_path) != NFD_OKAY) {
+        return; 
+    }
+
+    m_open_filepath = out_path;
+    m_open_filepath.replace_extension("genny");
+
+    free(out_path);
+
+    spdlog::info("Creating new project {}...", m_open_filepath.string());
+
+    std::ofstream genny_file{m_open_filepath};
+
+    genny_file << "type int 4 [[i32]]\n\n"
+               << "struct Foo {\n"
+               << "    int bar @ 8\n"
+               << "}\n";
+    genny_file.close();
+
+    save_project();
+    parse_file();
 }
 
 void ReGenny::file_open(const std::filesystem::path& filepath) {
@@ -564,9 +606,10 @@ void ReGenny::file_save_as() {
         return;
     }
 
-    spdlog::info("Saving as {}...", save_path);
-
     m_open_filepath = save_path;
+    m_open_filepath.replace_extension("genny");
+
+    spdlog::info("Saving as {}...", m_open_filepath.string());
 
     file_save();
     free(save_path);
@@ -1224,7 +1267,7 @@ void ReGenny::reset_lua_state() {
     // clang-format on
 }
 
-void ReGenny::parse_file() {
+void ReGenny::parse_file() try {
     auto sdk = std::make_unique<genny::Sdk>();
 
     sdk->import(m_open_filepath);
@@ -1235,54 +1278,52 @@ void ReGenny::parse_file() {
 
     tao::pegtl::file_input in{m_open_filepath};
 
-    try {
-        if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
-            // We just parsed, so record the max last write time for any of the imported files.
-            // This prevents reloading on opening a file for the first time since launch.
-            for (auto&& import : sdk->imports()) {
-                m_file_lwt = std::max(m_file_lwt, std::filesystem::last_write_time(import));
-            }
-
-            m_sdk = std::move(sdk);
-
-            if (m_mem_ui != nullptr) {
-                m_project.props[m_project.type_chosen] = m_mem_ui->props();
-                m_mem_ui.reset();
-            }
-
-            // Build the list of selectable types for the type selector.
-            m_ui.type_names.clear();
-
-            std::unordered_set<genny::Struct*> structs{};
-            m_sdk->global_ns()->get_all_in_children<genny::Struct>(structs);
-
-            for (auto&& struct_ : structs) {
-                std::vector<std::string> parent_names{};
-
-                for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>(); p = p->owner<genny::Object>()) {
-                    if (auto& name = p->name(); !name.empty()) {
-                        parent_names.emplace_back(name);
-                    }
-                }
-
-                std::reverse(parent_names.begin(), parent_names.end());
-                std::string name{};
-
-                for (auto p : parent_names) {
-                    name += p + '.';
-                }
-
-                name += struct_->name();
-
-                m_ui.type_names.emplace(std::move(name));
-            }
-
-            set_type();
+    if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+        // We just parsed, so record the max last write time for any of the imported files.
+        // This prevents reloading on opening a file for the first time since launch.
+        for (auto&& import : sdk->imports()) {
+            m_file_lwt = std::max(m_file_lwt, std::filesystem::last_write_time(import));
         }
-    } catch (const tao::pegtl::parse_error& e) {
-        spdlog::error(e.what());
+
+        m_sdk = std::move(sdk);
+
+        if (m_mem_ui != nullptr) {
+            m_project.props[m_project.type_chosen] = m_mem_ui->props();
+            m_mem_ui.reset();
+        }
+
+        // Build the list of selectable types for the type selector.
+        m_ui.type_names.clear();
+
+        std::unordered_set<genny::Struct*> structs{};
+        m_sdk->global_ns()->get_all_in_children<genny::Struct>(structs);
+
+        for (auto&& struct_ : structs) {
+            std::vector<std::string> parent_names{};
+
+            for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>(); p = p->owner<genny::Object>()) {
+                if (auto& name = p->name(); !name.empty()) {
+                    parent_names.emplace_back(name);
+                }
+            }
+
+            std::reverse(parent_names.begin(), parent_names.end());
+            std::string name{};
+
+            for (auto p : parent_names) {
+                name += p + '.';
+            }
+
+            name += struct_->name();
+
+            m_ui.type_names.emplace(std::move(name));
+        }
+
+        set_type();
     }
-}
+} catch (const std::exception& e) {
+    spdlog::error(e.what());
+} 
 
 void ReGenny::load_cfg() {
     auto cfg_path = (m_app_path / "cfg.json").string();
