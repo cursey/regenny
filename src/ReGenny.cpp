@@ -1325,28 +1325,31 @@ void ReGenny::parse_file() try {
     spdlog::error(e.what());
 } 
 
-void ReGenny::load_cfg() {
+void ReGenny::load_cfg() try {
     auto cfg_path = (m_app_path / "cfg.json").string();
+
+    if (!std::filesystem::exists(cfg_path)) {
+        return;
+    }
 
     spdlog::info("Loading config {}...", cfg_path);
 
-    try {
-        std::ifstream f{cfg_path};
-        nlohmann::json j{};
+    std::ifstream f{cfg_path};
+    nlohmann::json j{};
 
-        f >> j;
-        m_cfg = j.get<Config>();
+    f >> j;
+    m_cfg = j.get<Config>();
 
-        if (!m_cfg.font_file.empty()) {
-            m_load_font = true;
-        }
-
-        SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
-    } catch (const nlohmann::json::exception& e) {
-        spdlog::error(e.what());
-        m_cfg = {};
+    if (!m_cfg.font_file.empty()) {
+        m_load_font = true;
     }
+
+    SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
+}catch (const std::exception& e) {
+    spdlog::error(e.what());
+    m_cfg = {};
 }
+
 
 void ReGenny::save_cfg() {
     auto cfg_path = m_app_path / "cfg.json";
