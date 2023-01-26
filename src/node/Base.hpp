@@ -12,6 +12,7 @@ namespace node {
 class Base {
 public:
     Base(Config& cfg, Process& process, Property& props);
+    virtual ~Base() = default;
 
     virtual void display(uintptr_t address, uintptr_t offset, std::byte* mem) = 0;
     virtual size_t size() = 0;

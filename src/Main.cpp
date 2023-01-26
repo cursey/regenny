@@ -25,7 +25,7 @@ int main(int, char**) {
     auto cleanup_sdl = sg::make_scope_guard([] { SDL_Quit(); });
 
     // GL 3.0 + GLSL 130
-    const char* glsl_version = "#version 130";
+    //const char* glsl_version = "#version 130";
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_FLAGS, 0);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_PROFILE_MASK, SDL_GL_CONTEXT_PROFILE_CORE);
     SDL_GL_SetAttribute(SDL_GL_CONTEXT_MAJOR_VERSION, 3);
@@ -74,7 +74,7 @@ int main(int, char**) {
 
     // Setup Platform/Renderer backends
     ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
-    ImGui_ImplOpenGL3_Init(glsl_version);
+    ImGui_ImplOpenGL3_Init();
 
     auto cleanup_imgui = sg::make_scope_guard([] {
         ImGui_ImplOpenGL3_Shutdown();

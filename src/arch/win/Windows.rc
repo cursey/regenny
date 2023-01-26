@@ -1,0 +1,5 @@
+#ifndef _DEBUG
+101 ICON "..\\..\\..\\resources\\bottle.ico"
+#else
+101 ICON "..\\..\\..\\resources\\potion.ico"
+#endif

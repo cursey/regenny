@@ -20,7 +20,7 @@
 #include "node/Undefined.hpp"
 
 #ifdef _WIN32
-#include "arch/Windows.hpp"
+#include "arch/win/Windows.hpp"
 #endif
 
 #include "ReGenny.hpp"
@@ -900,7 +900,7 @@ void ReGenny::memory_ui() {
         ImGui::TextColored({1.0f, 0.0f, 0.0f, 1.0f}, "Invalid address!");
         // return;
     } else {
-        ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", m_address);
+        ImGui::TextColored({0.0f, 1.0f, 0.0f, 1.0f}, "%p", reinterpret_cast<void*>(m_address));
     }
 
     update_address();
@@ -988,25 +988,25 @@ void ReGenny::reset_lua_state() {
         "address", &ReGenny::address,
         "overlay", [create_overlay](sol::this_state s, ReGenny* rg) -> sol::object {
             if (rg->process() == nullptr) {
-                return sol::make_object(s, sol::nil);
+                return sol::make_object(s, sol::lua_nil);
             }
 
             if (rg->type() == nullptr || !rg->type()->is_a<genny::Struct>()) {
-                return sol::make_object(s, sol::nil);
+                return sol::make_object(s, sol::lua_nil);
             }
 
             return sol::make_object(s, create_overlay(rg->address(), dynamic_cast<genny::Struct*>(rg->type())));
         },
         "sdk", [](sol::this_state s, ReGenny* rg) { 
             if (rg->sdk() == nullptr) {
-                sol::make_object(s, sol::nil);
+                sol::make_object(s, sol::lua_nil);
             }
 
             return sol::make_object(s, rg->sdk().get());
         },
         "process", [](sol::this_state s, ReGenny* rg) -> sol::object { 
             if (rg->process() == nullptr) {
-                sol::make_object(s, sol::nil);
+                sol::make_object(s, sol::lua_nil);
             }
 
         #ifdef _WIN32
@@ -1133,13 +1133,13 @@ void ReGenny::reset_lua_state() {
         auto rg = lua["regenny"].get<ReGenny*>();
 
         if (rg == nullptr) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         auto& process = rg->process();
 
         if (process == nullptr) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         switch (size) {
@@ -1179,7 +1179,7 @@ void ReGenny::reset_lua_state() {
             break;
         }
 
-        return sol::make_object(s, sol::nil);
+        return sol::make_object(s, sol::lua_nil);
     };
 
     lua["sdkgenny_string_reader"] = [read_string](sol::this_state s, uintptr_t address) -> sol::object {
@@ -1187,13 +1187,13 @@ void ReGenny::reset_lua_state() {
         auto rg = lua["regenny"].get<ReGenny*>();
 
         if (rg == nullptr) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         auto& process = rg->process();
 
         if (process == nullptr) {
-            return sol::make_object(s, sol::nil);
+            return sol::make_object(s, sol::lua_nil);
         }
 
         return sol::make_object(s, read_string(process.get(), address, true));
@@ -1215,7 +1215,7 @@ void ReGenny::reset_lua_state() {
 
         switch(size) {
         case 8:
-            if (!value.is<sol::nil_t>()) {
+            if (!value.is<sol::lua_nil_t>()) {
                 value.push();
 
                 if (lua_isinteger(s, -1)) {
@@ -1231,7 +1231,7 @@ void ReGenny::reset_lua_state() {
 
             break;
         case 4:
-            if (!value.is<sol::nil_t>()) {
+            if (!value.is<sol::lua_nil_t>()) {
                 value.push();
 
                 if (lua_isinteger(s, -1)) {

@@ -42,21 +42,21 @@ endif()
 
 include(FetchContent)
 
-message(STATUS "Fetching sdkgenny (ee6d202ed31bd040bd6d484df6ef90ad3c4d3536)...")
+message(STATUS "Fetching sdkgenny (e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a)...")
 FetchContent_Declare(sdkgenny
 	GIT_REPOSITORY
 		"https://github.com/cursey/sdkgenny.git"
 	GIT_TAG
-		ee6d202ed31bd040bd6d484df6ef90ad3c4d3536
+		e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a
 )
 FetchContent_MakeAvailable(sdkgenny)
 
-message(STATUS "Fetching luagenny (2e275aec7dfa9483507bb6f768e8479860064d8b)...")
+message(STATUS "Fetching luagenny (c782472c3443c69aec1d0ddc245b4a0e8256e7f4)...")
 FetchContent_Declare(luagenny
 	GIT_REPOSITORY
-		"https://github.com/praydog/luagenny.git"
+		"https://github.com/cursey/luagenny.git"
 	GIT_TAG
-		2e275aec7dfa9483507bb6f768e8479860064d8b
+		c782472c3443c69aec1d0ddc245b4a0e8256e7f4
 )
 FetchContent_MakeAvailable(luagenny)
 
@@ -97,16 +97,6 @@ list(APPEND regenny_SOURCES
 	"src/Project.cpp"
 	"src/ReGenny.cpp"
 	"src/Utility.cpp"
-	"src/arch/Arch.cpp"
-	"src/arch/Windows.cpp"
-	"src/node/Array.cpp"
-	"src/node/Base.cpp"
-	"src/node/Bitfield.cpp"
-	"src/node/Pointer.cpp"
-	"src/node/Struct.cpp"
-	"src/node/Undefined.cpp"
-	"src/node/UndefinedBitfield.cpp"
-	"src/node/Variable.cpp"
 	"src/AboutUi.hpp"
 	"src/Config.hpp"
 	"src/Helpers.hpp"
@@ -116,8 +106,14 @@ list(APPEND regenny_SOURCES
 	"src/Project.hpp"
 	"src/ReGenny.hpp"
 	"src/Utility.hpp"
-	"src/arch/Arch.hpp"
-	"src/arch/Windows.hpp"
+	"src/node/Array.cpp"
+	"src/node/Base.cpp"
+	"src/node/Bitfield.cpp"
+	"src/node/Pointer.cpp"
+	"src/node/Struct.cpp"
+	"src/node/Undefined.cpp"
+	"src/node/UndefinedBitfield.cpp"
+	"src/node/Variable.cpp"
 	"src/node/Array.hpp"
 	"src/node/Base.hpp"
 	"src/node/Bitfield.hpp"
@@ -127,6 +123,7 @@ list(APPEND regenny_SOURCES
 	"src/node/Undefined.hpp"
 	"src/node/UndefinedBitfield.hpp"
 	"src/node/Variable.hpp"
+	"src/arch/Arch.hpp"
 	"thirdparty/SDL_Trigger/sdl_trigger.cpp"
 	"thirdparty/scope_gaurd/scope_guard.hpp"
 	"thirdparty/SDL_Trigger/sdl_trigger.h"
@@ -134,7 +131,16 @@ list(APPEND regenny_SOURCES
 
 if(WIN32) # windows
 	list(APPEND regenny_SOURCES
-		"src/arch/Windows.rc"
+		"src/arch/win/Windows.rc"
+		"src/arch/win/Windows.cpp"
+		"src/arch/win/Windows.hpp"
+	)
+endif()
+
+if(CMAKE_SYSTEM_NAME MATCHES "Darwin") # macos
+	list(APPEND regenny_SOURCES
+		"src/arch/mac/Mac.cpp"
+		"src/arch/mac/Mac.hpp"
 	)
 endif()
 

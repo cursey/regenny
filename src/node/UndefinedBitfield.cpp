@@ -4,6 +4,7 @@
 #include "UndefinedBitfield.hpp"
 
 namespace node {
+namespace {
 template <typename T> void display_bits(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem) {
     s += "0b";
 
@@ -19,6 +20,7 @@ template <typename T> void display_bits(std::string& s, size_t num_bits, uintptr
         }
     }
 }
+} // namespace
 
 UndefinedBitfield::UndefinedBitfield(
     Config& cfg, Process& process, Property& props, size_t size, size_t bit_size, size_t bit_offset)

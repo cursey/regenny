@@ -9,6 +9,14 @@
 #include "Windows.hpp"
 
 namespace arch {
+std::unique_ptr<Helpers> make_helpers() {
+    return std::make_unique<arch::WindowsHelpers>();
+}
+
+std::unique_ptr<Process> open_process(uint32_t process_id) {
+    return std::make_unique<arch::WindowsProcess>(process_id);
+}
+
 WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     m_process = OpenProcess(
         PROCESS_QUERY_INFORMATION | PROCESS_VM_READ | PROCESS_VM_WRITE | PROCESS_VM_OPERATION, FALSE, process_id);

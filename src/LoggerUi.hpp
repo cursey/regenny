@@ -20,8 +20,8 @@ protected:
     void flush_() override {}
 
 private:
-    ImGuiTextBuffer& m_buf{};
-    bool& m_scroll_to_bottom{};
+    ImGuiTextBuffer& m_buf;
+    bool& m_scroll_to_bottom;
 };
 
 class LoggerUi {

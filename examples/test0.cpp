@@ -92,7 +92,7 @@ struct Baz : Bar {
     bool im_true{true};
     bool im_false{false};
     char im_also_true{7};
-    __declspec(align(sizeof(void*))) RTTITest* rtti{};
+    /*__declspec(align(sizeof(void*)))*/ RTTITest* rtti{};
     E* e_ptr{};
 };
 #pragma pack(pop)

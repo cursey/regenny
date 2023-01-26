@@ -7,6 +7,7 @@
 #include "Bitfield.hpp"
 
 namespace node {
+namespace {
 template <typename T> void display_bits(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem) {
     s += "0b";
 
@@ -22,6 +23,7 @@ template <typename T> void display_bits(std::string& s, size_t num_bits, uintptr
         }
     }
 }
+} // namespace
 
 template <typename T> void display_as(std::string& s, size_t num_bits, uintptr_t offset, std::byte* mem) {
     T mask{};
@@ -79,7 +81,7 @@ void Bitfield::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     ImGui::BeginGroup();
     ImGui::TextColored({0.6f, 0.6f, 1.0f, 1.0f}, "%s", m_var->type()->name().c_str());
     ImGui::SameLine();
-    ImGui::Text("%s : %d", m_var->name().c_str(), m_var->bit_size());
+    ImGui::Text("%s : %d", m_var->name().c_str(), static_cast<int>(m_var->bit_size()));
     ImGui::SameLine();
     ImGui::TextUnformatted(m_display_str.c_str());
     ImGui::EndGroup();

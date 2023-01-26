@@ -18,8 +18,8 @@ packages = [
 ]
 
 [fetch-content]
-sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "ee6d202ed31bd040bd6d484df6ef90ad3c4d3536" }
-luagenny = { git = "https://github.com/praydog/luagenny.git", tag = "2e275aec7dfa9483507bb6f768e8479860064d8b" }
+sdkgenny = { git = "https://github.com/cursey/sdkgenny.git", tag = "e397e2b0ee8224cc2c0332aebcd7c311d9a0c05a" }
+luagenny = { git = "https://github.com/cursey/luagenny.git", tag = "c782472c3443c69aec1d0ddc245b4a0e8256e7f4" }
 
 [find-package]
 imgui = {}
@@ -37,13 +37,25 @@ lua = {}
 [target.regenny]
 type = "executable"
 sources = [
-    "src/**.cpp",
-    "src/**.hpp",
+    "src/*.cpp",
+    "src/*.hpp",
+    "src/node/*.cpp",
+    "src/node/*.hpp",
+    "src/arch/*.cpp",
+    "src/arch/*.hpp",
     "thirdparty/**.cpp",
     "thirdparty/**.hpp",
     "thirdparty/**.h",
 ]
-windows.sources = ["src/**.rc"]
+windows.sources = [
+    "src/arch/win/**.rc", 
+    "src/arch/win/**.cpp",
+    "src/arch/win/**.hpp"
+]
+macos.sources = [
+    "src/arch/mac/**.cpp",
+    "src/arch/mac/**.hpp",
+]
 include-directories = [
     "src/",
     "thirdparty/scope_gaurd/",
