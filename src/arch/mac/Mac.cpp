@@ -35,10 +35,33 @@ MacProcess::MacProcess(uint32_t process_id) : Process{} {
         a.write = info.protection & VM_PROT_WRITE;
         a.execute = info.protection & VM_PROT_EXECUTE;
 
-        m_allocations.emplace_back(std::move(a));
+        if (a.read) {
+            // Cache read-only allocations.
+            if (!a.write) {
+                ReadOnlyAllocation ro{};
+                ro.start = a.start;
+                ro.size = a.size;
+                ro.end = a.end;
+                ro.read = a.read;
+                ro.write = a.write;
+                ro.execute = a.execute;
+                ro.mem.resize(ro.size);
+
+                if (read(ro.start, ro.mem.data(), ro.size)) {
+                    m_read_only_allocations.emplace_back(std::move(ro));
+                }
+            }
+
+            m_allocations.emplace_back(std::move(a));
+        }
 
         address += size;
     }
+}
+
+bool MacProcess::handle_write(uintptr_t address, const void* buffer, size_t size) {
+    const auto write_status = vm_write(m_process, address, (vm_offset_t)buffer, size);
+    return write_status == KERN_SUCCESS;
 }
 
 bool MacProcess::handle_read(uintptr_t address, void* buffer, size_t size) {

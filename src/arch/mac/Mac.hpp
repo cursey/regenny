@@ -13,6 +13,7 @@ public:
     bool ok() override { return m_process != 0; }
 
 protected:
+    bool handle_write(uintptr_t address, const void* buffer, size_t size) override;
     bool handle_read(uintptr_t address, void* buffer, size_t size) override;
 
 private:
