@@ -46,6 +46,7 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
     m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_e}, [this] { file_open_in_editor(); });
 }
 
 ReGenny::~ReGenny() {
@@ -338,7 +339,7 @@ void ReGenny::menu_ui() {
     if (ImGui::BeginMenuBar()) {
         if (ImGui::BeginMenu("File")) {
             if (ImGui::MenuItem("New", "Ctrl+N")) {
-                file_new();            
+                file_new();
             }
 
             if (ImGui::MenuItem("Open", "Ctrl+O")) {
@@ -369,7 +370,11 @@ void ReGenny::menu_ui() {
                 file_save_as();
             }
 
-            if (ImGui::MenuItem("Run Lua Script...", "Ctrl+L")) {
+            if (ImGui::MenuItem("Open In Editor", "Ctrl+E")) {
+                file_open_in_editor();
+            }
+
+            if (ImGui::MenuItem("Run Lua Script", "Ctrl+L")) {
                 file_run_lua_script();
             }
 
@@ -478,9 +483,9 @@ void ReGenny::file_reload() {
                 m_file_lwt = cwt;
                 return;
             }
-        } catch(const std::exception& e) {
+        } catch (const std::exception& e) {
             spdlog::error("Failed to get last write time for {}: {}", filepath.string(), e.what());
-        } catch(...) {
+        } catch (...) {
             spdlog::error("Failed to get last write time for {} (Unknown reason)", filepath.string());
         }
     }
@@ -488,13 +493,13 @@ void ReGenny::file_reload() {
 
 void ReGenny::file_new() {
     if (m_process && m_process->process_id() != 0) {
-        action_detach(); 
+        action_detach();
     }
 
     nfdchar_t* out_path{};
 
     if (NFD_SaveDialog("genny", nullptr, &out_path) != NFD_OKAY) {
-        return; 
+        return;
     }
 
     m_open_filepath = out_path;
@@ -615,6 +620,16 @@ void ReGenny::file_save_as() {
     free(save_path);
 }
 
+void ReGenny::file_open_in_editor() {
+    if (m_open_filepath.empty()) {
+        return;
+    }
+
+    spdlog::info("Opening {}...", m_open_filepath.string());
+
+    SDL_OpenURL(("file://" + m_open_filepath.string()).c_str());
+}
+
 void ReGenny::file_quit() {
     SDL_QuitEvent event{};
 
@@ -635,10 +650,10 @@ void ReGenny::file_run_lua_script() {
 
     try {
         m_lua->do_file(lua_path);
-    } catch(const std::exception& e) {
+    } catch (const std::exception& e) {
         spdlog::error(e.what());
         return;
-    } catch(...) {
+    } catch (...) {
         spdlog::error("Unknown error!");
         return;
     }
@@ -1301,7 +1316,8 @@ void ReGenny::parse_file() try {
         for (auto&& struct_ : structs) {
             std::vector<std::string> parent_names{};
 
-            for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>(); p = p->owner<genny::Object>()) {
+            for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>();
+                 p = p->owner<genny::Object>()) {
                 if (auto& name = p->name(); !name.empty()) {
                     parent_names.emplace_back(name);
                 }
@@ -1323,7 +1339,7 @@ void ReGenny::parse_file() try {
     }
 } catch (const std::exception& e) {
     spdlog::error(e.what());
-} 
+}
 
 void ReGenny::load_cfg() try {
     auto cfg_path = (m_app_path / "cfg.json").string();
@@ -1345,11 +1361,10 @@ void ReGenny::load_cfg() try {
     }
 
     SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
-}catch (const std::exception& e) {
+} catch (const std::exception& e) {
     spdlog::error(e.what());
     m_cfg = {};
 }
-
 
 void ReGenny::save_cfg() {
     auto cfg_path = m_app_path / "cfg.json";
@@ -1405,4 +1420,3 @@ void ReGenny::set_window_title() {
 
     SDL_SetWindowTitle(m_window, title.c_str());
 }
-

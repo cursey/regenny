@@ -108,6 +108,7 @@ private:
     void file_save();
     void save_project();
     void file_save_as();
+    void file_open_in_editor();
     void file_quit();
     void file_run_lua_script();
 
