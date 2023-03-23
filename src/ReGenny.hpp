@@ -8,8 +8,8 @@
 #include <string>
 #include <unordered_map>
 
-#include <Genny.hpp>
 #include <SDL.h>
+#include <sdkgenny.hpp>
 #include <sol/sol.hpp>
 
 #include "Config.hpp"
@@ -48,8 +48,8 @@ private:
 
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
-    std::unique_ptr<genny::Sdk> m_sdk{};
-    genny::Type* m_type{};
+    std::unique_ptr<sdkgenny::Sdk> m_sdk{};
+    sdkgenny::Type* m_type{};
     uintptr_t m_address{};
     bool m_is_address_valid{};
     ParsedAddress m_parsed_address{};

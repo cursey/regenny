@@ -6,8 +6,8 @@
 #include "Undefined.hpp"
 
 namespace node {
-static genny::Namespace g_preview_ns{""};
-static genny::Variable g_preview_ptr{"preview_ptr"};
+static sdkgenny::Namespace g_preview_ns{""};
+static sdkgenny::Variable g_preview_ptr{"preview_ptr"};
 static Property g_preview_props{};
 static std::unique_ptr<Pointer> g_preview_node{};
 static Process* g_preview_node_process{};

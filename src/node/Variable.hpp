@@ -1,13 +1,13 @@
 #pragma once
 
-#include <Genny.hpp>
+#include <sdkgenny.hpp>
 
 #include "Base.hpp"
 
 namespace node {
 class Variable : public Base {
 public:
-    Variable(Config& cfg, Process& process, genny::Variable* var, Property& props);
+    Variable(Config& cfg, Process& process, sdkgenny::Variable* var, Property& props);
 
     virtual void display_type();
     virtual void display_name();
@@ -16,7 +16,7 @@ public:
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
 
 protected:
-    genny::Variable* m_var{};
+    sdkgenny::Variable* m_var{};
     size_t m_size{};
     std::string m_value_str{};
     std::string m_utf8{};

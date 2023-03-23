@@ -10,8 +10,8 @@
 #include "Struct.hpp"
 
 namespace node {
-Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& props)
-    : Variable{cfg, process, var, props}, m_struct{dynamic_cast<genny::Struct*>(var->type())} {
+Struct::Struct(Config& cfg, Process& process, sdkgenny::Variable* var, Property& props)
+    : Variable{cfg, process, var, props}, m_struct{dynamic_cast<sdkgenny::Struct*>(var->type())} {
     assert(m_struct != nullptr);
 
     m_props["__collapsed"].set_default(true);
@@ -19,14 +19,14 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
     std::set<uintptr_t> bitfield_offsets{};
 
     // Build the node map.
-    auto make_node = [&](genny::Variable* var) -> std::unique_ptr<Base> {
+    auto make_node = [&](sdkgenny::Variable* var) -> std::unique_ptr<Base> {
         auto&& props = m_props[var->name()];
 
-        if (var->type()->is_a<genny::Array>()) {
+        if (var->type()->is_a<sdkgenny::Array>()) {
             return std::make_unique<Array>(m_cfg, m_process, var, props);
-        } else if (var->type()->is_a<genny::Struct>()) {
+        } else if (var->type()->is_a<sdkgenny::Struct>()) {
             return std::make_unique<Struct>(m_cfg, m_process, var, props);
-        } else if (var->type()->is_a<genny::Pointer>()) {
+        } else if (var->type()->is_a<sdkgenny::Pointer>()) {
             return std::make_unique<Pointer>(m_cfg, m_process, var, props);
         } else if (var->is_bitfield()) {
             return std::make_unique<Bitfield>(m_cfg, m_process, var, props);
@@ -34,7 +34,7 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
             return std::make_unique<Variable>(m_cfg, m_process, var, props);
         }
     };
-    std::function<void(uintptr_t, genny::Struct*)> add_vars = [&](uintptr_t offset, genny::Struct* s) {
+    std::function<void(uintptr_t, sdkgenny::Struct*)> add_vars = [&](uintptr_t offset, sdkgenny::Struct* s) {
         auto parent_offset = offset;
 
         for (auto&& parent : s->parents()) {
@@ -42,7 +42,7 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
             parent_offset += parent->size();
         }
 
-        for (auto&& var : s->get_all<genny::Variable>()) {
+        for (auto&& var : s->get_all<sdkgenny::Variable>()) {
             if (var->is_bitfield()) {
                 bitfield_offsets.emplace(offset + var->offset());
             } else {
@@ -56,7 +56,7 @@ Struct::Struct(Config& cfg, Process& process, genny::Variable* var, Property& pr
     // Fill in all the bitfields (padding becomes UndefinedBitfield nodes).
     for (auto offset : bitfield_offsets) {
         auto last_bit = 0;
-        genny::Type* bitfield_type = nullptr;
+        sdkgenny::Type* bitfield_type = nullptr;
 
         for (auto&& [bit_offset, var] : m_struct->bitfield(offset)) {
             if (bit_offset - last_bit > 0) {

@@ -37,7 +37,7 @@ public:
     virtual uint32_t process_id() { return 0; }
 
     // NOTE: Return true by default so you can view structures without being attached.
-    virtual bool ok() { return true; } 
+    virtual bool ok() { return true; }
 
     // RTTI
     virtual std::optional<std::string> get_typename(uintptr_t ptr) { return std::nullopt; }

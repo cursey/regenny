@@ -8,7 +8,7 @@
 namespace node {
 class Pointer : public Variable {
 public:
-    Pointer(Config& cfg, Process& process, genny::Variable* var, Property& props);
+    Pointer(Config& cfg, Process& process, sdkgenny::Variable* var, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
@@ -32,13 +32,13 @@ public:
     auto& array_count() { return m_props["__count"].as_int(); }
 
 protected:
-    genny::Pointer* m_ptr{};
+    sdkgenny::Pointer* m_ptr{};
     std::vector<std::byte> m_mem{};
     std::chrono::steady_clock::time_point m_mem_refresh_time{};
     uintptr_t m_address{};
 
     std::unique_ptr<Base> m_ptr_node{};
-    std::unique_ptr<genny::Variable> m_proxy_var{};
+    std::unique_ptr<sdkgenny::Variable> m_proxy_var{};
 
     std::string m_value_str{};
     std::string m_address_str{};
