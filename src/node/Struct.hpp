@@ -7,7 +7,7 @@
 namespace node {
 class Struct : public Variable {
 public:
-    Struct(Config& cfg, Process& process, genny::Variable* var, Property& props);
+    Struct(Config& cfg, Process& process, sdkgenny::Variable* var, Property& props);
 
     void display(uintptr_t address, uintptr_t offset, std::byte* mem) override;
     void update(uintptr_t address, uintptr_t offset, std::byte* mem) override;
@@ -26,7 +26,7 @@ public:
 
 private:
     bool m_display_self{true};
-    genny::Struct* m_struct{};
+    sdkgenny::Struct* m_struct{};
     std::multimap<uintptr_t, std::unique_ptr<Base>> m_nodes{};
     bool m_is_hovered{};
     std::string m_display_str{};

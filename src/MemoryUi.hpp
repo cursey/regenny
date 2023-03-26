@@ -5,7 +5,7 @@
 #include <unordered_map>
 #include <vector>
 
-#include <Genny.hpp>
+#include <sdkgenny.hpp>
 
 #include "Config.hpp"
 #include "Process.hpp"
@@ -14,7 +14,8 @@
 
 class MemoryUi {
 public:
-    MemoryUi(Config& cfg, genny::Sdk& sdk, genny::Struct* struct_, Process& process, node::Property& inherited_props);
+    MemoryUi(
+        Config& cfg, sdkgenny::Sdk& sdk, sdkgenny::Struct* struct_, Process& process, node::Property& inherited_props);
 
     void display(uintptr_t address);
 
@@ -22,11 +23,11 @@ public:
 
 private:
     Config& m_cfg;
-    genny::Sdk& m_sdk;
-    genny::Struct* m_struct{};
+    sdkgenny::Sdk& m_sdk;
+    sdkgenny::Struct* m_struct{};
     Process& m_process;
 
-    std::unique_ptr<genny::Variable> m_proxy_variable{};
+    std::unique_ptr<sdkgenny::Variable> m_proxy_variable{};
     std::unique_ptr<node::Base> m_root{};
 
     node::Property m_props;

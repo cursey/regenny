@@ -11,10 +11,10 @@
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
+#include <sdkgenny_parser.hpp>
 #include <spdlog/spdlog.h>
 
 #include "AboutUi.hpp"
-#include "GennyParser.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
 #include "node/Undefined.hpp"
@@ -663,7 +663,7 @@ void ReGenny::action_detach() {
     spdlog::info("Detaching...");
     m_process = std::make_unique<Process>();
     m_mem_ui = std::make_unique<MemoryUi>(
-        m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+        m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
     m_ui.processes.clear();
     set_window_title();
 }
@@ -938,12 +938,12 @@ void ReGenny::set_type() {
         return;
     }
 
-    genny::Object* parent = m_sdk->global_ns();
+    sdkgenny::Object* parent = m_sdk->global_ns();
     std::string type_name = m_project.type_chosen;
     size_t pos{};
 
     while ((pos = type_name.find('.')) != std::string::npos) {
-        parent = parent->find<genny::Object>(type_name.substr(0, pos));
+        parent = parent->find<sdkgenny::Object>(type_name.substr(0, pos));
 
         if (parent == nullptr) {
             return;
@@ -952,7 +952,7 @@ void ReGenny::set_type() {
         type_name.erase(0, pos + 1);
     }
 
-    m_type = parent->find<genny::Struct>(type_name);
+    m_type = parent->find<sdkgenny::Struct>(type_name);
 
     if (m_type == nullptr) {
         return;
@@ -967,7 +967,7 @@ void ReGenny::set_type() {
     set_address();
 
     m_mem_ui = std::make_unique<MemoryUi>(
-        m_cfg, *m_sdk, dynamic_cast<genny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+        m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
 }
 
 void ReGenny::reset_lua_state() {
@@ -1006,11 +1006,11 @@ void ReGenny::reset_lua_state() {
                 return sol::make_object(s, sol::nil);
             }
 
-            if (rg->type() == nullptr || !rg->type()->is_a<genny::Struct>()) {
+            if (rg->type() == nullptr || !rg->type()->is_a<sdkgenny::Struct>()) {
                 return sol::make_object(s, sol::nil);
             }
 
-            return sol::make_object(s, create_overlay(rg->address(), dynamic_cast<genny::Struct*>(rg->type())));
+            return sol::make_object(s, create_overlay(rg->address(), dynamic_cast<sdkgenny::Struct*>(rg->type())));
         },
         "sdk", [](sol::this_state s, ReGenny* rg) { 
             if (rg->sdk() == nullptr) {
@@ -1283,17 +1283,17 @@ void ReGenny::reset_lua_state() {
 }
 
 void ReGenny::parse_file() try {
-    auto sdk = std::make_unique<genny::Sdk>();
+    auto sdk = std::make_unique<sdkgenny::Sdk>();
 
     sdk->import(m_open_filepath);
 
-    genny::parser::State s{};
+    sdkgenny::parser::State s{};
     s.filepath = m_open_filepath;
     s.parents.push_back(sdk->global_ns());
 
     tao::pegtl::file_input in{m_open_filepath};
 
-    if (tao::pegtl::parse<genny::parser::Grammar, genny::parser::Action>(in, s)) {
+    if (tao::pegtl::parse<sdkgenny::parser::Grammar, sdkgenny::parser::Action>(in, s)) {
         // We just parsed, so record the max last write time for any of the imported files.
         // This prevents reloading on opening a file for the first time since launch.
         for (auto&& import : sdk->imports()) {
@@ -1310,14 +1310,14 @@ void ReGenny::parse_file() try {
         // Build the list of selectable types for the type selector.
         m_ui.type_names.clear();
 
-        std::unordered_set<genny::Struct*> structs{};
-        m_sdk->global_ns()->get_all_in_children<genny::Struct>(structs);
+        std::unordered_set<sdkgenny::Struct*> structs{};
+        m_sdk->global_ns()->get_all_in_children<sdkgenny::Struct>(structs);
 
         for (auto&& struct_ : structs) {
             std::vector<std::string> parent_names{};
 
-            for (auto p = struct_->owner<genny::Object>(); p != nullptr && !p->is_a<genny::Sdk>();
-                 p = p->owner<genny::Object>()) {
+            for (auto p = struct_->owner<sdkgenny::Object>(); p != nullptr && !p->is_a<sdkgenny::Sdk>();
+                 p = p->owner<sdkgenny::Object>()) {
                 if (auto& name = p->name(); !name.empty()) {
                     parent_names.emplace_back(name);
                 }
@@ -1336,6 +1336,8 @@ void ReGenny::parse_file() try {
         }
 
         set_type();
+    } else {
+        throw std::runtime_error{"Failed to parse file."}; 
     }
 } catch (const std::exception& e) {
     spdlog::error(e.what());

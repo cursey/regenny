@@ -9,13 +9,13 @@
 #include "MemoryUi.hpp"
 
 MemoryUi::MemoryUi(
-    Config& cfg, genny::Sdk& sdk, genny::Struct* struct_, Process& process, node::Property& inherited_props)
+    Config& cfg, sdkgenny::Sdk& sdk, sdkgenny::Struct* struct_, Process& process, node::Property& inherited_props)
     : m_cfg{cfg}, m_sdk{sdk}, m_struct{struct_}, m_process{process}, m_props{inherited_props} {
     if (m_struct == nullptr) {
         return;
     }
 
-    m_proxy_variable = std::make_unique<genny::Variable>("root");
+    m_proxy_variable = std::make_unique<sdkgenny::Variable>("root");
     m_proxy_variable->type(m_struct->ptr());
 
     auto root = std::make_unique<node::Pointer>(m_cfg, m_process, m_proxy_variable.get(), m_props);

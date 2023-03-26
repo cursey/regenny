@@ -25,7 +25,7 @@ static void display_str(std::string& s, const std::string& str) {
     s += "\" ";
 }
 
-template <typename T> void display_enum(std::string& s, std::byte* mem, genny::Enum* enum_) {
+template <typename T> void display_enum(std::string& s, std::byte* mem, sdkgenny::Enum* enum_) {
     auto val = *(T*)mem;
     auto val_found = false;
 
@@ -42,7 +42,7 @@ template <typename T> void display_enum(std::string& s, std::byte* mem, genny::E
     }
 }
 
-Variable::Variable(Config& cfg, Process& process, genny::Variable* var, Property& props)
+Variable::Variable(Config& cfg, Process& process, sdkgenny::Variable* var, Property& props)
     : Base{cfg, process, props}, m_var{var}, m_size{var->size()} {
 }
 
@@ -153,7 +153,7 @@ void Variable::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         }
     }
 
-    if (auto enum_ = dynamic_cast<genny::Enum*>(m_var->type())) {
+    if (auto enum_ = dynamic_cast<sdkgenny::Enum*>(m_var->type())) {
         switch (m_size) {
         case 1:
             display_enum<uint8_t>(m_value_str, mem, enum_);
