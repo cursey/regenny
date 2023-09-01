@@ -146,6 +146,14 @@ std::optional<uint64_t> WindowsProcess::handle_protect(uintptr_t address, size_t
     return std::nullopt;
 }
 
+std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr_from_vtable(uintptr_t vtable) {
+    if (vtable == 0) {
+        return std::nullopt;
+    }
+
+    return Process::read<uintptr_t>(vtable - sizeof(void*));
+}
+
 std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr_t ptr) {
     if (ptr == 0) {
         return std::nullopt;
@@ -157,7 +165,7 @@ std::optional<uintptr_t> WindowsProcess::get_complete_object_locator_ptr(uintptr
         return std::nullopt;
     }
 
-    return Process::read<uintptr_t>(*vtable - sizeof(void*));
+    return get_complete_object_locator_ptr_from_vtable(*vtable);
 }
 
 std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_locator(uintptr_t ptr) {
@@ -170,18 +178,8 @@ std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_
     return Process::read<_s_RTTICompleteObjectLocator>(*out_ptr);
 }
 
-std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::get_typeinfo(uintptr_t ptr) {
-    if (ptr == 0) {
-        return std::nullopt;
-    }
-
-    auto locator_ptr = get_complete_object_locator_ptr(ptr);
-
-    if (!locator_ptr || *locator_ptr == 0) {
-        return std::nullopt;
-    }
-
-    auto locator = Process::read<_s_RTTICompleteObjectLocator>(*locator_ptr);
+std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_locator(uintptr_t locator_ptr) {
+    auto locator = Process::read<_s_RTTICompleteObjectLocator>(locator_ptr);
 
     if (!locator) {
         return std::nullopt;
@@ -198,7 +196,7 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
     uintptr_t image_base = 0;
 
     if (locator->signature == COL_SIG_REV0) {
-        auto module_within = get_module_within(*locator_ptr);
+        auto module_within = get_module_within(locator_ptr);
 
         if (!module_within) {
             return std::nullopt;
@@ -206,7 +204,7 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 
         image_base = module_within->start;
     } else {
-        image_base = *locator_ptr - locator->pSelf;
+        image_base = locator_ptr - locator->pSelf;
     }
 
     auto ti = image_base + type_desc_pre;
@@ -221,6 +219,34 @@ std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess:
 #endif
 }
 
+std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_ptr(uintptr_t ptr) {
+    if (ptr == 0) {
+        return std::nullopt;
+    }
+
+    auto locator_ptr = get_complete_object_locator_ptr(ptr);
+
+    if (!locator_ptr || *locator_ptr == 0) {
+        return std::nullopt;
+    }
+
+    return try_get_typeinfo_from_locator(*locator_ptr);
+}
+
+std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_vtable(uintptr_t vtable) {
+    if (vtable == 0) {
+        return std::nullopt;
+    }
+
+    auto locator_ptr = get_complete_object_locator_ptr_from_vtable(vtable);
+
+    if (!locator_ptr || *locator_ptr == 0) {
+        return std::nullopt;
+    }
+
+    return try_get_typeinfo_from_locator(*locator_ptr);
+}
+
 HANDLE WindowsProcess::create_remote_thread(uintptr_t address, uintptr_t param) {
     return CreateRemoteThread(m_process, nullptr, 0, (LPTHREAD_START_ROUTINE)address, (LPVOID)param, 0, nullptr);
 }
@@ -230,7 +256,21 @@ std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
         return std::nullopt;
     }
 
-    auto typeinfo = get_typeinfo(ptr);
+    auto vtable = Process::read<uintptr_t>(ptr);
+
+    if (!vtable || *vtable == 0) {
+        return std::nullopt;
+    }
+
+    return get_typename_from_vtable(*vtable);
+}
+
+std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t ptr) {
+    if (ptr == 0) {
+        return std::nullopt;
+    }
+
+    auto typeinfo = try_get_typeinfo_from_vtable(ptr);
 
     if (!typeinfo) {
         return std::nullopt;
@@ -238,7 +278,13 @@ std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
 
     auto ti = (std::type_info*)&*typeinfo;
 
-    return ti->raw_name();
+    const auto result = std::string_view{ti->raw_name()};
+
+    if (result.empty() || result == " ") {
+        return std::nullopt;
+    }
+
+    return std::string{result};
 }
 
 std::map<uint32_t, std::string> WindowsHelpers::processes() {

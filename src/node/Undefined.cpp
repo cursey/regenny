@@ -96,7 +96,9 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
         // RTTI
         if (auto tn = m_process.get_typename(address); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj:{:s} ", *tn);
-        }
+        } else if (auto tn = m_process.get_typename_from_vtable(address); tn) {
+            fmt::format_to(std::back_inserter(m_preview_str), "vtable:{:s} ", *tn);
+        } 
 
         if (auto tn = m_process.get_typename(addr); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj*:{:s} ", *tn);

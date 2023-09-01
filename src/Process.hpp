@@ -41,6 +41,7 @@ public:
 
     // RTTI
     virtual std::optional<std::string> get_typename(uintptr_t ptr) { return std::nullopt; }
+    virtual std::optional<std::string> get_typename_from_vtable(uintptr_t ptr) { return std::nullopt; }
 
     auto&& modules() const { return m_modules; }
     auto&& allocations() const { return m_allocations; }

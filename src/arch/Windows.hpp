@@ -18,11 +18,16 @@ public:
     bool ok() override;
 
     std::optional<std::string> get_typename(uintptr_t ptr) override;
+    std::optional<std::string> get_typename_from_vtable(uintptr_t ptr) override;
 
     // RTTI
+    std::optional<uintptr_t> get_complete_object_locator_ptr_from_vtable(uintptr_t vtable);
     std::optional<uintptr_t> get_complete_object_locator_ptr(uintptr_t ptr);
     std::optional<_s_RTTICompleteObjectLocator> get_complete_object_locator(uintptr_t ptr);
-    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> get_typeinfo(uintptr_t ptr); // __RTtypeid
+    
+    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_locator(uintptr_t locator_ptr);
+    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_ptr(uintptr_t ptr);
+    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_vtable(uintptr_t vtable);
 
     HANDLE create_remote_thread(uintptr_t address, uintptr_t param);
 
