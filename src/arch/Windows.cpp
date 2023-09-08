@@ -277,8 +277,15 @@ std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t pt
     }
 
     auto ti = (std::type_info*)&*typeinfo;
+    if (ti->raw_name()[0] != '.' || ti->raw_name()[1] != '?') {
+        return std::nullopt;
+    }
 
-    const auto result = std::string_view{ti->raw_name()};
+    if (std::string_view{ti->raw_name()}.find("@") == std::string_view::npos) {
+        return std::nullopt;
+    }
+
+    const auto result = std::string_view{ti->name()};
 
     if (result.empty() || result == " ") {
         return std::nullopt;
