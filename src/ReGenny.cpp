@@ -817,7 +817,28 @@ void ReGenny::rtti_ui() {
                 continue;
             }
 
-            const auto demangled = tname->substr(4, tname->find_first_of("@@") - 4);
+            std::vector<uint8_t> bad_chars{
+                '<', '>', ':', '"', '/', '\\', '|', '?', '*', '\0', '\a', '\b', '\f', '\n', '\r', '\t',
+                ' ', ',', ';', '=', '(', ')', '[', ']', '{', '}'
+            };
+
+            std::string demangled{};
+            demangled.reserve(tname->length());
+            
+            // replace bad characters with underscores
+            for (auto&& c : *tname) {
+                if (std::find(bad_chars.begin(), bad_chars.end(), c) != bad_chars.end()) {
+                    demangled += '_';
+                } else {
+                    demangled += c;
+                }
+            }
+
+            if (demangled.starts_with("class")) {
+                demangled = demangled.substr(5);
+            } else if (demangled.starts_with("struct")) {
+                demangled = demangled.substr(6);
+            }
 
             counts[demangled] += 1;
             const auto count = counts[demangled];
