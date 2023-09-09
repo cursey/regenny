@@ -1,6 +1,9 @@
 # Reference: https://build-cpp.github.io/cmkr/cmake-toml
 [project]
 name = "regenny"
+cmake-before=""" 
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+"""
 
 [vcpkg]
 version = "2022.08.15"
@@ -67,6 +70,7 @@ link-libraries = [
 ]
 compile-definitions = ["UTF_CPP_CPLUSPLUS=201103L"]
 compile-features = ["cxx_std_17"]
+compile-options = ["/EHa"]
 cmake-after="""
 add_custom_command(
     TARGET regenny POST_BUILD

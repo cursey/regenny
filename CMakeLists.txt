@@ -27,6 +27,9 @@ if(CMKR_ROOT_PROJECT)
 	configure_file(cmake.toml cmake.toml COPYONLY)
 endif()
 
+ 
+add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
+
 project(regenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
@@ -162,6 +165,10 @@ target_compile_definitions(regenny PRIVATE
 
 target_compile_features(regenny PRIVATE
 	cxx_std_17
+)
+
+target_compile_options(regenny PRIVATE
+	"/EHa"
 )
 
 target_include_directories(regenny PRIVATE

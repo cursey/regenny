@@ -265,7 +265,7 @@ std::optional<std::string> WindowsProcess::get_typename(uintptr_t ptr) {
     return get_typename_from_vtable(*vtable);
 }
 
-std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t ptr) {
+std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t ptr) try {
     if (ptr == 0) {
         return std::nullopt;
     }
@@ -285,6 +285,9 @@ std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t pt
         return std::nullopt;
     }
 
+    auto raw_data = (__std_type_info_data*)((uintptr_t)ti + sizeof(void*));
+    raw_data->_UndecoratedName = nullptr; // fixes a crash if memory already allocated because it's not allocated by us
+
     const auto result = std::string_view{ti->name()};
 
     if (result.empty() || result == " ") {
@@ -292,6 +295,8 @@ std::optional<std::string> WindowsProcess::get_typename_from_vtable(uintptr_t pt
     }
 
     return std::string{result};
+} catch(...) {
+    return std::nullopt;
 }
 
 std::map<uint32_t, std::string> WindowsHelpers::processes() {
