@@ -153,6 +153,19 @@ void ReGenny::ui() {
         ImGui::EndPopup();
     }
 
+    m_ui.rtti_sweep_popup = ImGui::GetID("RTTI Sweep");
+    if (ImGui::BeginPopupModal("RTTI Sweep")) {
+        rtti_sweep_ui();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+
     ImGui::Begin("Memory View");
     memory_ui();
     ImGui::End();
@@ -427,6 +440,10 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("Autogenerate RTTI Struct")) {
                 m_ui.rtti_text.clear();
                 ImGui::OpenPopup(m_ui.rtti_popup);
+            }
+
+            if (ImGui::MenuItem("RTTI Sweep Scan")) {
+                ImGui::OpenPopup(m_ui.rtti_sweep_popup);
             }
 
             ImGui::EndDisabled();
@@ -761,6 +778,114 @@ void ReGenny::attach() {
 
     parse_file();
     set_window_title();
+}
+
+void ReGenny::rtti_sweep_ui() {
+    if (m_process == nullptr || !m_process->ok() || m_process->process_id() == 0) {
+        ImGui::Text("Error: No Process");
+        return;
+    }
+
+    if (!m_is_address_valid) {
+        ImGui::Text("Error: Invalid Address");
+        return;
+    }
+
+    if (m_type == nullptr) {
+        ImGui::Text("Error: No Type");
+        return;
+    }
+
+    if (m_type->size() == 0) {
+        ImGui::Text("Error: Empty Type");
+        return;
+    }
+
+    auto size = ImGui::GetContentRegionAvail();
+
+    size.y -= 16;
+    size.y = std::clamp(size.y, 0.0f, 128.0f);
+
+    if (ImGui::InputTextMultiline("##sweep_rtti", &m_ui.rtti_sweep_text, size, ImGuiInputTextFlags_AllowTabInput)) {
+    }
+
+    if (ImGui::InputText("Class Name", &m_ui.rtti_sweep_search_name, ImGuiInputTextFlags_AllowTabInput)) {
+    }
+
+    if (ImGui::Button("Search")) {
+        m_ui.rtti_sweep_text.clear();
+
+        std::vector<uint8_t> base_data(m_type->size());
+        m_process->read(m_address, base_data.data(), base_data.size());
+
+        for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
+            if (i + sizeof(void*) >= base_data.size()) {
+                break;
+            }
+
+            const auto deref = *(uintptr_t*)(base_data.data() + i);
+
+            if (deref == 0) {
+                continue;
+            }
+
+            const auto tname = m_process->get_typename(deref);
+
+            if (!tname || tname->length() < 5) {
+                continue;
+            }
+
+            if (tname && tname->find(m_ui.rtti_sweep_search_name) != std::string::npos) {
+                m_ui.rtti_sweep_text += fmt::format("struct {:s}* {:s} @ 0x{:x}\n", *tname, "rtti", (uintptr_t)i);
+            }
+        }
+
+        struct Chain {
+            uintptr_t base;
+            size_t offset;
+        };
+
+        static std::function<void(uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name)> lookup{};
+        lookup = [this](uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name) {
+            if (chain.size() > 2) {
+                return;
+            }
+
+            std::vector<uint8_t> data(size);
+            if (!m_process->read(base, data.data(), size)) {
+                return;
+            }
+
+            for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
+                if (i + sizeof(void*) >= data.size()) {
+                    break;
+                }
+
+                const auto deref = *(uintptr_t*)(data.data() + i);
+
+                if (deref == 0) {
+                    continue;
+                }
+
+                const auto tname = m_process->get_typename(deref);
+
+                if (tname && tname->find(class_name) != std::string::npos) {
+                    std::string chain_string{};
+                    for (auto&& c : chain) {
+                        chain_string += fmt::format("0x{:x} -> ", c.offset);
+                    }
+                    m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
+                }
+                
+                chain.push_back({base, i});
+                lookup(deref, 0x1000, chain, class_name);
+                chain.pop_back();
+            }
+        };
+
+        std::vector<Chain> chain{};
+        lookup(m_address, m_type->size(), chain, m_ui.rtti_sweep_search_name);
+    }
 }
 
 void ReGenny::rtti_ui() {
@@ -1133,6 +1258,7 @@ void ReGenny::reset_lua_state() {
     m_lua->new_usertype<arch::WindowsProcess>("ReGennyWindowsProcess",
         sol::base_classes, sol::bases<Process>(),
         "get_typename", &arch::WindowsProcess::get_typename,
+        "get_typename_from_vtable", &arch::WindowsProcess::get_typename_from_vtable,
         "allocate_rwx", [](arch::WindowsProcess* p, uintptr_t addr, size_t size) {
             return p->allocate(addr, size, PAGE_EXECUTE_READWRITE);
         },

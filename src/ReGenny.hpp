@@ -67,9 +67,12 @@ private:
         std::set<std::string> type_names{};
 
         std::string rtti_text{};
+        std::string rtti_sweep_text{};
+        std::string rtti_sweep_search_name{};
 
         ImGuiID attach_popup{};
         ImGuiID rtti_popup{};
+        ImGuiID rtti_sweep_popup{};
         ImGuiID font_popup{};
         ImGuiID about_popup{};
         ImGuiID extensions_popup{};
@@ -119,6 +122,7 @@ private:
     void attach();
 
     void rtti_ui();
+    void rtti_sweep_ui();
 
     void update_address();
     void memory_ui();
