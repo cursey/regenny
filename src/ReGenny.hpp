@@ -67,6 +67,8 @@ private:
         std::set<std::string> type_names{};
 
         std::string rtti_text{};
+
+        std::recursive_mutex rtti_lock{};
         std::string rtti_sweep_text{};
         std::string rtti_sweep_search_name{};
 

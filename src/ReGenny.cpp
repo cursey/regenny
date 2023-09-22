@@ -3,6 +3,8 @@
 #include <cstdlib>
 #include <type_traits>
 
+#include <ppl.h>
+
 #include <LuaGenny.h>
 #include <fmt/format.h>
 #include <imgui.h>
@@ -818,53 +820,66 @@ void ReGenny::rtti_sweep_ui() {
         std::vector<uint8_t> base_data(m_type->size());
         m_process->read(m_address, base_data.data(), base_data.size());
 
-        for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
+        //for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
+        concurrency::parallel_for(size_t{0}, base_data.size(), size_t{sizeof(void*)}, [&](size_t i) {
             if (i + sizeof(void*) >= base_data.size()) {
-                break;
+                return;
             }
 
             const auto deref = *(uintptr_t*)(base_data.data() + i);
 
             if (deref == 0) {
-                continue;
+                return;
             }
 
             const auto tname = m_process->get_typename(deref);
 
             if (!tname || tname->length() < 5) {
-                continue;
+                return;
             }
 
             if (tname && tname->find(m_ui.rtti_sweep_search_name) != std::string::npos) {
-                m_ui.rtti_sweep_text += fmt::format("struct {:s}* {:s} @ 0x{:x}\n", *tname, "rtti", (uintptr_t)i);
+                std::scoped_lock _{m_ui.rtti_lock};
+                m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ 0x{:x}\n", *tname, (uintptr_t)i);
             }
-        }
+        });
 
         struct Chain {
             uintptr_t base;
             size_t offset;
         };
 
-        static std::function<void(uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name)> lookup{};
-        lookup = [this](uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name) {
+        struct Result {
+            size_t offset;
+            std::string result;
+        };
+
+        static std::function<std::vector<Result> (uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name)> lookup{};
+        lookup = [this](uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name) -> std::vector<Result> {
+            std::vector<Result> result{};
+
             if (chain.size() > 2) {
-                return;
+                return result;
             }
 
             std::vector<uint8_t> data(size);
             if (!m_process->read(base, data.data(), size)) {
-                return;
+                return result;
             }
 
-            for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
+
+            std::recursive_mutex local_mutex{};
+
+            //for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
+            concurrency::parallel_for(size_t{0}, data.size(), size_t{sizeof(void*)}, [&](size_t i) {
                 if (i + sizeof(void*) >= data.size()) {
-                    break;
+                    return;
                 }
 
                 const auto deref = *(uintptr_t*)(data.data() + i);
 
                 if (deref == 0) {
-                    continue;
+                    return;
                 }
 
                 const auto tname = m_process->get_typename(deref);
@@ -874,17 +889,35 @@ void ReGenny::rtti_sweep_ui() {
                     for (auto&& c : chain) {
                         chain_string += fmt::format("0x{:x} -> ", c.offset);
                     }
-                    m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
+
+                    std::scoped_lock _{local_mutex};
+                    //m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
+                    result.emplace_back(i, fmt::format("{:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i));
                 }
                 
-                chain.push_back({base, i});
-                lookup(deref, 0x1000, chain, class_name);
-                chain.pop_back();
-            }
+                auto chain_copy = chain;
+                chain_copy.push_back({base, i});
+                const auto new_results = lookup(deref, 0x1000, chain_copy, class_name);
+
+                if (!new_results.empty()) {
+                    std::scoped_lock _{local_mutex};
+                    result.insert(result.end(), new_results.begin(), new_results.end());
+                }
+            });
+
+            //std::sort(result.begin(), result.end(), [](auto&& a, auto&& b) { return a.offset < b.offset; });
+
+            return result;
         };
 
         std::vector<Chain> chain{};
-        lookup(m_address, m_type->size(), chain, m_ui.rtti_sweep_search_name);
+        auto result = lookup(m_address, m_type->size(), chain, m_ui.rtti_sweep_search_name);
+
+        std::sort(result.begin(), result.end(), [](auto&& a, auto&& b) { return a.result < b.result; });
+
+        for (auto&& r : result) {
+            m_ui.rtti_sweep_text += r.result;
+        }
     }
 }
 
