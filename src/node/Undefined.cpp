@@ -31,7 +31,7 @@ Undefined::Undefined(Config& cfg, Process& process, Property& props, size_t size
     }
 }
 
-template <typename T> void handle_write(Process& process, uintptr_t address, std::byte* mem) {
+template <typename T> void handle_undefined_write(Process& process, uintptr_t address, std::byte* mem) {
     auto value = *(T*)mem;
     ImGuiDataType datatype;
 
@@ -83,37 +83,6 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto is_hovered = ImGui::IsItemHovered();
 
     if (ImGui::BeginPopupContextItem("UndefinedNodes")) {
-        switch(m_size) {
-        case 1:
-            ImGui::PushID("byte");
-            handle_write<uint8_t>(m_process, address, mem);
-            ImGui::PopID();
-            break;
-        case 2:
-            ImGui::PushID("short");
-            handle_write<uint16_t>(m_process, address, mem);
-            ImGui::PopID();
-            break;
-        case 4:
-            ImGui::PushID("int");
-            handle_write<int32_t>(m_process, address, mem);
-            ImGui::PopID();
-
-            ImGui::PushID("float");
-            handle_write<float>(m_process, address, mem);
-            ImGui::PopID();
-            break;
-        case 8:
-            ImGui::PushID("long");
-            handle_write<int64_t>(m_process, address, mem);
-            ImGui::PopID();
-
-            ImGui::PushID("double");
-            handle_write<double>(m_process, address, mem);
-            ImGui::PopID();
-            break;
-        }
-
         if (ImGui::InputInt("Size Override", &size_override())) {
             size_override() = std::clamp(size_override(), 0, 8);
 
@@ -122,6 +91,37 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             } else {
                 m_size = size_override();
             }
+        }
+
+        switch(m_size) {
+        case 1:
+            ImGui::PushID("byte");
+            handle_undefined_write<uint8_t>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 2:
+            ImGui::PushID("short");
+            handle_undefined_write<uint16_t>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 4:
+            ImGui::PushID("int");
+            handle_undefined_write<int32_t>(m_process, address, mem);
+            ImGui::PopID();
+
+            ImGui::PushID("float");
+            handle_undefined_write<float>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 8:
+            ImGui::PushID("long");
+            handle_undefined_write<int64_t>(m_process, address, mem);
+            ImGui::PopID();
+
+            ImGui::PushID("double");
+            handle_undefined_write<double>(m_process, address, mem);
+            ImGui::PopID();
+            break;
         }
 
         ImGui::EndPopup();
