@@ -31,6 +31,41 @@ Undefined::Undefined(Config& cfg, Process& process, Property& props, size_t size
     }
 }
 
+template <typename T> void handle_write(Process& process, uintptr_t address, std::byte* mem) {
+    auto value = *(T*)mem;
+    ImGuiDataType datatype;
+
+    if constexpr (std::is_same_v<T, uint8_t> || std::is_same_v<T, bool>) {
+        datatype = ImGuiDataType_U8;
+    } else if constexpr (std::is_same_v<T, uint16_t>) {
+        datatype = ImGuiDataType_U16;
+    } else if constexpr (std::is_same_v<T, uint32_t>) {
+        datatype = ImGuiDataType_U32;
+    } else if constexpr (std::is_same_v<T, uint64_t>) {
+        datatype = ImGuiDataType_U64;
+    } else if constexpr (std::is_same_v<T, int8_t>) {
+        datatype = ImGuiDataType_S8;
+    } else if constexpr (std::is_same_v<T, int16_t>) {
+        datatype = ImGuiDataType_S16;
+    } else if constexpr (std::is_same_v<T, int32_t>) {
+        datatype = ImGuiDataType_S32;
+    } else if constexpr (std::is_same_v<T, int64_t>) {
+        datatype = ImGuiDataType_S64;
+    } else if constexpr (std::is_same_v<T, float>) {
+        datatype = ImGuiDataType_Float;
+    } else if constexpr (std::is_same_v<T, double>) {
+        datatype = ImGuiDataType_Double;
+    }
+
+    if (ImGui::InputScalar(
+            "Value", datatype, (void*)&value, nullptr, nullptr, nullptr, ImGuiInputTextFlags_EnterReturnsTrue)) {
+        process.write(address, (const void*)&value, sizeof(T));
+
+        // Write it back to the mem so the next frame it displays the new value (if user hit enter).
+        *(T*)mem = value;
+    }
+}
+
 void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     if (is_hidden) {
         return;
@@ -48,6 +83,37 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
     auto is_hovered = ImGui::IsItemHovered();
 
     if (ImGui::BeginPopupContextItem("UndefinedNodes")) {
+        switch(m_size) {
+        case 1:
+            ImGui::PushID("byte");
+            handle_write<uint8_t>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 2:
+            ImGui::PushID("short");
+            handle_write<uint16_t>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 4:
+            ImGui::PushID("int");
+            handle_write<int32_t>(m_process, address, mem);
+            ImGui::PopID();
+
+            ImGui::PushID("float");
+            handle_write<float>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        case 8:
+            ImGui::PushID("long");
+            handle_write<int64_t>(m_process, address, mem);
+            ImGui::PopID();
+
+            ImGui::PushID("double");
+            handle_write<double>(m_process, address, mem);
+            ImGui::PopID();
+            break;
+        }
+
         if (ImGui::InputInt("Size Override", &size_override())) {
             size_override() = std::clamp(size_override(), 0, 8);
 
