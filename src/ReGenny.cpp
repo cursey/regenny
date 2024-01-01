@@ -1222,8 +1222,8 @@ void ReGenny::reset_lua_state() {
             return sol::make_object(s, rg->add_address_resolver([f](std::string input) -> uintptr_t {
                 auto result = f(input);
 
-                if (result.get_type(1) == sol::type::number) {
-                    return result.get<uintptr_t>(1);
+                if (result.get_type(0) == sol::type::number) {
+                    return result.get<uintptr_t>(0);
                 }
 
                 return 0;
