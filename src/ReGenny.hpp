@@ -38,6 +38,22 @@ public:
     auto& process() const { return m_process; }
     auto address() const { return m_address; }
 
+    auto add_address_resolver(std::function<uintptr_t(const std::string&)> resolver) {
+        auto id = m_address_resolvers.size();
+        m_address_resolvers[id] = std::move(resolver);
+        return id;
+    }
+    auto remove_address_resolver(uint32_t id) { m_address_resolvers.erase(id); }
+    auto query_address_resolvers(const std::string& name) {
+        for (auto& resolver : m_address_resolvers | std::views::values) {
+            if (auto address = resolver(name)) {
+                return address;
+            }
+        }
+
+        return 0;
+    }
+
     auto& eval_history_index() { return m_eval_history_index; }
     auto& eval_history() const { return m_eval_history; }
 
@@ -53,6 +69,7 @@ private:
     uintptr_t m_address{};
     bool m_is_address_valid{};
     ParsedAddress m_parsed_address{};
+    std::map<uint32_t, std::function<uintptr_t(const std::string&)>> m_address_resolvers{};
     std::chrono::steady_clock::time_point m_next_address_refresh_time{};
 
     struct {

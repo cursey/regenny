@@ -894,7 +894,7 @@ void ReGenny::rtti_sweep_ui() {
                     //m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
                     result.emplace_back(i, fmt::format("{:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i));
                 }
-                
+
                 auto chain_copy = chain;
                 chain_copy.push_back({base, i});
                 const auto new_results = lookup(deref, 0x1000, chain_copy, class_name);
@@ -982,7 +982,7 @@ void ReGenny::rtti_ui() {
 
             std::string demangled{};
             demangled.reserve(tname->length());
-            
+
             // replace bad characters with underscores
             for (auto&& c : *tname) {
                 if (std::find(bad_chars.begin(), bad_chars.end(), c) != bad_chars.end()) {
@@ -1105,6 +1105,10 @@ void ReGenny::memory_ui() {
 }
 
 void ReGenny::set_address() {
+    if (auto addr = query_address_resolvers(m_ui.address)) {
+        m_parsed_address = *addr;
+    }
+
     if (auto addr = parse_address(m_ui.address)) {
         m_parsed_address = *addr;
     }
@@ -1175,7 +1179,7 @@ void ReGenny::reset_lua_state() {
     };
 
     auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
-    
+
     m_lua->new_usertype<ReGenny>("ReGennyClass",
         sol::no_constructor,
         "type", &ReGenny::type,
@@ -1191,14 +1195,14 @@ void ReGenny::reset_lua_state() {
 
             return sol::make_object(s, create_overlay(rg->address(), dynamic_cast<sdkgenny::Struct*>(rg->type())));
         },
-        "sdk", [](sol::this_state s, ReGenny* rg) { 
+        "sdk", [](sol::this_state s, ReGenny* rg) {
             if (rg->sdk() == nullptr) {
                 sol::make_object(s, sol::nil);
             }
 
             return sol::make_object(s, rg->sdk().get());
         },
-        "process", [](sol::this_state s, ReGenny* rg) -> sol::object { 
+        "process", [](sol::this_state s, ReGenny* rg) -> sol::object {
             if (rg->process() == nullptr) {
                 sol::make_object(s, sol::nil);
             }
@@ -1208,12 +1212,26 @@ void ReGenny::reset_lua_state() {
                 return sol::make_object(s, wp);
             }
         #endif
-            
+
             return sol::make_object(s, rg->process().get());
+        },
+        "add_address_resolver", [](sol::this_state s, ReGenny* rg, sol::function f) {
+            auto id = rg->add_address_resolver([f](std::string input) -> uintptr_t {
+                auto result = f(input);
+
+                if (result.get_type(0) == sol::type::number) {
+                    return result.get<uintptr_t>(0);
+                }
+
+                return 0;
+            });
+        },
+        "remove_address_resolver", [](ReGenny* rg, uint32_t id) {
+            rg->remove_address_resolver(id);
         }
     );
 
-    auto read_string = [](Process* p, uintptr_t addr, bool perform_strlen) -> std::string { 
+    auto read_string = [](Process* p, uintptr_t addr, bool perform_strlen) -> std::string {
         if (!perform_strlen) {
             std::vector<uint8_t> bytes(256);
             p->read(addr, bytes.data(), bytes.size());
@@ -1517,7 +1535,7 @@ void ReGenny::parse_file() try {
 
         set_type();
     } else {
-        throw std::runtime_error{"Failed to parse file."}; 
+        throw std::runtime_error{"Failed to parse file."};
     }
 } catch (const std::exception& e) {
     spdlog::error(e.what());
