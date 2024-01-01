@@ -2,7 +2,7 @@
 
 #include <fmt/format.h>
 #include <imgui.h>
-#include <utf8.h>
+#include <utf8cpp/utf8.h>
 
 #include "Variable.hpp"
 

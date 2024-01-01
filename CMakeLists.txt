@@ -34,8 +34,8 @@ project(regenny)
 
 if(CMKR_ROOT_PROJECT AND NOT CMKR_DISABLE_VCPKG)
 	include(FetchContent)
-	message(STATUS "Fetching vcpkg (2022.08.15)...")
-	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2022.08.15.tar.gz")
+	message(STATUS "Fetching vcpkg (2023.12.12)...")
+	FetchContent_Declare(vcpkg URL "https://github.com/microsoft/vcpkg/archive/refs/tags/2023.12.12.tar.gz")
 	FetchContent_GetProperties(vcpkg)
 	if(NOT vcpkg_POPULATED)
 		FetchContent_Populate(vcpkg)
@@ -183,7 +183,6 @@ target_link_libraries(regenny PRIVATE
 	taocpp::pegtl
 	unofficial::nativefiledialog::nfd
 	spdlog::spdlog
-	utf8cpp
 	SDL2::SDL2
 	SDL2::SDL2main
 	nlohmann_json::nlohmann_json

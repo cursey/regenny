@@ -5,7 +5,7 @@
 #include <glad/glad.h> // Initialize with gladLoadGL()
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl.h>
+#include <imgui_impl_sdl2.h>
 
 #include "scope_guard.hpp"
 
