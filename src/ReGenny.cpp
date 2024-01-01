@@ -9,7 +9,7 @@
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl.h>
+#include <imgui_impl_sdl2.h>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
@@ -1105,8 +1105,11 @@ void ReGenny::memory_ui() {
 }
 
 void ReGenny::set_address() {
-    if (auto addr = query_address_resolvers(m_ui.address)) {
-        m_parsed_address = *addr;
+    for (auto address : query_address_resolvers(m_ui.address)) {
+        auto addr_str = fmt::format("0x{:x}", address);
+        if (auto addr = parse_address(addr_str)) {
+            m_parsed_address = *addr;
+        }
     }
 
     if (auto addr = parse_address(m_ui.address)) {
@@ -1216,15 +1219,15 @@ void ReGenny::reset_lua_state() {
             return sol::make_object(s, rg->process().get());
         },
         "add_address_resolver", [](sol::this_state s, ReGenny* rg, sol::function f) {
-            auto id = rg->add_address_resolver([f](std::string input) -> uintptr_t {
+            return sol::make_object(s, rg->add_address_resolver([f](std::string input) -> uintptr_t {
                 auto result = f(input);
 
-                if (result.get_type(0) == sol::type::number) {
-                    return result.get<uintptr_t>(0);
+                if (result.get_type(1) == sol::type::number) {
+                    return result.get<uintptr_t>(1);
                 }
 
                 return 0;
-            });
+            }));
         },
         "remove_address_resolver", [](ReGenny* rg, uint32_t id) {
             rg->remove_address_resolver(id);

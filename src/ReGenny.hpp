@@ -45,13 +45,14 @@ public:
     }
     auto remove_address_resolver(uint32_t id) { m_address_resolvers.erase(id); }
     auto query_address_resolvers(const std::string& name) {
+        auto addresses = std::vector<uintptr_t>{};
         for (auto& resolver : m_address_resolvers | std::views::values) {
             if (auto address = resolver(name)) {
-                return address;
+                addresses.push_back(address);
             }
         }
 
-        return 0;
+        return addresses;
     }
 
     auto& eval_history_index() { return m_eval_history_index; }

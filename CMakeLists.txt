@@ -183,7 +183,6 @@ target_link_libraries(regenny PRIVATE
 	taocpp::pegtl
 	unofficial::nativefiledialog::nfd
 	spdlog::spdlog
-	utf8cpp
 	SDL2::SDL2
 	SDL2::SDL2main
 	nlohmann_json::nlohmann_json
