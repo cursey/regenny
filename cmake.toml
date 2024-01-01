@@ -6,7 +6,7 @@ add_compile_options($<$<CXX_COMPILER_ID:MSVC>:/MP>)
 """
 
 [vcpkg]
-version = "2022.08.15"
+version = "2023.12.12"
 packages = [
     "imgui[docking-experimental,freetype,sdl2-binding,opengl3-binding]",
     "fmt",
