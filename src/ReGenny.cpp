@@ -770,6 +770,7 @@ void ReGenny::attach() {
     spdlog::info("Attaching to {} PID: {}...", m_project.process_name, m_project.process_id);
 
     m_process = arch::open_process(m_project.process_id);
+    m_mem_ui = nullptr;
 
     if (!m_process->ok()) {
         action_detach();
