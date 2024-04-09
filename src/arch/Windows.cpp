@@ -31,10 +31,7 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
             do {
                 Module m{};
 
-                std::string path = entry.szExePath;
-                std::transform(path.begin(), path.end(), path.begin(), tolower);
-
-                m.name = path;
+                m.name = entry.szExePath;
                 m.start = (uintptr_t)entry.modBaseAddr;
                 m.size = entry.modBaseSize;
                 m.end = m.start + m.size;

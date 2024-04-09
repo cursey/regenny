@@ -1033,7 +1033,10 @@ void ReGenny::update_address() {
         std::transform(modname.begin(), modname.end(), modname.begin(), tolower);
 
         for (auto&& mod : m_process->modules()) {
-            if (mod.name.ends_with(modname)) {
+            std::string name = mod.name;
+            std::transform(name.begin(), name.end(), name.begin(), tolower);
+
+            if (name.ends_with(modname)) {
                 m_address += mod.start;
                 break;
             }
