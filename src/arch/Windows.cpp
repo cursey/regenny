@@ -8,6 +8,8 @@
 
 #include "Windows.hpp"
 
+#include <algorithm>
+
 namespace arch {
 WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     m_process = OpenProcess(
@@ -29,7 +31,10 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
             do {
                 Module m{};
 
-                m.name = entry.szModule;
+                std::string path = entry.szExePath;
+                std::transform(path.begin(), path.end(), path.begin(), tolower);
+
+                m.name = path;
                 m.start = (uintptr_t)entry.modBaseAddr;
                 m.size = entry.modBaseSize;
                 m.end = m.start + m.size;

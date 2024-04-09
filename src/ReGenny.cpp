@@ -1029,10 +1029,10 @@ void ReGenny::update_address() {
 
     if (!m_parsed_address.name.empty()) {
         auto& modname = m_parsed_address.name;
+        std::transform(modname.begin(), modname.end(), modname.begin(), tolower);
 
         for (auto&& mod : m_process->modules()) {
-            if (std::equal(modname.begin(), modname.end(), mod.name.begin(), mod.name.end(),
-                    [](auto a, auto b) { return std::tolower(a) == std::tolower(b); })) {
+            if (mod.name.ends_with(modname)) {
                 m_address += mod.start;
                 break;
             }
