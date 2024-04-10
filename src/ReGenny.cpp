@@ -1029,7 +1029,7 @@ void ReGenny::update_address() {
     m_address = m_parsed_address.offsets.front();
 
     if (!m_parsed_address.name.empty()) {
-        auto& modname = m_parsed_address.name;
+        auto modname = m_parsed_address.name;
         std::transform(modname.begin(), modname.end(), modname.begin(), tolower);
 
         for (auto&& mod : m_process->modules()) {

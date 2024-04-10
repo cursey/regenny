@@ -8,8 +8,6 @@
 
 #include "Windows.hpp"
 
-#include <algorithm>
-
 namespace arch {
 WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     m_process = OpenProcess(
