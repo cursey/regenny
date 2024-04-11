@@ -29,7 +29,7 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
             do {
                 Module m{};
 
-                m.name = entry.szModule;
+                m.name = entry.szExePath;
                 m.start = (uintptr_t)entry.modBaseAddr;
                 m.size = entry.modBaseSize;
                 m.end = m.start + m.size;
