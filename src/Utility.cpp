@@ -8,7 +8,7 @@ using namespace tao::pegtl;
 struct HexNum : seq<one<'0'>, one<'x'>, plus<xdigit>> {};
 struct DecNum : plus<digit> {};
 struct Num : sor<HexNum, DecNum> {};
-struct NameChar : sor<alnum, one<' ', '(', ')', '_', '-', ',', '.', '/', '\\'>> {};
+struct NameChar : sor<alnum, one<' ', '(', ')', '_', '-', ',', '.', '/', '\\', ':'>> {};
 struct Name : seq<plus<NameChar>> {};
 struct Offset : seq<Num, opt<one<'-'>, one<'>'>, struct Offset>> {};
 struct ModOffset : seq<one<'<'>, Name, one<'>'>, opt<one<'+'>, Offset>> {};
