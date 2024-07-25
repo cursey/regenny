@@ -10,7 +10,7 @@
 
 #include <SDL.h>
 #include <sdkgenny.hpp>
-#include <sol/sol.hpp>
+// #include <sol/sol.hpp>
 
 #include "Config.hpp"
 #include "Helpers.hpp"
@@ -32,7 +32,7 @@ public:
     void ui();
 
     auto&& window() const { return m_window; }
-    auto& lua() const { return *m_lua; }
+    // auto& lua() const { return *m_lua; }
     auto& sdk() const { return m_sdk; }
     auto type() const { return m_type; }
     auto& process() const { return m_process; }
@@ -115,7 +115,7 @@ private:
     std::optional<std::chrono::system_clock::time_point> m_cfg_save_time{};
 
     std::recursive_mutex m_lua_lock{};
-    std::unique_ptr<sol::state> m_lua{};
+    // std::unique_ptr<sol::state> m_lua{};
     std::deque<std::string> m_eval_history{};
     int32_t m_eval_history_index{};
     bool m_reapply_focus_eval{false};
@@ -133,7 +133,7 @@ private:
     void file_save_as();
     void file_open_in_editor();
     void file_quit();
-    void file_run_lua_script();
+    // void file_run_lua_script();
 
     void action_detach();
     void action_generate_sdk();
@@ -150,7 +150,7 @@ private:
     void set_type();
 
     void parse_file();
-    void reset_lua_state();
+    // void reset_lua_state();
 
     void load_cfg();
     void save_cfg();

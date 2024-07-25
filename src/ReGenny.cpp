@@ -5,7 +5,7 @@
 
 #include <ppl.h>
 
-#include <LuaGenny.h>
+// #include <LuaGenny.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
@@ -35,7 +35,7 @@ ReGenny::ReGenny(SDL_Window* window)
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Start of log.");
 
-    reset_lua_state();
+    // reset_lua_state();
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
@@ -47,7 +47,7 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
+    // m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
     m_triggers.on({SDLK_LCTRL, SDLK_e}, [this] { file_open_in_editor(); });
 }
 
@@ -107,17 +107,18 @@ void ReGenny::ui() {
         ImGuiID left{}, right{};
         ImGuiID top{}, bottom{};
 
-        ImGuiID bottom_top{}, bottom_bottom{};
+        // ImGuiID bottom_top{}, bottom_bottom{};
 
         ImGui::DockBuilderSplitNode(dock, ImGuiDir_Up, 1.61f * 0.5f, &top, &bottom);
         ImGui::DockBuilderSplitNode(top, ImGuiDir_Left, 0.66f, &left, &right);
-        ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Up, 1.61f * 0.5f, &bottom_top, &bottom_bottom);
+        // ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Up, 1.61f * 0.5f, &bottom_top, &bottom_bottom);
 
         ImGui::DockBuilderDockWindow("Attach", left);
         ImGui::DockBuilderDockWindow("Memory View", left);
         ImGui::DockBuilderDockWindow("Editor", right);
-        ImGui::DockBuilderDockWindow("Log", bottom_top);
-        ImGui::DockBuilderDockWindow("LuaEval", bottom_bottom);
+        ImGui::DockBuilderDockWindow("Log", bottom);
+        // ImGui::DockBuilderDockWindow("Log", bottom_top);
+        // ImGui::DockBuilderDockWindow("LuaEval", bottom_bottom);
 
         ImGui::DockBuilderFinish(dock);
     }
@@ -176,7 +177,7 @@ void ReGenny::ui() {
     m_logger.ui();
     ImGui::End();
 
-    ImGui::Begin("LuaEval");
+    /*ImGui::Begin("LuaEval");
 
     ImGui::BeginChild("luaeval");
     std::array<char, 256> eval{};
@@ -267,10 +268,11 @@ void ReGenny::ui() {
 
         m_reapply_focus_eval = true;
     }
+
     ImGui::PopItemWidth();
     ImGui::EndChild();
 
-    ImGui::End();
+    ImGui::End();*/
 
     ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
     m_ui.error_popup = ImGui::GetID("Error");
@@ -389,9 +391,9 @@ void ReGenny::menu_ui() {
                 file_open_in_editor();
             }
 
-            if (ImGui::MenuItem("Run Lua Script", "Ctrl+L")) {
+            /*if (ImGui::MenuItem("Run Lua Script", "Ctrl+L")) {
                 file_run_lua_script();
-            }
+            }*/
 
             ImGui::EndDisabled();
 
@@ -658,7 +660,7 @@ void ReGenny::file_quit() {
     SDL_PushEvent((SDL_Event*)&event);
 }
 
-void ReGenny::file_run_lua_script() {
+/*void ReGenny::file_run_lua_script() {
     std::scoped_lock _{m_lua_lock};
 
     nfdchar_t* lua_path{};
@@ -676,7 +678,7 @@ void ReGenny::file_run_lua_script() {
         spdlog::error("Unknown error!");
         return;
     }
-}
+}*/
 
 void ReGenny::action_detach() {
     spdlog::info("Detaching...");
@@ -821,7 +823,7 @@ void ReGenny::rtti_sweep_ui() {
         std::vector<uint8_t> base_data(m_type->size());
         m_process->read(m_address, base_data.data(), base_data.size());
 
-        //for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
+        // for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
         concurrency::parallel_for(size_t{0}, base_data.size(), size_t{sizeof(void*)}, [&](size_t i) {
             if (i + sizeof(void*) >= base_data.size()) {
                 return;
@@ -855,8 +857,11 @@ void ReGenny::rtti_sweep_ui() {
             std::string result;
         };
 
-        static std::function<std::vector<Result> (uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name)> lookup{};
-        lookup = [this](uintptr_t base, size_t size, std::vector<Chain>& chain, std::string_view class_name) -> std::vector<Result> {
+        static std::function<std::vector<Result>(
+            uintptr_t base, size_t size, std::vector<Chain> & chain, std::string_view class_name)>
+            lookup{};
+        lookup = [this](uintptr_t base, size_t size, std::vector<Chain>& chain,
+                     std::string_view class_name) -> std::vector<Result> {
             std::vector<Result> result{};
 
             if (chain.size() > 2) {
@@ -868,10 +873,9 @@ void ReGenny::rtti_sweep_ui() {
                 return result;
             }
 
-
             std::recursive_mutex local_mutex{};
 
-            //for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
+            // for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
             concurrency::parallel_for(size_t{0}, data.size(), size_t{sizeof(void*)}, [&](size_t i) {
                 if (i + sizeof(void*) >= data.size()) {
                     return;
@@ -892,7 +896,7 @@ void ReGenny::rtti_sweep_ui() {
                     }
 
                     std::scoped_lock _{local_mutex};
-                    //m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
+                    // m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i);
                     result.emplace_back(i, fmt::format("{:s}* @ {:s} + 0x{:x}\n", *tname, chain_string, i));
                 }
 
@@ -906,7 +910,7 @@ void ReGenny::rtti_sweep_ui() {
                 }
             });
 
-            //std::sort(result.begin(), result.end(), [](auto&& a, auto&& b) { return a.offset < b.offset; });
+            // std::sort(result.begin(), result.end(), [](auto&& a, auto&& b) { return a.offset < b.offset; });
 
             return result;
         };
@@ -976,10 +980,8 @@ void ReGenny::rtti_ui() {
                 continue;
             }
 
-            std::vector<uint8_t> bad_chars{
-                '<', '>', ':', '"', '/', '\\', '|', '?', '*', '\0', '\a', '\b', '\f', '\n', '\r', '\t',
-                ' ', ',', ';', '=', '(', ')', '[', ']', '{', '}'
-            };
+            std::vector<uint8_t> bad_chars{'<', '>', ':', '"', '/', '\\', '|', '?', '*', '\0', '\a', '\b', '\f', '\n',
+                '\r', '\t', ' ', ',', ';', '=', '(', ')', '[', ']', '{', '}'};
 
             std::string demangled{};
             demangled.reserve(tname->length());
@@ -1160,7 +1162,7 @@ void ReGenny::set_type() {
         m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
 }
 
-void ReGenny::reset_lua_state() {
+/*void ReGenny::reset_lua_state() {
     std::scoped_lock _{m_lua_lock};
 
     m_lua = std::make_unique<sol::state>();
@@ -1185,7 +1187,8 @@ void ReGenny::reset_lua_state() {
         }
     };
 
-    auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
+    auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t)
+end").get<sol::function>();
 
     m_lua->new_usertype<ReGenny>("ReGennyClass",
         sol::no_constructor,
@@ -1485,7 +1488,7 @@ void ReGenny::reset_lua_state() {
     };
 
     // clang-format on
-}
+}*/
 
 void ReGenny::parse_file() try {
     auto sdk = std::make_unique<sdkgenny::Sdk>();
