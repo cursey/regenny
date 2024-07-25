@@ -64,7 +64,6 @@ if (utfcpp_ADDED)
 endif ()
 
 CPMAddPackage("gh:nlohmann/json@3.11.3")
-#CPMAddPackage("gh:libsdl-org/SDL#release-2.30.5")
 CPMAddPackage(
         NAME SDL2
         GITHUB_REPOSITORY libsdl-org/SDL
