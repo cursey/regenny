@@ -1,11 +1,11 @@
-on: [push, pull_request]
+on: [ push, pull_request ]
 jobs:
   build:
     if: ${{github.event_name == 'push' || (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name != github.repository)}}
     runs-on: windows-2022
     strategy:
       matrix:
-        arch: [x64, Win32]
+        arch: [ x64, Win32 ]
         include:
           - arch: x64
             triplet: x64-windows
@@ -18,7 +18,7 @@ jobs:
 
       - name: Build
         run: |
-          cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DCMAKE_UNITY_BUILD=ON -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
+          cmake -B build-${{matrix.arch}} -A ${{matrix.arch}} -DCMAKE_BUILD_TYPE=Release -DVCPKG_TARGET_TRIPLET=${{matrix.triplet}}
           cmake --build build-${{matrix.arch}} --config Release --parallel
 
       - name: Upload artifacts

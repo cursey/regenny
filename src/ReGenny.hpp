@@ -32,7 +32,7 @@ public:
     void ui();
 
     auto&& window() const { return m_window; }
-    auto& lua() const { return *m_lua; }
+    // auto& lua() const { return *m_lua; }
     auto& sdk() const { return m_sdk; }
     auto type() const { return m_type; }
     auto& process() const { return m_process; }
