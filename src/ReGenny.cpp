@@ -5,7 +5,7 @@
 
 #include <ppl.h>
 
-// #include <LuaGenny.h>
+#include <LuaGenny.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
@@ -35,7 +35,7 @@ ReGenny::ReGenny(SDL_Window* window)
     spdlog::set_pattern("[%H:%M:%S] [%l] %v");
     spdlog::info("Start of log.");
 
-    // reset_lua_state();
+    reset_lua_state();
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
@@ -47,7 +47,7 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
     m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
-    // m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
     m_triggers.on({SDLK_LCTRL, SDLK_e}, [this] { file_open_in_editor(); });
 }
 
@@ -107,18 +107,17 @@ void ReGenny::ui() {
         ImGuiID left{}, right{};
         ImGuiID top{}, bottom{};
 
-        // ImGuiID bottom_top{}, bottom_bottom{};
+        ImGuiID bottom_top{}, bottom_bottom{};
 
         ImGui::DockBuilderSplitNode(dock, ImGuiDir_Up, 1.61f * 0.5f, &top, &bottom);
         ImGui::DockBuilderSplitNode(top, ImGuiDir_Left, 0.66f, &left, &right);
-        // ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Up, 1.61f * 0.5f, &bottom_top, &bottom_bottom);
+        ImGui::DockBuilderSplitNode(bottom, ImGuiDir_Up, 1.61f * 0.5f, &bottom_top, &bottom_bottom);
 
         ImGui::DockBuilderDockWindow("Attach", left);
         ImGui::DockBuilderDockWindow("Memory View", left);
         ImGui::DockBuilderDockWindow("Editor", right);
-        ImGui::DockBuilderDockWindow("Log", bottom);
-        // ImGui::DockBuilderDockWindow("Log", bottom_top);
-        // ImGui::DockBuilderDockWindow("LuaEval", bottom_bottom);
+        ImGui::DockBuilderDockWindow("Log", bottom_top);
+        ImGui::DockBuilderDockWindow("LuaEval", bottom_bottom);
 
         ImGui::DockBuilderFinish(dock);
     }
@@ -177,7 +176,7 @@ void ReGenny::ui() {
     m_logger.ui();
     ImGui::End();
 
-    /*ImGui::Begin("LuaEval");
+    ImGui::Begin("LuaEval");
 
     ImGui::BeginChild("luaeval");
     std::array<char, 256> eval{};
@@ -272,7 +271,7 @@ void ReGenny::ui() {
     ImGui::PopItemWidth();
     ImGui::EndChild();
 
-    ImGui::End();*/
+    ImGui::End();
 
     ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
     m_ui.error_popup = ImGui::GetID("Error");
@@ -391,9 +390,9 @@ void ReGenny::menu_ui() {
                 file_open_in_editor();
             }
 
-            /*if (ImGui::MenuItem("Run Lua Script", "Ctrl+L")) {
+            if (ImGui::MenuItem("Run Lua Script", "Ctrl+L")) {
                 file_run_lua_script();
-            }*/
+            }
 
             ImGui::EndDisabled();
 
@@ -660,7 +659,7 @@ void ReGenny::file_quit() {
     SDL_PushEvent((SDL_Event*)&event);
 }
 
-/*void ReGenny::file_run_lua_script() {
+void ReGenny::file_run_lua_script() {
     std::scoped_lock _{m_lua_lock};
 
     nfdchar_t* lua_path{};
@@ -678,7 +677,7 @@ void ReGenny::file_quit() {
         spdlog::error("Unknown error!");
         return;
     }
-}*/
+}
 
 void ReGenny::action_detach() {
     spdlog::info("Detaching...");
@@ -1162,7 +1161,7 @@ void ReGenny::set_type() {
         m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
 }
 
-/*void ReGenny::reset_lua_state() {
+void ReGenny::reset_lua_state() {
     std::scoped_lock _{m_lua_lock};
 
     m_lua = std::make_unique<sol::state>();
@@ -1187,8 +1186,7 @@ void ReGenny::set_type() {
         }
     };
 
-    auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t)
-end").get<sol::function>();
+    auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
 
     m_lua->new_usertype<ReGenny>("ReGennyClass",
         sol::no_constructor,
@@ -1488,7 +1486,7 @@ end").get<sol::function>();
     };
 
     // clang-format on
-}*/
+}
 
 void ReGenny::parse_file() try {
     auto sdk = std::make_unique<sdkgenny::Sdk>();
