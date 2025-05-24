@@ -19,8 +19,7 @@ target_link_libraries(regenny PRIVATE
         spdlog::spdlog
         utfcpp
         nlohmann_json::nlohmann_json
-        SDL2::SDL2
-        SDL2::SDL2main
+        SDL3::SDL3
         sdkgenny::sdkgenny
         glad
         scope_guard

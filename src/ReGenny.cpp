@@ -9,7 +9,7 @@
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdl3.h>
 #include <imgui_internal.h>
 #include <imgui_stdlib.h>
 #include <nfd.h>
@@ -43,12 +43,12 @@ ReGenny::ReGenny(SDL_Window* window)
 
     load_cfg();
 
-    m_triggers.on({SDLK_LCTRL, SDLK_n}, [this] { file_new(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_o}, [this] { file_open(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_s}, [this] { file_save(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_q}, [this] { file_quit(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_l}, [this] { file_run_lua_script(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_e}, [this] { file_open_in_editor(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_N}, [this] { file_new(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_O}, [this] { file_open(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_S}, [this] { file_save(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_Q}, [this] { file_quit(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_L}, [this] { file_run_lua_script(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_E}, [this] { file_open_in_editor(); });
 }
 
 ReGenny::~ReGenny() {
@@ -469,7 +469,7 @@ void ReGenny::menu_ui() {
 
             if (ImGui::Checkbox("Always on top", &m_cfg.always_on_top)) {
                 save_cfg();
-                SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
+                SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? true : false);
             }
 
             ImGui::EndMenu();
@@ -654,7 +654,7 @@ void ReGenny::file_quit() {
     SDL_QuitEvent event{};
 
     event.timestamp = SDL_GetTicks();
-    event.type = SDL_QUIT;
+    event.type = SDL_EVENT_QUIT;
 
     SDL_PushEvent((SDL_Event*)&event);
 }
@@ -1568,7 +1568,7 @@ void ReGenny::load_cfg() try {
         m_load_font = true;
     }
 
-    SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? SDL_TRUE : SDL_FALSE);
+    SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? true : false);
 } catch (const std::exception& e) {
     spdlog::error(e.what());
     m_cfg = {};

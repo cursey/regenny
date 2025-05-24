@@ -1,7 +1,7 @@
 #ifndef SDL_TRIGGER_H
 #define SDL_TRIGGER_H
 
-#include "SDL2/SDL.h"
+#include "SDL3/SDL.h"
 #include <functional>
 #include <vector>
 

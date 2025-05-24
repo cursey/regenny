@@ -8,7 +8,7 @@
 #include <string>
 #include <unordered_map>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <sdkgenny.hpp>
 #include <sol/sol.hpp>
 

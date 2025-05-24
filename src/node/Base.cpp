@@ -1,4 +1,4 @@
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <imgui_internal.h>

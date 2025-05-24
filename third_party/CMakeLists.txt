@@ -2,21 +2,21 @@
 CPMAddPackage(
         NAME imgui
         GITHUB_REPOSITORY ocornut/imgui
-        VERSION 1.90.9-docking
+        VERSION 1.91.9b-docking
         DOWNLOAD_ONLY YES
 )
 if (imgui_ADDED)
     file(GLOB imgui_sources ${imgui_SOURCE_DIR}/*.cpp)
     add_library(imgui STATIC
             ${imgui_sources}
-            ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl2.cpp
+            ${imgui_SOURCE_DIR}/backends/imgui_impl_sdl3.cpp
             ${imgui_SOURCE_DIR}/backends/imgui_impl_opengl3.cpp
             ${imgui_SOURCE_DIR}/misc/cpp/imgui_stdlib.cpp)
     target_include_directories(imgui PUBLIC
             $<BUILD_INTERFACE:${imgui_SOURCE_DIR}>
             $<BUILD_INTERFACE:${imgui_SOURCE_DIR}/backends>
             $<BUILD_INTERFACE:${imgui_SOURCE_DIR}/misc/cpp>)
-    target_link_libraries(imgui PUBLIC SDL2::SDL2)
+    target_link_libraries(imgui PUBLIC SDL3::SDL3)
 endif ()
 
 # fmt
@@ -65,12 +65,12 @@ endif ()
 # nlohmann_json
 CPMAddPackage("gh:nlohmann/json@3.11.3")
 
-# SDL2
+# SDL3
 CPMAddPackage(
-        NAME SDL2
+        NAME SDL3
         GITHUB_REPOSITORY libsdl-org/SDL
-        VERSION 2.30.5
-        GIT_TAG release-2.30.5
+        VERSION 3.2.14
+        GIT_TAG release-3.2.14
         OPTIONS
         "SDL_SHARED OFF"
         "SDL_STATIC ON"
@@ -100,7 +100,7 @@ CPMAddPackage("gh:ThePhD/sol2@3.3.0")
 CPMAddPackage(
         NAME luagenny
         GITHUB_REPOSITORY praydog/luagenny
-        GIT_TAG 556c914a846ccf3f358b559e99d4610f71d71c29
+        GIT_TAG 30e204780387a665a6d43d41619dc990413925c1
         DOWNLOAD_ONLY YES
 )
 if (luagenny_ADDED)
@@ -126,4 +126,4 @@ target_include_directories(scope_guard INTERFACE "scope_guard")
 # SDL_Trigger
 add_library(SDL_Trigger STATIC "SDL_Trigger/SDL_Trigger.cpp")
 target_include_directories(SDL_Trigger INTERFACE "SDL_Trigger")
-target_link_libraries(SDL_Trigger PUBLIC SDL2::SDL2)
+target_link_libraries(SDL_Trigger PUBLIC SDL3::SDL3)
