@@ -1527,7 +1527,8 @@ void ReGenny::reset_lua_state() {
         "protect_rwx", [](arch::WindowsProcess* p, uintptr_t addr, size_t size) {
             return p->protect(addr, size, PAGE_EXECUTE_READWRITE);
         },
-        "create_remote_thread", &arch::WindowsProcess::create_remote_thread
+        "create_remote_thread", &arch::WindowsProcess::create_remote_thread,
+        "get_objects_of_type", &arch::WindowsProcess::get_objects_of_type
     );
 #endif
 

@@ -556,4 +556,52 @@ bool WindowsProcess::derives_from(uintptr_t obj_ptr, const std::array<uint8_t, s
 
     return false;
 }
+
+std::vector<uintptr_t> WindowsProcess::get_objects_of_type(uintptr_t start, size_t size, const std::string_view& type_name) {
+    std::vector<uintptr_t> results;
+    
+    // Validate parameters
+    if (start == 0 || size == 0) {
+        return results;
+    }
+    
+    // Clone the memory region
+    std::vector<uint8_t> memory_data(size);
+    
+    if (!read(start, memory_data.data(), memory_data.size())) {
+        return results;
+    }
+    
+    // Scan memory for RTTI objects
+    size_t ptr_size = sizeof(void*);
+    
+    // Start scanning at aligned addresses
+    for (size_t i = 0; i <= memory_data.size() - ptr_size; i += ptr_size) {
+        // Get pointer value from memory
+        uintptr_t ptr_value = 0;
+        std::memcpy(&ptr_value, memory_data.data() + i, ptr_size);
+        
+        // Skip null or obviously invalid pointers
+        if (ptr_value == 0 || ptr_value < 0x10000) {
+            continue;
+        }
+        
+        // Check both the pointer itself and the value it points to
+        for (size_t j = 0; j < 2; ++j) {
+            const auto tname = get_typename(j == 0 ? start + i : ptr_value);
+            
+            if (!tname || tname->empty()) {
+                continue;
+            }
+            
+            // Filter based on type_name
+            if (tname->find(type_name) != std::string::npos) {
+                results.push_back(start + i);
+                break; // Found a match, no need to check the other case
+            }
+        }
+    }
+    
+    return results;
+}
 } // namespace arch
