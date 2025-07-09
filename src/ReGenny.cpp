@@ -169,15 +169,25 @@ void ReGenny::ui() {
         }
 
         ImGui::EndPopup();
-    }
+    }    m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
     
-    m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
-    if (ImGui::BeginPopupModal("Module Memory Scan", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+    // Set the next window size to use most of the available screen space
+    ImGui::SetNextWindowSize(ImVec2(m_window_w * 0.9f, m_window_h * 0.9f), ImGuiCond_Appearing);
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    
+    if (ImGui::BeginPopupModal("Module Memory Scan", nullptr, ImGuiWindowFlags_None)) {
         module_memory_scan_ui();
 
-        ImGui::SameLine();
-
-        if (ImGui::Button("Close")) {
+        // Make the close button more visible and ensure it's at the bottom
+        ImGui::Separator();
+        ImGui::NewLine();
+        
+        // Center the Close button
+        float width = ImGui::GetWindowWidth();
+        float buttonWidth = 120.0f;
+        ImGui::SetCursorPosX((width - buttonWidth) * 0.5f);
+        
+        if (ImGui::Button("Close", ImVec2(buttonWidth, 0))) {
             ImGui::CloseCurrentPopup();
         }
 
@@ -812,9 +822,8 @@ void ReGenny::module_memory_scan_ui() {
         return;
     }
 
-    // Set fixed dimensions for the content area
-    const ImVec2 content_size(600.0f, 400.0f);
-    
+    // Use most of the available space for content
+    const ImVec2 content_size = ImVec2(ImGui::GetContentRegionAvail().x, ImGui::GetContentRegionAvail().y - 40.0f);
     // Top controls area
     {
         // Module selection
