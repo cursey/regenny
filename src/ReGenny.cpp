@@ -918,28 +918,30 @@ void ReGenny::scan_module_memory() {
         }
         
         // Check if this could be a valid pointer within the process address space
-        const auto tname = m_process->get_typename(ptr_value);
-        
-        if (!tname || tname->empty()) {
-            continue;
-        }
-        
-        // Filter based on search term if provided
-        if (!m_ui.module_scan_search_name.empty() && 
-            tname->find(m_ui.module_scan_search_name) == std::string::npos) {
-            continue;
-        }
-        
-        // Store the result
-        found_objects[*tname].push_back(m_ui.selected_module.start + i);
-        
-        // Add to results (limit to prevent UI overload)
-        if (found_objects.size() < 10000) {
-            m_ui.module_scan_results.emplace_back(ModuleScanResult{
-                .type_name = *tname,
-                .address = m_ui.selected_module.start + i,
-                .offset = i
-            });
+        for (size_t j = 0; j < 2; ++j) {
+            const auto tname = m_process->get_typename(j == 0 ? m_ui.selected_module.start + i : ptr_value);
+            
+            if (!tname || tname->empty()) {
+                continue;
+            }
+            
+            // Filter based on search term if provided
+            if (!m_ui.module_scan_search_name.empty() && 
+                tname->find(m_ui.module_scan_search_name) == std::string::npos) {
+                continue;
+            }
+            
+            // Store the result
+            found_objects[*tname].push_back(m_ui.selected_module.start + i);
+            
+            // Add to results (limit to prevent UI overload)
+            if (found_objects.size() < 10000) {
+                m_ui.module_scan_results.emplace_back(ModuleScanResult{
+                    .type_name = *tname,
+                    .address = m_ui.selected_module.start + i,
+                    .offset = i
+                });
+            }
         }
     }
     
