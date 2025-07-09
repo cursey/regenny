@@ -1506,6 +1506,10 @@ void ReGenny::reset_lua_state() {
         sol::base_classes, sol::bases<Process>(),
         "get_typename", &arch::WindowsProcess::get_typename,
         "get_typename_from_vtable", &arch::WindowsProcess::get_typename_from_vtable,
+        "derives_from", [](arch::WindowsProcess* p, uintptr_t obj_ptr, const std::string& type_name) {
+            return p->derives_from(obj_ptr, type_name);
+        },
+        "resolve_object_base_address", &arch::WindowsProcess::resolve_object_base_address,
         "allocate_rwx", [](arch::WindowsProcess* p, uintptr_t addr, size_t size) {
             return p->allocate(addr, size, PAGE_EXECUTE_READWRITE);
         },
