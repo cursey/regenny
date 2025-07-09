@@ -49,6 +49,9 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_Q}, [this] { file_quit(); });
     m_triggers.on({SDLK_LCTRL, SDLK_L}, [this] { file_run_lua_script(); });
     m_triggers.on({SDLK_LCTRL, SDLK_E}, [this] { file_open_in_editor(); });
+    
+    m_ui.module_scan_in_progress = false;
+    m_ui.module_scan_progress = 0.0f;
 }
 
 ReGenny::~ReGenny() {
@@ -158,6 +161,19 @@ void ReGenny::ui() {
     m_ui.rtti_sweep_popup = ImGui::GetID("RTTI Sweep");
     if (ImGui::BeginPopupModal("RTTI Sweep")) {
         rtti_sweep_ui();
+
+        ImGui::SameLine();
+
+        if (ImGui::Button("Close")) {
+            ImGui::CloseCurrentPopup();
+        }
+
+        ImGui::EndPopup();
+    }
+    
+    m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
+    if (ImGui::BeginPopupModal("Module Memory Scan", nullptr, ImGuiWindowFlags_AlwaysAutoResize)) {
+        module_memory_scan_ui();
 
         ImGui::SameLine();
 
@@ -447,6 +463,12 @@ void ReGenny::menu_ui() {
 
             if (ImGui::MenuItem("RTTI Sweep Scan")) {
                 ImGui::OpenPopup(m_ui.rtti_sweep_popup);
+            }
+            
+            if (ImGui::MenuItem("Module Memory Scan")) {
+                m_ui.module_scan_text.clear();
+                m_ui.module_scan_results.clear();
+                ImGui::OpenPopup(m_ui.module_memory_scan_popup);
             }
 
             ImGui::EndDisabled();
@@ -782,6 +804,170 @@ void ReGenny::attach() {
 
     parse_file();
     set_window_title();
+}
+
+void ReGenny::module_memory_scan_ui() {
+    if (m_process == nullptr || !m_process->ok() || m_process->process_id() == 0) {
+        ImGui::Text("Error: No Process");
+        return;
+    }
+
+    // Set fixed dimensions for the content area
+    const ImVec2 content_size(600.0f, 400.0f);
+    
+    // Top controls area
+    {
+        // Module selection
+        if (ImGui::BeginCombo("Module", m_ui.selected_module.name.c_str())) {
+            auto sorted_modules = m_process->modules();
+            std::sort(sorted_modules.begin(), sorted_modules.end(),
+                      [](const Process::Module& a, const Process::Module& b) { return a.name < b.name; });
+            for (auto&& module : sorted_modules) {
+                bool is_selected = (m_ui.selected_module.name == module.name);
+                if (ImGui::Selectable(fmt::format("{} (0x{:x})", module.name, module.start).c_str(), is_selected)) {
+                    m_ui.selected_module = module;
+                }
+                if (is_selected) {
+                    ImGui::SetItemDefaultFocus();
+                }
+            }
+            ImGui::EndCombo();
+        }
+
+        // Class name input for filtering
+        ImGui::InputText("Class Name", &m_ui.module_scan_search_name, ImGuiInputTextFlags_AllowTabInput);
+
+        // Show progress indicator during scan
+        if (m_ui.module_scan_in_progress) {
+            ImGui::ProgressBar(m_ui.module_scan_progress, ImVec2(-1, 0), 
+                              fmt::format("Scanning... {:.1f}%", m_ui.module_scan_progress * 100.0f).c_str());
+        }
+
+        // Scan and Clear buttons on same line
+        if (!m_ui.module_scan_in_progress && ImGui::Button("Scan Module Memory")) {
+            m_ui.module_scan_text.clear();
+            m_ui.module_scan_results.clear();
+            m_ui.module_scan_in_progress = true;
+            m_ui.module_scan_progress = 0.0f;
+            
+            // Start the scan in a separate thread to avoid UI freezing
+            std::thread([this]() {
+                scan_module_memory();
+                m_ui.module_scan_in_progress = false;
+            }).detach();
+        }
+        
+        ImGui::SameLine();
+        
+        if (ImGui::Button("Clear Results")) {
+            m_ui.module_scan_text.clear();
+            m_ui.module_scan_results.clear();
+        }
+    }
+
+    // Results display with fixed height
+    ImGui::BeginChild("ModuleScanResults", content_size, true, ImGuiWindowFlags_HorizontalScrollbar);
+    ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighter spacing
+    ImGui::InputTextMultiline("##module_scan_results", &m_ui.module_scan_text, 
+                            ImVec2(-1.0f, -1.0f), // Fill the available space
+                            ImGuiInputTextFlags_ReadOnly);
+    ImGui::PopStyleVar();
+    ImGui::EndChild();
+}
+
+void ReGenny::scan_module_memory() {
+    if (m_ui.selected_module.name.empty() || m_ui.selected_module.size == 0) {
+        m_ui.module_scan_text = "No module selected or invalid module";
+        return;
+    }
+
+    spdlog::info("Scanning module {} at address 0x{:x} (size: {} bytes)...", 
+                m_ui.selected_module.name, m_ui.selected_module.start, m_ui.selected_module.size);
+    
+    // Clone the module memory
+    std::vector<uint8_t> module_memory(m_ui.selected_module.size);
+    
+    if (!m_process->read(m_ui.selected_module.start, module_memory.data(), module_memory.size())) {
+        m_ui.module_scan_text = fmt::format("Failed to read module memory for {}", m_ui.selected_module.name);
+        return;
+    }
+    
+    spdlog::info("Successfully cloned {} bytes of memory from module {}", 
+                module_memory.size(), m_ui.selected_module.name);
+    
+    // Scan memory for RTTI objects
+    std::unordered_map<std::string, std::vector<uintptr_t>> found_objects;
+    size_t ptr_size = sizeof(void*);
+    size_t total_pointers = (module_memory.size() - ptr_size) / ptr_size;
+    size_t counter = 0;
+    
+    // Start scanning at aligned addresses
+    for (size_t i = 0; i <= module_memory.size() - ptr_size; i += ptr_size) {
+        // Update progress every 10000 iterations to avoid UI overhead
+        if (++counter % 10000 == 0) {
+            m_ui.module_scan_progress = static_cast<float>(i) / static_cast<float>(module_memory.size());
+        }
+        
+        // Get pointer value from memory
+        uintptr_t ptr_value = 0;
+        std::memcpy(&ptr_value, module_memory.data() + i, ptr_size);
+        
+        // Skip null or obviously invalid pointers
+        if (ptr_value == 0 || ptr_value < 0x10000) {
+            continue;
+        }
+        
+        // Check if this could be a valid pointer within the process address space
+        const auto tname = m_process->get_typename(ptr_value);
+        
+        if (!tname || tname->empty()) {
+            continue;
+        }
+        
+        // Filter based on search term if provided
+        if (!m_ui.module_scan_search_name.empty() && 
+            tname->find(m_ui.module_scan_search_name) == std::string::npos) {
+            continue;
+        }
+        
+        // Store the result
+        found_objects[*tname].push_back(m_ui.selected_module.start + i);
+        
+        // Add to results (limit to prevent UI overload)
+        if (found_objects.size() < 10000) {
+            m_ui.module_scan_results.emplace_back(ModuleScanResult{
+                .type_name = *tname,
+                .address = m_ui.selected_module.start + i,
+                .offset = i
+            });
+        }
+    }
+    
+    // Sort results by address
+    std::sort(m_ui.module_scan_results.begin(), m_ui.module_scan_results.end(),
+             [](const ModuleScanResult& a, const ModuleScanResult& b) {
+                 return a.address < b.address;
+             });
+    
+    // Format the results
+    std::stringstream ss;
+    ss << fmt::format("Scan complete for module {} ({} bytes)\n", 
+                     m_ui.selected_module.name, m_ui.selected_module.size);
+    ss << fmt::format("Found {} unique RTTI types\n\n", found_objects.size());
+    
+    for (const auto& result : m_ui.module_scan_results) {
+        ss << fmt::format("struct {:s}* @ 0x{:x} (offset: 0x{:x})\n", 
+                         result.type_name, result.address, result.offset);
+    }
+    
+    if (m_ui.module_scan_results.size() >= 10000) {
+        ss << "\n[Output limited to 10000 entries]";
+    }
+    
+    m_ui.module_scan_text = ss.str();
+    
+    spdlog::info("Module scan completed. Found {} unique types, {} total objects", 
+                found_objects.size(), m_ui.module_scan_results.size());
 }
 
 void ReGenny::rtti_sweep_ui() {

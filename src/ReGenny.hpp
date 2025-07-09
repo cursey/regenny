@@ -22,6 +22,12 @@
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
 
+struct ModuleScanResult {
+    std::string type_name;
+    uintptr_t address;
+    uintptr_t offset;
+};
+
 class ReGenny {
 public:
     ReGenny(SDL_Window* window);
@@ -96,6 +102,15 @@ private:
         ImGuiID font_popup{};
         ImGuiID about_popup{};
         ImGuiID extensions_popup{};
+        ImGuiID module_memory_scan_popup{};
+
+        // Module memory scanning
+        Process::Module selected_module{};
+        std::string module_scan_text{};
+        std::string module_scan_search_name{};
+        bool module_scan_in_progress{false};
+        float module_scan_progress{0.0f};
+        std::vector<ModuleScanResult> module_scan_results{};
     } m_ui{};
 
     std::unique_ptr<MemoryUi> m_mem_ui{};
@@ -143,6 +158,8 @@ private:
 
     void rtti_ui();
     void rtti_sweep_ui();
+    void module_memory_scan_ui();
+    void scan_module_memory();
 
     void update_address();
     void memory_ui();
