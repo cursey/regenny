@@ -74,6 +74,7 @@ CPMAddPackage(
         OPTIONS
         "SDL_SHARED OFF"
         "SDL_STATIC ON"
+        "SDL_TEST_LIBRARY OFF"
 )
 
 # sdkgenny
