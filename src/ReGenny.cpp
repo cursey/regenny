@@ -169,7 +169,9 @@ void ReGenny::ui() {
         }
 
         ImGui::EndPopup();
-    }    m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
+    }    
+    
+    m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
     
     // Set the next window size to use most of the available screen space
     ImGui::SetNextWindowSize(ImVec2(m_window_w * 0.9f, m_window_h * 0.9f), ImGuiCond_Appearing);
