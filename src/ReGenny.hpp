@@ -90,6 +90,12 @@ private:
         std::string address{};
         std::set<std::string> type_names{};
 
+        // Tab management
+        std::string new_tab_name{};
+        bool show_new_tab_popup{false};
+        ImGuiID new_tab_popup{};
+        bool switching_tabs{false};
+
         std::string rtti_text{};
 
         std::recursive_mutex rtti_lock{};
@@ -163,8 +169,15 @@ private:
 
     void update_address();
     void memory_ui();
+    void tabs_ui();
     void set_address();
     void set_type();
+
+    // Tab management methods
+    void create_tab();
+    void switch_to_tab(int index);
+    void close_tab(int index);
+    void update_current_tab();
 
     void parse_file();
     void reset_lua_state();
