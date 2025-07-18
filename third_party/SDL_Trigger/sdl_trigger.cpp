@@ -92,9 +92,9 @@ namespace Trigger {
     }
 
     void Group::processEvent(SDL_Event& e) {
-        SDL_Keycode key = e.key.keysym.sym;
+        SDL_Keycode key = e.key.key;
 
-        if (e.type == SDL_KEYDOWN && e.key.repeat == 0) {
+        if (e.type == SDL_EVENT_KEY_DOWN && e.key.repeat == 0) {
             for (auto& trigger : triggers) {
                 if (trigger.combination.hasKey(key)) {
                     trigger.combination.markKeyDown(key);
@@ -108,7 +108,7 @@ namespace Trigger {
                     trigger.callback();
                 }
             }
-        } else if (e.type == SDL_KEYUP) {
+        } else if (e.type == SDL_EVENT_KEY_UP) {
             for (auto& trigger : triggers) {
                 if (trigger.combination.hasKey(key)) {
                     trigger.combination.markKeyUp(key);

@@ -178,6 +178,16 @@ std::optional<_s_RTTICompleteObjectLocator> WindowsProcess::get_complete_object_
     return Process::read<_s_RTTICompleteObjectLocator>(*out_ptr);
 }
 
+std::optional<uintptr_t> WindowsProcess::resolve_object_base_address(uintptr_t ptr) {
+    auto locator = get_complete_object_locator(ptr);
+
+    if (!locator) {
+        return std::nullopt;
+    }
+
+    return ptr - locator->offset;
+}
+
 std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> WindowsProcess::try_get_typeinfo_from_locator(uintptr_t locator_ptr) {
     auto locator = Process::read<_s_RTTICompleteObjectLocator>(locator_ptr);
 
@@ -320,5 +330,278 @@ std::map<uint32_t, std::string> WindowsHelpers::processes() {
     CloseHandle(snapshot);
 
     return pids;
+}
+
+bool WindowsProcess::derives_from(uintptr_t obj_ptr, const std::string_view& type_name) {
+    if (obj_ptr == 0) {
+        return false;
+    }
+
+    // Read vtable pointer from object
+    auto vtable_opt = Process::read<uintptr_t>(obj_ptr);
+    if (!vtable_opt) {
+        return false;
+    }
+    uintptr_t vtable = *vtable_opt;
+
+    // Read complete object locator pointer from before vtable
+    auto locator_ptr_opt = Process::read<uintptr_t>(vtable - sizeof(void*));
+    if (!locator_ptr_opt || *locator_ptr_opt == 0) {
+        return false;
+    }
+    uintptr_t locator_ptr = *locator_ptr_opt;
+
+    // Read the complete object locator
+    auto locator_opt = Process::read<_s_RTTICompleteObjectLocator>(locator_ptr);
+    if (!locator_opt) {
+        return false;
+    }
+    const auto& locator = *locator_opt;
+
+    // Get module base address
+    auto module_within = get_module_within(locator_ptr);
+    if (!module_within) {
+        return false;
+    }
+    uintptr_t module_base = module_within->start;
+
+    // Read class hierarchy descriptor
+#if _RTTI_RELATIVE_TYPEINFO
+    uintptr_t class_hierarchy_ptr = module_base + locator.pClassDescriptor;
+#else
+    uintptr_t class_hierarchy_ptr = (uintptr_t)locator.pClassDescriptor;
+#endif
+
+    auto class_hierarchy_opt = Process::read<_s_RTTIClassHierarchyDescriptor>(class_hierarchy_ptr);
+    if (!class_hierarchy_opt) {
+        return false;
+    }
+    const auto& class_hierarchy = *class_hierarchy_opt;
+
+    // Read base class array
+#if _RTTI_RELATIVE_TYPEINFO
+    uintptr_t base_classes_ptr = module_base + class_hierarchy.pBaseClassArray;
+#else
+    uintptr_t base_classes_ptr = (uintptr_t)class_hierarchy.pBaseClassArray;
+#endif
+
+    // Iterate through base classes
+    for (auto i = 0; i < class_hierarchy.numBaseClasses; ++i) {
+        // Read base class descriptor pointer
+        auto desc_offset_ptr = base_classes_ptr + i * sizeof(uintptr_t);
+#if _RTTI_RELATIVE_TYPEINFO
+        auto desc_offset_opt = Process::read<int>(desc_offset_ptr);
+        if (!desc_offset_opt || *desc_offset_opt == 0) {
+            continue;
+        }
+        uintptr_t desc_ptr = module_base + *desc_offset_opt;
+#else
+        auto desc_ptr_opt = Process::read<uintptr_t>(desc_offset_ptr);
+        if (!desc_ptr_opt || *desc_ptr_opt == 0) {
+            continue;
+        }
+        uintptr_t desc_ptr = *desc_ptr_opt;
+#endif
+
+        // Read base class descriptor
+        auto desc_opt = Process::read<_s_RTTIBaseClassDescriptor>(desc_ptr);
+        if (!desc_opt) {
+            continue;
+        }
+        const auto& desc = *desc_opt;
+
+        // Read type descriptor
+#if _RTTI_RELATIVE_TYPEINFO
+        uintptr_t ti_ptr = module_base + desc.pTypeDescriptor;
+#else
+        uintptr_t ti_ptr = (uintptr_t)desc.pTypeDescriptor;
+#endif
+
+        // Read typeinfo
+        auto typeinfo_buf = Process::read<std::array<uint8_t, sizeof(std::type_info) + 256>>(ti_ptr);
+        if (!typeinfo_buf) {
+            continue;
+        }
+
+        // Access the typeinfo
+        auto ti = reinterpret_cast<std::type_info*>(&(*typeinfo_buf)[0]);
+        
+        // Validate the raw name format
+        const char* raw_name = ti->raw_name();
+        if (raw_name[0] != '.' || raw_name[1] != '?') {
+            return false; // Invalid format
+        }
+
+        if (std::string_view{raw_name}.find("@") == std::string_view::npos) {
+            return false; // Invalid format
+        }
+
+        // Clear the undecorated name pointer to avoid crashes
+        auto raw_data = reinterpret_cast<__std_type_info_data*>((uintptr_t)ti + sizeof(void*));
+        raw_data->_UndecoratedName = nullptr;
+
+        // Check if the type name matches
+        const auto result = std::string_view{ti->name()};
+        if (result == type_name) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+bool WindowsProcess::derives_from(uintptr_t obj_ptr, const std::array<uint8_t, sizeof(std::type_info) + 256>& ti_compare) {
+    if (obj_ptr == 0) {
+        return false;
+    }
+
+    // Read vtable pointer from object
+    auto vtable_opt = Process::read<uintptr_t>(obj_ptr);
+    if (!vtable_opt) {
+        return false;
+    }
+    uintptr_t vtable = *vtable_opt;
+
+    // Read complete object locator pointer from before vtable
+    auto locator_ptr_opt = Process::read<uintptr_t>(vtable - sizeof(void*));
+    if (!locator_ptr_opt || *locator_ptr_opt == 0) {
+        return false;
+    }
+    uintptr_t locator_ptr = *locator_ptr_opt;
+
+    // Read the complete object locator
+    auto locator_opt = Process::read<_s_RTTICompleteObjectLocator>(locator_ptr);
+    if (!locator_opt) {
+        return false;
+    }
+    const auto& locator = *locator_opt;
+
+    // Get module base address
+    auto module_within = get_module_within(locator_ptr);
+    if (!module_within) {
+        return false;
+    }
+    uintptr_t module_base = module_within->start;
+
+    // Read class hierarchy descriptor
+#if _RTTI_RELATIVE_TYPEINFO
+    uintptr_t class_hierarchy_ptr = module_base + locator.pClassDescriptor;
+#else
+    uintptr_t class_hierarchy_ptr = (uintptr_t)locator.pClassDescriptor;
+#endif
+
+    auto class_hierarchy_opt = Process::read<_s_RTTIClassHierarchyDescriptor>(class_hierarchy_ptr);
+    if (!class_hierarchy_opt) {
+        return false;
+    }
+    const auto& class_hierarchy = *class_hierarchy_opt;
+
+    // Read base class array
+#if _RTTI_RELATIVE_TYPEINFO
+    uintptr_t base_classes_ptr = module_base + class_hierarchy.pBaseClassArray;
+#else
+    uintptr_t base_classes_ptr = (uintptr_t)class_hierarchy.pBaseClassArray;
+#endif
+
+    // Extract the type_info from the comparison buffer for comparison
+    auto ti_compare_ptr = reinterpret_cast<const std::type_info*>(&ti_compare[0]);
+
+    // Iterate through base classes
+    for (auto i = 0; i < class_hierarchy.numBaseClasses; ++i) {
+        // Read base class descriptor pointer
+        auto desc_offset_ptr = base_classes_ptr + i * sizeof(uintptr_t);
+#if _RTTI_RELATIVE_TYPEINFO
+        auto desc_offset_opt = Process::read<int>(desc_offset_ptr);
+        if (!desc_offset_opt || *desc_offset_opt == 0) {
+            continue;
+        }
+        uintptr_t desc_ptr = module_base + *desc_offset_opt;
+#else
+        auto desc_ptr_opt = Process::read<uintptr_t>(desc_offset_ptr);
+        if (!desc_ptr_opt || *desc_ptr_opt == 0) {
+            continue;
+        }
+        uintptr_t desc_ptr = *desc_ptr_opt;
+#endif
+
+        // Read base class descriptor
+        auto desc_opt = Process::read<_s_RTTIBaseClassDescriptor>(desc_ptr);
+        if (!desc_opt) {
+            continue;
+        }
+        const auto& desc = *desc_opt;
+
+        // Read type descriptor
+#if _RTTI_RELATIVE_TYPEINFO
+        uintptr_t ti_ptr = module_base + desc.pTypeDescriptor;
+#else
+        uintptr_t ti_ptr = (uintptr_t)desc.pTypeDescriptor;
+#endif
+
+        // Read typeinfo
+        auto typeinfo_buf = Process::read<std::array<uint8_t, sizeof(std::type_info) + 256>>(ti_ptr);
+        if (!typeinfo_buf) {
+            continue;
+        }        // Compare type_info raw buffer
+        if (std::memcmp(&(*typeinfo_buf)[0], &ti_compare[0], sizeof(std::type_info)) == 0) {
+            // Verify the raw name matches as well
+            auto ti = reinterpret_cast<std::type_info*>(&(*typeinfo_buf)[0]);
+            auto ti_compare_ptr = reinterpret_cast<const std::type_info*>(&ti_compare[0]);
+            
+            if (std::string_view{ti->raw_name()} == std::string_view{ti_compare_ptr->raw_name()}) {
+                return true;
+            }
+        }
+    }
+
+    return false;
+}
+
+std::vector<uintptr_t> WindowsProcess::get_objects_of_type(uintptr_t start, size_t size, const std::string_view& type_name) {
+    std::vector<uintptr_t> results;
+    
+    // Validate parameters
+    if (start == 0 || size == 0) {
+        return results;
+    }
+    
+    // Clone the memory region
+    std::vector<uint8_t> memory_data(size);
+    
+    if (!read(start, memory_data.data(), memory_data.size())) {
+        return results;
+    }
+    
+    // Scan memory for RTTI objects
+    size_t ptr_size = sizeof(void*);
+    
+    // Start scanning at aligned addresses
+    for (size_t i = 0; i <= memory_data.size() - ptr_size; i += ptr_size) {
+        // Get pointer value from memory
+        uintptr_t ptr_value = 0;
+        std::memcpy(&ptr_value, memory_data.data() + i, ptr_size);
+        
+        // Skip null or obviously invalid pointers
+        if (ptr_value == 0 || ptr_value < 0x10000) {
+            continue;
+        }
+        
+        // Check both the pointer itself and the value it points to
+        for (size_t j = 0; j < 2; ++j) {
+            const auto tname = get_typename(j == 0 ? start + i : ptr_value);
+            
+            if (!tname || tname->empty()) {
+                continue;
+            }
+            
+            // Filter based on type_name
+            if (tname->find(type_name) != std::string::npos) {
+                results.push_back(start + i);
+                break; // Found a match, no need to check the other case
+            }
+        }
+    }
+    
+    return results;
 }
 } // namespace arch

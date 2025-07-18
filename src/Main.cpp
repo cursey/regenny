@@ -1,11 +1,11 @@
 #include <cstdio>
 #include <filesystem>
 
-#include <SDL.h>
+#include <SDL3/SDL.h>
 #include <glad/glad.h> // Initialize with gladLoadGL()
 #include <imgui.h>
 #include <imgui_impl_opengl3.h>
-#include <imgui_impl_sdl2.h>
+#include <imgui_impl_sdl3.h>
 
 #include "scope_guard.hpp"
 
@@ -17,7 +17,7 @@ int main(int, char**) {
     // (Some versions of SDL before <2.0.10 appears to have performance/stalling issues on a minority of Windows
     // systems, depending on whether SDL_INIT_GAMECONTROLLER is enabled or disabled.. updating to latest version of SDL
     // is recommended!)
-    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_TIMER | SDL_INIT_GAMECONTROLLER) != 0) {
+    if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_EVENTS | SDL_INIT_GAMEPAD) == false) {
         printf("Error: %s\n", SDL_GetError());
         return -1;
     }
@@ -36,15 +36,15 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_DEPTH_SIZE, 24);
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
-        (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_ALLOW_HIGHDPI);
+        (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
     SDL_Window* window =
-        SDL_CreateWindow("ReGenny", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED, 1280, 720, window_flags);
+        SDL_CreateWindow("ReGenny", 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
     SDL_SetWindowMinimumSize(window, 300, 150);
 
     auto cleanup_window = sg::make_scope_guard([window, gl_context] {
-        SDL_GL_DeleteContext(gl_context);
+        SDL_GL_DestroyContext(gl_context);
         SDL_DestroyWindow(window);
     });
 
@@ -73,12 +73,12 @@ int main(int, char**) {
     // ImGui::StyleColorsClassic();
 
     // Setup Platform/Renderer backends
-    ImGui_ImplSDL2_InitForOpenGL(window, gl_context);
+    ImGui_ImplSDL3_InitForOpenGL(window, gl_context);
     ImGui_ImplOpenGL3_Init(glsl_version);
 
     auto cleanup_imgui = sg::make_scope_guard([] {
         ImGui_ImplOpenGL3_Shutdown();
-        ImGui_ImplSDL2_Shutdown();
+        ImGui_ImplSDL3_Shutdown();
         ImGui::DestroyContext();
     });
 
@@ -102,12 +102,12 @@ int main(int, char**) {
         SDL_Event e{};
 
         while (SDL_PollEvent(&e)) {
-            ImGui_ImplSDL2_ProcessEvent(&e);
+            ImGui_ImplSDL3_ProcessEvent(&e);
             regenny.process_event(e);
 
-            if (e.type == SDL_QUIT) {
+            if (e.type == SDL_EVENT_QUIT) {
                 done = true;
-            } else if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_CLOSE &&
+            } else if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
                        e.window.windowID == SDL_GetWindowID(window)) {
                 done = true;
             }
@@ -117,7 +117,7 @@ int main(int, char**) {
 
         // Start the Dear ImGui frame
         ImGui_ImplOpenGL3_NewFrame();
-        ImGui_ImplSDL2_NewFrame();
+        ImGui_ImplSDL3_NewFrame();
         ImGui::NewFrame();
 
         regenny.ui();
