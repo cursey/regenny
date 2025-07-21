@@ -67,7 +67,22 @@ void ReGenny::update() {
 
         auto& io = ImGui::GetIO();
         io.Fonts->Clear();
-        io.Fonts->AddFontFromFileTTF(m_cfg.font_file.c_str(), m_cfg.font_size);
+
+        // Build font rage
+        ImVector<ImWchar> ranges{};
+        {
+            ImFontGlyphRangesBuilder builder{};
+            builder.AddRanges(io.Fonts->GetGlyphRangesDefault());
+            builder.AddRanges(io.Fonts->GetGlyphRangesChineseFull());
+            builder.AddRanges(io.Fonts->GetGlyphRangesJapanese());
+            builder.AddRanges(io.Fonts->GetGlyphRangesKorean());
+            builder.AddRanges(io.Fonts->GetGlyphRangesCyrillic());
+            builder.AddRanges(io.Fonts->GetGlyphRangesVietnamese());
+            builder.AddRanges(io.Fonts->GetGlyphRangesThai());
+            builder.BuildRanges(&ranges);
+        }
+
+        io.Fonts->AddFontFromFileTTF(m_cfg.font_file.c_str(), m_cfg.font_size, nullptr, ranges.Data);
         ImGui_ImplOpenGL3_DestroyFontsTexture();
         ImGui_ImplOpenGL3_CreateFontsTexture();
         m_load_font = false;
