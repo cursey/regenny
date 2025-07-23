@@ -9,6 +9,13 @@ add_subdirectory(third_party)
 # regenny
 #
 file(GLOB_RECURSE regenny_sources "src/*")
+
+if(MSVC)
+    list(FILTER regenny_sources EXCLUDE REGEX "src/arch/Linux.cpp$")
+else()
+    list(FILTER regenny_sources EXCLUDE REGEX "src/arch/Windows.cpp$")
+endif()
+
 add_executable(regenny ${regenny_sources})
 target_include_directories(regenny PRIVATE "src")
 target_link_libraries(regenny PRIVATE

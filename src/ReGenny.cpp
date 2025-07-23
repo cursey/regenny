@@ -3,7 +3,10 @@
 #include <cstdlib>
 #include <type_traits>
 
+#if __has_include(<ppl.h>)
 #include <ppl.h>
+#define REGENNY_HAS_PPL
+#endif
 
 #include <LuaGenny.h>
 #include <fmt/format.h>
@@ -1021,8 +1024,7 @@ void ReGenny::rtti_sweep_ui() {
         std::vector<uint8_t> base_data(m_type->size());
         m_process->read(m_address, base_data.data(), base_data.size());
 
-        // for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
-        concurrency::parallel_for(size_t{0}, base_data.size(), size_t{sizeof(void*)}, [&](size_t i) {
+        static const auto process_data = [&](std::size_t i) {
             if (i + sizeof(void*) >= base_data.size()) {
                 return;
             }
@@ -1043,7 +1045,19 @@ void ReGenny::rtti_sweep_ui() {
                 std::scoped_lock _{m_ui.rtti_lock};
                 m_ui.rtti_sweep_text += fmt::format("struct {:s}* @ 0x{:x}\n", *tname, (uintptr_t)i);
             }
+        };
+
+#ifdef REGENNY_HAS_PPL
+        concurrency::parallel_for(size_t{0}, base_data.size(), size_t{sizeof(void*)}, [&](size_t i) {
+#else
+        for (size_t i = 0; i < base_data.size(); i += sizeof(void*)) {
+#endif
+            process_data(i);
+#ifdef REGENNY_HAS_PPL
         });
+#else
+        }
+#endif
 
         struct Chain {
             uintptr_t base;
@@ -1073,8 +1087,7 @@ void ReGenny::rtti_sweep_ui() {
 
             std::recursive_mutex local_mutex{};
 
-            // for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
-            concurrency::parallel_for(size_t{0}, data.size(), size_t{sizeof(void*)}, [&](size_t i) {
+            static const auto process_data = [&](std::size_t i) {
                 if (i + sizeof(void*) >= data.size()) {
                     return;
                 }
@@ -1106,7 +1119,19 @@ void ReGenny::rtti_sweep_ui() {
                     std::scoped_lock _{local_mutex};
                     result.insert(result.end(), new_results.begin(), new_results.end());
                 }
+            };
+
+#ifdef REGENNY_HAS_PPL
+            concurrency::parallel_for(size_t{0}, data.size(), size_t{sizeof(void*)}, [&](size_t i) {
+#else
+            for (size_t i = 0; i < data.size(); i += sizeof(void*)) {
+#endif
+                process_data(i);
+#ifdef REGENNY_HAS_PPL
             });
+#else
+            }
+#endif
 
             // std::sort(result.begin(), result.end(), [](auto&& a, auto&& b) { return a.offset < b.offset; });
 
@@ -1311,6 +1336,7 @@ void ReGenny::memory_ui() {
 void ReGenny::set_address() {
     for (auto address : query_address_resolvers(m_ui.address)) {
         auto addr_str = fmt::format("0x{:x}", address);
+        std::cout << addr_str << std::endl;
         if (auto addr = parse_address(addr_str)) {
             m_parsed_address = *addr;
         }

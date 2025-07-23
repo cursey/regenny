@@ -34,10 +34,15 @@ CPMAddPackage(
         DOWNLOAD_ONLY YES
 )
 if (nativefiledialog_ADDED)
+	if(MSVC)
+		set(NFD_IMPLEMENTATION ${nativefiledialog_SOURCE_DIR}/src/nfd_win.cpp)
+	else()
+		set(NFD_IMPLEMENTATION ${nativefiledialog_SOURCE_DIR}/src/nfd_zenity.c)
+    endif()
     add_library(
             nativefiledialog STATIC
             ${nativefiledialog_SOURCE_DIR}/src/nfd_common.c
-            ${nativefiledialog_SOURCE_DIR}/src/nfd_win.cpp
+            ${NFD_IMPLEMENTATION}
     )
     target_include_directories(nativefiledialog PUBLIC $<BUILD_INTERFACE:${nativefiledialog_SOURCE_DIR}>/src/include)
 endif ()
@@ -95,6 +100,7 @@ if (lua_ADDED)
 endif ()
 
 # sol2
+# TODO Merge this or upgrade to 3.5.0 when it comes out https://github.com/ThePhD/sol2/commit/d805d027e0a0a7222e936926139f06e23828ce9f
 CPMAddPackage("gh:ThePhD/sol2@3.3.0")
 
 # luagenny
@@ -112,7 +118,7 @@ if (luagenny_ADDED)
     if (MSVC)
         target_compile_options(luagenny PUBLIC /bigobj)
     else ()
-        target_compile_options(luagenny PRIVATE -fdeclspec -Wno-ignored-attributes)
+        target_compile_options(luagenny PRIVATE -Wno-ignored-attributes)
     endif ()
 endif ()
 
@@ -125,6 +131,6 @@ add_library(scope_guard INTERFACE)
 target_include_directories(scope_guard INTERFACE "scope_guard")
 
 # SDL_Trigger
-add_library(SDL_Trigger STATIC "SDL_Trigger/SDL_Trigger.cpp")
+add_library(SDL_Trigger STATIC "SDL_Trigger/sdl_trigger.cpp")
 target_include_directories(SDL_Trigger INTERFACE "SDL_Trigger")
 target_link_libraries(SDL_Trigger PUBLIC SDL3::SDL3)
