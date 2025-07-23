@@ -1,5 +1,7 @@
 #include "Process.hpp"
 
+#include <cstring>
+
 bool Process::read(uintptr_t address, void* buffer, size_t size) {
     // If we're reading from read-only memory we can just use the cached version since it hasn't changed.
     for (auto&& ro_allocation : m_read_only_allocations) {

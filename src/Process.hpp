@@ -7,6 +7,8 @@
 
 class Process {
 public:
+    virtual ~Process() = default;
+    
     class Module {
     public:
         std::string name{};
