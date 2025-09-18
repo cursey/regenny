@@ -28,3 +28,8 @@ target_link_libraries(regenny PRIVATE
         sol2::sol2
         luagenny
 )
+
+#
+# examples
+#
+add_subdirectory(examples)
