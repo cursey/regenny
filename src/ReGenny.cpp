@@ -49,6 +49,7 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_Q}, [this] { file_quit(); });
     m_triggers.on({SDLK_LCTRL, SDLK_L}, [this] { file_run_lua_script(); });
     m_triggers.on({SDLK_LCTRL, SDLK_E}, [this] { file_open_in_editor(); });
+    m_triggers.on({SDLK_LCTRL, SDLK_T}, [this] { m_ui.show_new_tab_popup = true; m_ui.new_tab_name.clear(); });
     
     m_ui.module_scan_in_progress = false;
     m_ui.module_scan_progress = 0.0f;
@@ -453,6 +454,34 @@ void ReGenny::menu_ui() {
             ImGui::EndMenu();
         }
 
+        if (ImGui::BeginMenu("Tabs")) {
+            ImGui::BeginDisabled(m_sdk == nullptr);
+
+            if (ImGui::MenuItem("New Tab", "Ctrl+T")) {
+                m_ui.show_new_tab_popup = true;
+                m_ui.new_tab_name.clear();
+            }
+
+            if (ImGui::MenuItem("Close Current Tab") && m_project.active_tab_index >= 0) {
+                close_tab(m_project.active_tab_index);
+            }
+
+            if (!m_project.tabs.empty()) {
+                ImGui::Separator();
+                ImGui::Text("Switch to Tab:");
+
+                for (int i = 0; i < static_cast<int>(m_project.tabs.size()); ++i) {
+                    bool is_active = (i == m_project.active_tab_index);
+                    if (ImGui::MenuItem(m_project.tabs[i].name.c_str(), nullptr, is_active)) {
+                        switch_to_tab(i);
+                    }
+                }
+            }
+
+            ImGui::EndDisabled();
+            ImGui::EndMenu();
+        }
+
         if (ImGui::BeginMenu("Action")) {
             ImGui::BeginDisabled(m_sdk == nullptr);
 
@@ -628,6 +657,13 @@ void ReGenny::load_project() {
 
     // Reset the memory UI here since a new project has been loaded.
     m_mem_ui.reset();
+    
+    // Load the active tab if one exists
+    if (m_project.active_tab_index >= 0 && m_project.active_tab_index < static_cast<int>(m_project.tabs.size())) {
+        const auto& active_tab = m_project.tabs[m_project.active_tab_index];
+        m_project.type_chosen = active_tab.type_name;
+        m_ui.address = active_tab.address;
+    }
 }
 
 void ReGenny::file_save() {
@@ -1266,6 +1302,9 @@ void ReGenny::update_address() {
 void ReGenny::memory_ui() {
     // assert(m_process != nullptr);
 
+    // Tabs UI
+    tabs_ui();
+
     if (ImGui::BeginCombo("Typename", m_project.type_chosen.c_str())) {
         for (auto&& type_name : m_ui.type_names) {
             auto is_selected = type_name == m_project.type_chosen;
@@ -1278,6 +1317,7 @@ void ReGenny::memory_ui() {
 
                 m_project.type_chosen = type_name;
                 set_type();
+                update_current_tab();
             }
 
             if (is_selected) {
@@ -1321,6 +1361,7 @@ void ReGenny::set_address() {
     }
 
     remember_type_and_address();
+    update_current_tab();
 }
 
 void ReGenny::set_type() {
@@ -1358,6 +1399,161 @@ void ReGenny::set_type() {
 
     m_mem_ui = std::make_unique<MemoryUi>(
         m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+}
+
+void ReGenny::tabs_ui() {
+    // Tab bar
+    if (ImGui::BeginTabBar("TypeTabs", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyScroll)) {
+        
+        // Existing tabs
+        for (int i = 0; i < static_cast<int>(m_project.tabs.size()); ++i) {
+            bool open = true;
+            
+            bool is_tab_selected = ImGui::BeginTabItem(m_project.tabs[i].name.c_str(), &open);
+            
+            if (is_tab_selected) {
+                // This tab is currently selected
+                if (i != m_project.active_tab_index) {
+                    switch_to_tab(i);
+                }
+                ImGui::EndTabItem();
+            }
+            
+            if (!open) {
+                close_tab(i);
+                break; // Break to avoid iterator invalidation
+            }
+        }
+        
+        // Add new tab button
+        if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
+            m_ui.show_new_tab_popup = true;
+            m_ui.new_tab_name.clear();
+        }
+        
+        if (ImGui::IsItemHovered()) {
+            ImGui::SetTooltip("Add new tab");
+        }
+        
+        ImGui::EndTabBar();
+    }
+    
+    // New tab popup
+    ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
+    ImGui::SetNextWindowSize(ImVec2{400.0f, 0.0f}, ImGuiCond_Appearing);
+    m_ui.new_tab_popup = ImGui::GetID("New Tab");
+    
+    if (m_ui.show_new_tab_popup) {
+        ImGui::OpenPopup(m_ui.new_tab_popup);
+        m_ui.show_new_tab_popup = false;
+    }
+    
+    if (ImGui::BeginPopupModal("New Tab")) {
+        ImGui::Text("Create a new tab with current type and address");
+        ImGui::Separator();
+        
+        ImGui::InputText("Tab Name", &m_ui.new_tab_name);
+        
+        ImGui::Text("Type: %s", m_project.type_chosen.c_str());
+        ImGui::Text("Address: %s", m_ui.address.c_str());
+        
+        ImGui::Separator();
+        
+        if (ImGui::Button("Create") && !m_ui.new_tab_name.empty()) {
+            create_tab();
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::SameLine();
+        
+        if (ImGui::Button("Cancel")) {
+            ImGui::CloseCurrentPopup();
+        }
+        
+        ImGui::EndPopup();
+    }
+}
+
+void ReGenny::create_tab() {
+    if (m_ui.new_tab_name.empty() || m_project.type_chosen.empty()) {
+        return;
+    }
+    
+    // Check if tab name already exists
+    for (const auto& tab : m_project.tabs) {
+        if (tab.name == m_ui.new_tab_name) {
+            return; // Don't create duplicate names
+        }
+    }
+    
+    TypeTab new_tab;
+    new_tab.name = m_ui.new_tab_name;
+    new_tab.type_name = m_project.type_chosen;
+    new_tab.address = m_ui.address;
+    
+    m_project.tabs.push_back(new_tab);
+    m_project.active_tab_index = static_cast<int>(m_project.tabs.size()) - 1;
+    
+    save_project();
+}
+
+void ReGenny::switch_to_tab(int index) {
+    if (index < 0 || index >= static_cast<int>(m_project.tabs.size()) || m_ui.switching_tabs) {
+        return;
+    }
+    
+    m_ui.switching_tabs = true;
+    
+    // Update current tab before switching
+    update_current_tab();
+    
+    // Switch to the new tab
+    m_project.active_tab_index = index;
+    const auto& tab = m_project.tabs[index];
+    
+    // Save the previously selected type's props
+    if (m_mem_ui != nullptr && !m_project.type_chosen.empty()) {
+        m_project.props[m_project.type_chosen] = m_mem_ui->props();
+    }
+    
+    // Load the tab's type and address
+    m_project.type_chosen = tab.type_name;
+    m_ui.address = tab.address;
+    
+    set_type();
+    save_project();
+    
+    m_ui.switching_tabs = false;
+}
+
+void ReGenny::close_tab(int index) {
+    if (index < 0 || index >= static_cast<int>(m_project.tabs.size())) {
+        return;
+    }
+    
+    m_project.tabs.erase(m_project.tabs.begin() + index);
+    
+    // Adjust active tab index
+    if (m_project.active_tab_index >= index) {
+        m_project.active_tab_index--;
+    }
+    
+    // If we closed the last tab or there are no tabs left
+    if (m_project.active_tab_index >= static_cast<int>(m_project.tabs.size())) {
+        m_project.active_tab_index = static_cast<int>(m_project.tabs.size()) - 1;
+    }
+    
+    save_project();
+}
+
+void ReGenny::update_current_tab() {
+    if (m_ui.switching_tabs || m_project.active_tab_index < 0 || m_project.active_tab_index >= static_cast<int>(m_project.tabs.size())) {
+        return;
+    }
+    
+    auto& current_tab = m_project.tabs[m_project.active_tab_index];
+    current_tab.type_name = m_project.type_chosen;
+    current_tab.address = m_ui.address;
 }
 
 void ReGenny::reset_lua_state() {
