@@ -71,6 +71,10 @@ Struct::Struct(Config& cfg, Process& process, sdkgenny::Variable* var, Property&
             bitfield_type = var->type();
         }
 
+        if (bitfield_type == nullptr) {
+            continue;
+        }
+
         auto num_bits = bitfield_type->size() * CHAR_BIT;
 
         if (last_bit != num_bits) {

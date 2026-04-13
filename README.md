@@ -26,6 +26,10 @@ cmake -B build
 cmake --build build
 ```
 
+## MCP Integration
+
+ReGenny exposes an HTTP API on `localhost:12025` for tool integration. An MCP server is included in `mcp-server/` for AI-assisted reverse engineering. See `AGENT.md` for the agent navigation guide.
+
 ## Design decisions
 
 * ReGenny uses plaintext project files instead of binary ones (`.genny` and `.json`). Plaintext formats are much better for inclusion in git repositories and makes collaborating with others on ReGenny projects easier since you can diff/merge project files.

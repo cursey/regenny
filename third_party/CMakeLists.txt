@@ -128,3 +128,16 @@ target_include_directories(scope_guard INTERFACE "scope_guard")
 add_library(SDL_Trigger STATIC "SDL_Trigger/SDL_Trigger.cpp")
 target_include_directories(SDL_Trigger INTERFACE "SDL_Trigger")
 target_link_libraries(SDL_Trigger PUBLIC SDL3::SDL3)
+
+
+# cpp-httplib
+CPMAddPackage(
+        NAME httplib
+        GITHUB_REPOSITORY yhirose/cpp-httplib
+        VERSION 0.18.3
+        DOWNLOAD_ONLY YES
+)
+if (httplib_ADDED)
+    add_library(httplib INTERFACE)
+    target_include_directories(httplib INTERFACE $<BUILD_INTERFACE:${httplib_SOURCE_DIR}>)
+endif ()

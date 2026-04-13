@@ -16,6 +16,7 @@
 #include <sdkgenny_parser.hpp>
 #include <spdlog/spdlog.h>
 
+#include "Api.hpp"
 #include "AboutUi.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
@@ -36,6 +37,7 @@ ReGenny::ReGenny(SDL_Window* window)
     spdlog::info("Start of log.");
 
     reset_lua_state();
+    m_api = std::make_unique<Api>(this);
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
@@ -56,6 +58,7 @@ ReGenny::ReGenny(SDL_Window* window)
 }
 
 ReGenny::~ReGenny() {
+    m_api.reset();
 }
 
 void ReGenny::process_event(SDL_Event& e) {
@@ -92,6 +95,32 @@ void ReGenny::update() {
     if (m_cfg_save_time && now > *m_cfg_save_time) {
         save_cfg();
         m_cfg_save_time = std::nullopt;
+    }
+
+    // Process deferred API operations on the main thread.
+    if (m_api) {
+        if (m_api->should_reparse()) {
+            parse_file();
+        }
+        if (m_api->should_detach()) {
+            action_detach();
+        }
+        if (auto da = m_api->consume_deferred_attach()) {
+            m_project.process_id = da->pid;
+            m_project.process_name = da->name;
+            attach();
+        }
+        if (auto dopen = m_api->consume_deferred_open()) {
+            file_open(dopen->filepath);
+        }
+        if (auto dts = m_api->consume_deferred_type_select()) {
+            m_project.type_chosen = dts->type_name;
+            if (!dts->address.empty()) {
+                m_ui.address = dts->address;
+            }
+            set_type();
+            set_address();
+        }
     }
 }
 
@@ -497,6 +526,10 @@ void ReGenny::menu_ui() {
                 action_generate_sdk();
             }
 
+            if (ImGui::MenuItem("Generate IDA SDK")) {
+                action_generate_sdk(true);
+            }
+
             if (ImGui::MenuItem("Autogenerate RTTI Struct")) {
                 m_ui.rtti_text.clear();
                 ImGui::OpenPopup(m_ui.rtti_popup);
@@ -758,7 +791,7 @@ void ReGenny::action_detach() {
     set_window_title();
 }
 
-void ReGenny::action_generate_sdk() {
+void ReGenny::action_generate_sdk(bool ida) {
     if (m_sdk == nullptr) {
         return;
     }
@@ -770,6 +803,11 @@ void ReGenny::action_generate_sdk() {
     }
 
     spdlog::info("Generating SDK at {}...", sdk_path);
+
+    if (ida) {
+        genny::ida::transform(*m_sdk);
+    }
+    
     m_sdk->header_extension(m_project.extension_header)
         ->source_extension(m_project.extension_source)
         ->generate(sdk_path);
