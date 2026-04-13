@@ -37,13 +37,16 @@ ReGenny::ReGenny(SDL_Window* window)
     spdlog::info("Start of log.");
 
     reset_lua_state();
-    m_api = std::make_unique<Api>(this);
 
     auto path_str = SDL_GetPrefPath("cursey", "ReGenny");
     m_app_path = path_str;
     SDL_free(path_str);
 
     load_cfg();
+
+    if (m_cfg.api_enabled) {
+        m_api = std::make_unique<Api>(this);
+    }
 
     m_triggers.on({SDLK_LCTRL, SDLK_N}, [this] { file_new(); });
     m_triggers.on({SDLK_LCTRL, SDLK_O}, [this] { file_open(); });
@@ -566,6 +569,19 @@ void ReGenny::menu_ui() {
             if (ImGui::Checkbox("Always on top", &m_cfg.always_on_top)) {
                 save_cfg();
                 SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? true : false);
+            }
+
+            if (ImGui::Checkbox("HTTP API (MCP)", &m_cfg.api_enabled)) {
+                save_cfg();
+                if (m_cfg.api_enabled && !m_api) {
+                    m_api = std::make_unique<Api>(this);
+                } else if (!m_cfg.api_enabled && m_api) {
+                    m_api.reset();
+                    spdlog::info("[API] HTTP server stopped.");
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable/disable the HTTP API on localhost:12025 for MCP tool integration.");
             }
 
             ImGui::EndMenu();

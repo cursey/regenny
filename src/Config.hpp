@@ -15,6 +15,7 @@ struct Config {
     bool display_print{true};
     int refresh_rate{500};
     bool always_on_top{false};
+    bool api_enabled{true};
 };
 
 void to_json(nlohmann::json& j, const Config& c);
