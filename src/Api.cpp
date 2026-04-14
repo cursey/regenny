@@ -225,9 +225,12 @@ void Api::register_routes() {
         std::shared_lock state_lk{rg->state_mtx()};
         json j;
         auto& proc = rg->process();
+        auto& project = rg->project();
         j["attached"] = proc && proc->process_id() != 0;
         j["process_id"] = proc ? proc->process_id() : 0;
-        // Access project fields via the accessors we have
+        j["process_name"] = project.process_name;
+        auto& filepath = rg->open_filepath();
+        j["open_file"] = filepath.empty() ? "" : filepath.string();
         if (rg->type()) {
             j["current_type"] = rg->type()->name();
         } else {
@@ -735,10 +738,12 @@ void Api::register_routes() {
 
             // Create a per-request logger to capture print() output without mutating the shared logger
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
-            capture->set_pattern("%v");
 
+            // The eval logger exists only to capture print() output via spdlog::info().
+            // The capture sink uses "%v" (raw message only, no timestamp/level prefix).
+            // Do NOT call eval_logger->set_pattern() — it would override the sink's pattern.
             auto eval_logger = std::make_shared<spdlog::logger>("api_eval", capture);
-            eval_logger->set_pattern("[%H:%M:%S] [%l] %v");
+            capture->set_pattern("%v");
 
             std::string result_str;
             bool success = true;
@@ -797,10 +802,8 @@ void Api::register_routes() {
             if (!std::filesystem::exists(path)) { json_error(res, "File not found: " + path); return; }
 
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
-            capture->set_pattern("%v");
-
             auto eval_logger = std::make_shared<spdlog::logger>("api_exec", capture);
-            eval_logger->set_pattern("[%H:%M:%S] [%l] %v");
+            capture->set_pattern("%v");
 
             bool success = true;
             std::string error_msg;

@@ -385,5 +385,5 @@ end
 - `regenny_lua_eval` tries to evaluate as an expression first (prefixes `return`), then falls back to statement execution.
 - Process attachment, file opening, and type selection are deferred to the main UI thread. They execute on the next frame after the API call returns.
 - `regenny:type()` returns a base `Type`. To access struct-specific methods (size, parents, variables), cast with `:as_struct()`.
-- Lua 5.4 has strict integer/float distinction. Large `u64` values may overflow Lua integers. Use `string.format("0x%X", val)` for display.
+- Lua 5.4 has strict integer/float distinction. `string.format("%X", val)` **fails** on large u64 values (e.g. pointers with high bits set). Workaround: read as two u32s and format separately: `string.format("%08X%08X", hi, lo)`. Or use `proc:read_uint32()` for the high and low halves.
 - `proc:read_*` methods return `nil` on failure (invalid address, unreadable memory). Always nil-check in loops.
