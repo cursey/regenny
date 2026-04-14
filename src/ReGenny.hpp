@@ -52,6 +52,7 @@ public:
     auto& lua_lock() { return m_lua_lock; }
     auto& lua() { return *m_lua; }
     void reset_lua_state_api() { reset_lua_state(); }
+    auto& logger() { return m_logger; }
 
     // Shared mutex for state accessed by the API thread.
     // API handlers take shared (read) locks; main thread takes unique (write) locks at mutation points.

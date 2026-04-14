@@ -736,13 +736,13 @@ void Api::register_routes() {
             auto code = body.value("code", "");
             if (code.empty()) { json_error(res, "Required: code"); return; }
 
-            // Create a per-request logger to capture print() output without mutating the shared logger
+            // Create a per-request logger with two sinks:
+            //   1. CaptureSink — raw "%v" output for the API JSON response
+            //   2. UI logger sink — so the user sees output in the ReGenny Log panel
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
-
-            // The eval logger exists only to capture print() output via spdlog::info().
-            // The capture sink uses "%v" (raw message only, no timestamp/level prefix).
-            // Do NOT call eval_logger->set_pattern() — it would override the sink's pattern.
-            auto eval_logger = std::make_shared<spdlog::logger>("api_eval", capture);
+            auto ui_sink = rg->logger().logger()->sinks().front();
+            auto eval_logger = std::make_shared<spdlog::logger>("api_eval",
+                spdlog::sinks_init_list{capture, ui_sink});
             capture->set_pattern("%v");
 
             std::string result_str;
@@ -802,7 +802,9 @@ void Api::register_routes() {
             if (!std::filesystem::exists(path)) { json_error(res, "File not found: " + path); return; }
 
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
-            auto eval_logger = std::make_shared<spdlog::logger>("api_exec", capture);
+            auto ui_sink = rg->logger().logger()->sinks().front();
+            auto eval_logger = std::make_shared<spdlog::logger>("api_exec",
+                spdlog::sinks_init_list{capture, ui_sink});
             capture->set_pattern("%v");
 
             bool success = true;
