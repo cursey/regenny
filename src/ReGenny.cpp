@@ -14,8 +14,12 @@
 #include <imgui_stdlib.h>
 #include <nfd.h>
 #include <sdkgenny_parser.hpp>
+// sdkgenny_ida.hpp uses bare sdkgenny names internally; the using-directive is confined to this TU.
+using namespace sdkgenny;
+#include <sdkgenny_ida.hpp>
 #include <spdlog/spdlog.h>
 
+#include "Api.hpp"
 #include "AboutUi.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
@@ -43,6 +47,10 @@ ReGenny::ReGenny(SDL_Window* window)
 
     load_cfg();
 
+    if (m_cfg.api_enabled) {
+        m_api = std::make_unique<Api>(this);
+    }
+
     m_triggers.on({SDLK_LCTRL, SDLK_N}, [this] { file_new(); });
     m_triggers.on({SDLK_LCTRL, SDLK_O}, [this] { file_open(); });
     m_triggers.on({SDLK_LCTRL, SDLK_S}, [this] { file_save(); });
@@ -56,6 +64,7 @@ ReGenny::ReGenny(SDL_Window* window)
 }
 
 ReGenny::~ReGenny() {
+    m_api.reset();
 }
 
 void ReGenny::process_event(SDL_Event& e) {
@@ -92,6 +101,32 @@ void ReGenny::update() {
     if (m_cfg_save_time && now > *m_cfg_save_time) {
         save_cfg();
         m_cfg_save_time = std::nullopt;
+    }
+
+    // Process deferred API operations on the main thread.
+    if (m_api) {
+        if (m_api->should_reparse()) {
+            parse_file();
+        }
+        if (m_api->should_detach()) {
+            action_detach();
+        }
+        if (auto da = m_api->consume_deferred_attach()) {
+            m_project.process_id = da->pid;
+            m_project.process_name = da->name;
+            attach();
+        }
+        if (auto dopen = m_api->consume_deferred_open()) {
+            file_open(dopen->filepath);
+        }
+        if (auto dts = m_api->consume_deferred_type_select()) {
+            m_project.type_chosen = dts->type_name;
+            if (!dts->address.empty()) {
+                m_ui.address = dts->address;
+            }
+            set_type();
+            set_address();
+        }
     }
 }
 
@@ -497,6 +532,10 @@ void ReGenny::menu_ui() {
                 action_generate_sdk();
             }
 
+            if (ImGui::MenuItem("Generate IDA SDK")) {
+                action_generate_sdk(true);
+            }
+
             if (ImGui::MenuItem("Autogenerate RTTI Struct")) {
                 m_ui.rtti_text.clear();
                 ImGui::OpenPopup(m_ui.rtti_popup);
@@ -533,6 +572,19 @@ void ReGenny::menu_ui() {
             if (ImGui::Checkbox("Always on top", &m_cfg.always_on_top)) {
                 save_cfg();
                 SDL_SetWindowAlwaysOnTop(m_window, m_cfg.always_on_top ? true : false);
+            }
+
+            if (ImGui::Checkbox("HTTP API (MCP)", &m_cfg.api_enabled)) {
+                save_cfg();
+                if (m_cfg.api_enabled && !m_api) {
+                    m_api = std::make_unique<Api>(this);
+                } else if (!m_cfg.api_enabled && m_api) {
+                    m_api.reset();
+                    spdlog::info("[API] HTTP server stopped.");
+                }
+            }
+            if (ImGui::IsItemHovered()) {
+                ImGui::SetTooltip("Enable/disable the HTTP API on localhost:12025 for MCP tool integration.");
             }
 
             ImGui::EndMenu();
@@ -585,7 +637,7 @@ void ReGenny::file_new() {
         return;
     }
 
-    m_open_filepath = out_path;
+    { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
     m_open_filepath.replace_extension("genny");
 
     free(out_path);
@@ -616,10 +668,10 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
             return;
         }
 
-        m_open_filepath = out_path;
+        { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
         free(out_path);
     } else {
-        m_open_filepath = filepath;
+        std::unique_lock lk{m_state_mtx}; m_open_filepath = filepath;
     }
 
     spdlog::info("Opening {}...", m_open_filepath.string());
@@ -751,14 +803,17 @@ void ReGenny::file_run_lua_script() {
 
 void ReGenny::action_detach() {
     spdlog::info("Detaching...");
-    m_process = std::make_unique<Process>();
-    m_mem_ui = std::make_unique<MemoryUi>(
-        m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_process = std::make_unique<Process>();
+        m_mem_ui = std::make_unique<MemoryUi>(
+            m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+    }
     m_ui.processes.clear();
     set_window_title();
 }
 
-void ReGenny::action_generate_sdk() {
+void ReGenny::action_generate_sdk(bool ida) {
     if (m_sdk == nullptr) {
         return;
     }
@@ -770,6 +825,11 @@ void ReGenny::action_generate_sdk() {
     }
 
     spdlog::info("Generating SDK at {}...", sdk_path);
+
+    if (ida) {
+        genny::ida::transform(*m_sdk);
+    }
+    
     m_sdk->header_extension(m_project.extension_header)
         ->source_extension(m_project.extension_source)
         ->generate(sdk_path);
@@ -840,8 +900,11 @@ void ReGenny::attach() {
 
     spdlog::info("Attaching to {} PID: {}...", m_project.process_name, m_project.process_id);
 
-    m_process = arch::open_process(m_project.process_id);
-    m_mem_ui = nullptr;
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_process = arch::open_process(m_project.process_id);
+        m_mem_ui = nullptr;
+    }
 
     if (!m_process->ok()) {
         action_detach();
@@ -1246,6 +1309,7 @@ void ReGenny::rtti_ui() {
 }
 
 void ReGenny::update_address() {
+    std::unique_lock state_lk{m_state_mtx};
     // If the parsed address has no offsets then it's not valid at all and there's nothing to update.
     if (m_parsed_address.offsets.empty()) {
         return;
@@ -1383,7 +1447,10 @@ void ReGenny::set_type() {
         type_name.erase(0, pos + 1);
     }
 
-    m_type = parent->find<sdkgenny::Struct>(type_name);
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_type = parent->find<sdkgenny::Struct>(type_name);
+    }
 
     if (m_type == nullptr) {
         return;
@@ -1906,11 +1973,14 @@ void ReGenny::parse_file() try {
             m_file_lwt = std::max(m_file_lwt, std::filesystem::last_write_time(import));
         }
 
-        m_sdk = std::move(sdk);
+        {
+            std::unique_lock lk{m_state_mtx};
+            m_sdk = std::move(sdk);
 
-        if (m_mem_ui != nullptr) {
-            m_project.props[m_project.type_chosen] = m_mem_ui->props();
-            m_mem_ui.reset();
+            if (m_mem_ui != nullptr) {
+                m_project.props[m_project.type_chosen] = m_mem_ui->props();
+                m_mem_ui.reset();
+            }
         }
 
         // Build the list of selectable types for the type selector.

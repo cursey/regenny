@@ -1,5 +1,6 @@
 #pragma once
 
+#include <shared_mutex>
 #include <chrono>
 #include <deque>
 #include <filesystem>
@@ -22,6 +23,8 @@
 #include "node/Property.hpp"
 #include "sdl_trigger.h"
 
+class Api;
+
 struct ModuleScanResult {
     std::string type_name;
     uintptr_t address;
@@ -38,11 +41,22 @@ public:
     void ui();
 
     auto&& window() const { return m_window; }
-    // auto& lua() const { return *m_lua; }
     auto& sdk() const { return m_sdk; }
     auto type() const { return m_type; }
     auto& process() const { return m_process; }
     auto address() const { return m_address; }
+
+    // API accessors — used by the embedded HTTP server (Api.cpp).
+    auto& open_filepath() const { return m_open_filepath; }
+    auto& project() const { return m_project; }
+    auto& lua_lock() { return m_lua_lock; }
+    auto& lua() { return *m_lua; }
+    void reset_lua_state_api() { reset_lua_state(); }
+    auto& logger() { return m_logger; }
+
+    // Shared mutex for state accessed by the API thread.
+    // API handlers take shared (read) locks; main thread takes unique (write) locks at mutation points.
+    auto& state_mtx() { return m_state_mtx; }
 
     auto add_address_resolver(std::function<uintptr_t(const std::string&)> resolver) {
         auto id = m_address_resolvers.size();
@@ -142,6 +156,8 @@ private:
     bool m_reapply_focus_eval{false};
 
     Project m_project{};
+    std::unique_ptr<Api> m_api;
+    std::shared_mutex m_state_mtx;
 
     void menu_ui();
 
@@ -157,7 +173,7 @@ private:
     void file_run_lua_script();
 
     void action_detach();
-    void action_generate_sdk();
+    void action_generate_sdk(bool ida = false);
 
     void attach_ui();
     void attach();

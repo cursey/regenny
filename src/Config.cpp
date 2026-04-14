@@ -10,6 +10,7 @@ void to_json(nlohmann::json& j, const Config& c) {
     j["display"]["print"] = c.display_print;
     j["refresh_rate"] = c.refresh_rate;
     j["always_on_top"] = c.always_on_top;
+    j["api_enabled"] = c.api_enabled;
 }
 
 void from_json(const nlohmann::json& j, Config& c) {
@@ -31,4 +32,5 @@ void from_json(const nlohmann::json& j, Config& c) {
 
     c.refresh_rate = j.value("refresh_rate", 500);
     c.always_on_top = j.value("always_on_top", false);
+    c.api_enabled = j.value("api_enabled", true);
 }

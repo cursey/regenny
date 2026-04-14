@@ -27,4 +27,5 @@ target_link_libraries(regenny PRIVATE
         lua
         sol2::sol2
         luagenny
+        httplib
 )
