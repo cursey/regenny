@@ -18,14 +18,15 @@ static class Http
                 .Select(kv => $"{Uri.EscapeDataString(kv.Key)}={Uri.EscapeDataString(kv.Value!)}"));
             if (qs.Length > 0) url += "?" + qs;
         }
-        return await Client.GetStringAsync(url);
+        using var res = await Client.GetAsync(url);
+        return await res.Content.ReadAsStringAsync();
     }
 
     public static async Task<string> Post(string path, object body)
     {
         var json = JsonSerializer.Serialize(body);
         var content = new StringContent(json, Encoding.UTF8, "application/json");
-        var res = await Client.PostAsync(Base + path, content);
+        using var res = await Client.PostAsync(Base + path, content);
         return await res.Content.ReadAsStringAsync();
     }
 }

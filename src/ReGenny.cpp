@@ -14,6 +14,9 @@
 #include <imgui_stdlib.h>
 #include <nfd.h>
 #include <sdkgenny_parser.hpp>
+// sdkgenny_ida.hpp uses bare sdkgenny names internally; the using-directive is confined to this TU.
+using namespace sdkgenny;
+#include <sdkgenny_ida.hpp>
 #include <spdlog/spdlog.h>
 
 #include "Api.hpp"
@@ -634,7 +637,7 @@ void ReGenny::file_new() {
         return;
     }
 
-    m_open_filepath = out_path;
+    { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
     m_open_filepath.replace_extension("genny");
 
     free(out_path);
@@ -665,10 +668,10 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
             return;
         }
 
-        m_open_filepath = out_path;
+        { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
         free(out_path);
     } else {
-        m_open_filepath = filepath;
+        std::unique_lock lk{m_state_mtx}; m_open_filepath = filepath;
     }
 
     spdlog::info("Opening {}...", m_open_filepath.string());
@@ -800,9 +803,12 @@ void ReGenny::file_run_lua_script() {
 
 void ReGenny::action_detach() {
     spdlog::info("Detaching...");
-    m_process = std::make_unique<Process>();
-    m_mem_ui = std::make_unique<MemoryUi>(
-        m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_process = std::make_unique<Process>();
+        m_mem_ui = std::make_unique<MemoryUi>(
+            m_cfg, *m_sdk, dynamic_cast<sdkgenny::Struct*>(m_type), *m_process, m_project.props[m_project.type_chosen]);
+    }
     m_ui.processes.clear();
     set_window_title();
 }
@@ -894,8 +900,11 @@ void ReGenny::attach() {
 
     spdlog::info("Attaching to {} PID: {}...", m_project.process_name, m_project.process_id);
 
-    m_process = arch::open_process(m_project.process_id);
-    m_mem_ui = nullptr;
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_process = arch::open_process(m_project.process_id);
+        m_mem_ui = nullptr;
+    }
 
     if (!m_process->ok()) {
         action_detach();
@@ -1300,6 +1309,7 @@ void ReGenny::rtti_ui() {
 }
 
 void ReGenny::update_address() {
+    std::unique_lock state_lk{m_state_mtx};
     // If the parsed address has no offsets then it's not valid at all and there's nothing to update.
     if (m_parsed_address.offsets.empty()) {
         return;
@@ -1437,7 +1447,10 @@ void ReGenny::set_type() {
         type_name.erase(0, pos + 1);
     }
 
-    m_type = parent->find<sdkgenny::Struct>(type_name);
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_type = parent->find<sdkgenny::Struct>(type_name);
+    }
 
     if (m_type == nullptr) {
         return;
@@ -1960,11 +1973,14 @@ void ReGenny::parse_file() try {
             m_file_lwt = std::max(m_file_lwt, std::filesystem::last_write_time(import));
         }
 
-        m_sdk = std::move(sdk);
+        {
+            std::unique_lock lk{m_state_mtx};
+            m_sdk = std::move(sdk);
 
-        if (m_mem_ui != nullptr) {
-            m_project.props[m_project.type_chosen] = m_mem_ui->props();
-            m_mem_ui.reset();
+            if (m_mem_ui != nullptr) {
+                m_project.props[m_project.type_chosen] = m_mem_ui->props();
+                m_mem_ui.reset();
+            }
         }
 
         // Build the list of selectable types for the type selector.

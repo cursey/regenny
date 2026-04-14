@@ -2,6 +2,7 @@
 #include <filesystem>
 #include <fstream>
 #include <mutex>
+#include <shared_mutex>
 
 #include <fmt/format.h>
 #include <httplib.h>
@@ -204,8 +205,24 @@ void Api::server_thread_fn() {
 void Api::register_routes() {
     auto* rg = m_regenny;
 
+    // Global exception handler — catches any unhandled exception from route handlers
+    // (e.g. std::stoull/std::stoi on invalid input) and returns a 500 JSON error
+    // instead of crashing the server thread.
+    m_server->set_exception_handler([](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
+        try {
+            if (ep) std::rethrow_exception(ep);
+        } catch (const std::exception& e) {
+            res.status = 500;
+            res.set_content(json{{"error", e.what()}}.dump(), "application/json");
+        } catch (...) {
+            res.status = 500;
+            res.set_content(json{{"error", "unknown exception"}}.dump(), "application/json");
+        }
+    });
+
     // ── Status ───────────────────────────────────────────────────────────
     m_server->Get("/api/status", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         json j;
         auto& proc = rg->process();
         j["attached"] = proc && proc->process_id() != 0;
@@ -223,6 +240,7 @@ void Api::register_routes() {
 
     // ── Process Management ───────────────────────────────────────────────
     m_server->Get("/api/processes", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         // We need helpers to list processes, but that's private.
         // Use arch::make_helpers() directly.
         auto helpers = arch::make_helpers();
@@ -282,6 +300,7 @@ void Api::register_routes() {
 
     // ── Memory Operations ────────────────────────────────────────────────
     m_server->Get("/api/memory/read", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -338,6 +357,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/memory/read_typed", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -400,6 +420,7 @@ void Api::register_routes() {
     });
 
     m_server->Post("/api/memory/write", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -434,6 +455,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/memory/read_string", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -461,6 +483,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/modules", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -480,6 +503,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/allocations", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) {
             json_error(res, "Not attached to a process");
@@ -502,6 +526,7 @@ void Api::register_routes() {
 
     // ── Genny File Operations ────────────────────────────────────────────
     m_server->Get("/api/genny/content", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& filepath = rg->open_filepath();
         if (filepath.empty()) {
             json_error(res, "No file open");
@@ -510,6 +535,10 @@ void Api::register_routes() {
 
         try {
             std::ifstream f{filepath};
+            if (!f.is_open()) {
+                json_error(res, "Failed to open file", 500);
+                return;
+            }
             std::string content{std::istreambuf_iterator<char>(f), {}};
             json_response(res, json{{"path", filepath.string()}, {"content", content}});
         } catch (const std::exception& e) {
@@ -518,6 +547,7 @@ void Api::register_routes() {
     });
 
     m_server->Post("/api/genny/content", [this, rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& filepath = rg->open_filepath();
         if (filepath.empty()) {
             json_error(res, "No file open");
@@ -542,6 +572,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/genny/path", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& filepath = rg->open_filepath();
         json_response(res, json{{"path", filepath.empty() ? "" : filepath.string()}});
     });
@@ -603,6 +634,7 @@ void Api::register_routes() {
 
     // ── Type Introspection ───────────────────────────────────────────────
     m_server->Get("/api/types", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& sdk = rg->sdk();
         if (!sdk) { json_error(res, "No SDK loaded (open a .genny file first)"); return; }
 
@@ -628,6 +660,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/type", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& sdk = rg->sdk();
         if (!sdk) { json_error(res, "No SDK loaded"); return; }
 
@@ -662,6 +695,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/type/address", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto name = req.get_param_value("name");
         if (name.empty()) { json_error(res, "Required param: name"); return; }
 
@@ -693,15 +727,18 @@ void Api::register_routes() {
 
     // ── Lua Scripting ────────────────────────────────────────────────────
     m_server->Post("/api/lua/eval", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         try {
             auto body = json::parse(req.body);
             auto code = body.value("code", "");
             if (code.empty()) { json_error(res, "Required: code"); return; }
 
-            // Install capture sink, run code, remove sink
+            // Create a per-request logger to capture print() output without mutating the shared logger
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
-            capture->set_pattern("%v"); // Just the message, no timestamp/level for captured output
-            spdlog::default_logger()->sinks().push_back(capture);
+            capture->set_pattern("%v");
+
+            auto eval_logger = std::make_shared<spdlog::logger>("api_eval", capture);
+            eval_logger->set_pattern("[%H:%M:%S] [%l] %v");
 
             std::string result_str;
             bool success = true;
@@ -712,37 +749,32 @@ void Api::register_routes() {
                 std::scoped_lock lk{lua_lock};
                 auto& lua = rg->lua();
 
-                try {
-                    // Try "return <code>" first to get expression values
-                    auto result = lua.safe_script(std::string{"return "} + code);
+                auto prev_logger = spdlog::default_logger();
+                spdlog::set_default_logger(eval_logger);
 
-                    if (result.valid()) {
-                        auto obj = result.get<sol::object>();
-                        if (obj.get_type() != sol::type::none && obj.get_type() != sol::type::lua_nil) {
-                            obj.push();
-                            auto str = luaL_tolstring(lua, -1, nullptr);
-                            if (str) result_str = str;
-                            lua_pop(lua, 2);
-                        }
+                // Try as expression first
+                auto result = lua.safe_script(std::string{"return "} + code, sol::script_pass_on_error);
+
+                if (result.valid()) {
+                    auto obj = result.get<sol::object>();
+                    if (obj.get_type() != sol::type::none && obj.get_type() != sol::type::lua_nil) {
+                        obj.push();
+                        auto str = luaL_tolstring(lua, -1, nullptr);
+                        if (str) result_str = str;
+                        lua_pop(lua, 2);
                     }
-                } catch (...) {
-                    // Expression parse failed, try as statement
-                    try {
-                        auto result = lua.safe_script(code);
-                        if (!result.valid()) {
-                            success = false;
-                            error_msg = "Script execution failed";
-                        }
-                    } catch (const std::exception& e) {
+                } else {
+                    // Expression failed, try as statement
+                    auto stmt_result = lua.safe_script(code, sol::script_pass_on_error);
+                    if (!stmt_result.valid()) {
                         success = false;
-                        error_msg = e.what();
+                        sol::error err = stmt_result;
+                        error_msg = err.what();
                     }
                 }
-            }
 
-            // Remove capture sink
-            auto& sinks = spdlog::default_logger()->sinks();
-            sinks.erase(std::remove(sinks.begin(), sinks.end(), capture), sinks.end());
+                spdlog::set_default_logger(prev_logger);
+            }
 
             json j;
             j["success"] = success;
@@ -757,6 +789,7 @@ void Api::register_routes() {
     });
 
     m_server->Post("/api/lua/exec_file", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         try {
             auto body = json::parse(req.body);
             auto path = body.value("path", "");
@@ -765,7 +798,9 @@ void Api::register_routes() {
 
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
             capture->set_pattern("%v");
-            spdlog::default_logger()->sinks().push_back(capture);
+
+            auto eval_logger = std::make_shared<spdlog::logger>("api_exec", capture);
+            eval_logger->set_pattern("[%H:%M:%S] [%l] %v");
 
             bool success = true;
             std::string error_msg;
@@ -775,16 +810,18 @@ void Api::register_routes() {
                 std::scoped_lock lk{lua_lock};
                 auto& lua = rg->lua();
 
-                try {
-                    lua.do_file(path);
-                } catch (const std::exception& e) {
-                    success = false;
-                    error_msg = e.what();
-                }
-            }
+                auto prev_logger = spdlog::default_logger();
+                spdlog::set_default_logger(eval_logger);
 
-            auto& sinks = spdlog::default_logger()->sinks();
-            sinks.erase(std::remove(sinks.begin(), sinks.end(), capture), sinks.end());
+                auto result = lua.safe_script_file(path, sol::script_pass_on_error);
+                if (!result.valid()) {
+                    success = false;
+                    sol::error err = result;
+                    error_msg = err.what();
+                }
+
+                spdlog::set_default_logger(prev_logger);
+            }
 
             json j;
             j["success"] = success;
@@ -797,6 +834,7 @@ void Api::register_routes() {
     });
 
     m_server->Post("/api/lua/reset", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& lua_lock = rg->lua_lock();
         std::scoped_lock lk{lua_lock};
         rg->reset_lua_state_api();
@@ -810,6 +848,10 @@ void Api::register_routes() {
 
         try {
             std::ifstream f{path};
+            if (!f.is_open()) {
+                json_error(res, "Failed to open file", 500);
+                return;
+            }
             std::string content{std::istreambuf_iterator<char>(f), {}};
             json_response(res, json{{"path", path}, {"content", content}});
         } catch (const std::exception& e) {
@@ -840,6 +882,7 @@ void Api::register_routes() {
 
     // ── Project ──────────────────────────────────────────────────────────
     m_server->Get("/api/project", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& project = rg->project();
         json j;
         j["process_name"] = project.process_name;
@@ -862,6 +905,7 @@ void Api::register_routes() {
     // ── RTTI ─────────────────────────────────────────────────────────────
 #ifdef _WIN32
     m_server->Get("/api/rtti/typename", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) { json_error(res, "Not attached"); return; }
 
@@ -881,6 +925,7 @@ void Api::register_routes() {
     });
 
     m_server->Get("/api/rtti/vtable_typename", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
         if (!proc || proc->process_id() == 0) { json_error(res, "Not attached"); return; }
 
@@ -912,6 +957,9 @@ void Api::register_routes() {
         }) {
             if (std::filesystem::exists(candidate)) {
                 std::ifstream f{candidate};
+                if (!f.is_open()) {
+                    continue;
+                }
                 std::string content{std::istreambuf_iterator<char>(f), {}};
                 res.set_content(content, "text/markdown");
                 return;

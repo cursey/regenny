@@ -1,5 +1,6 @@
 #pragma once
 
+#include <shared_mutex>
 #include <chrono>
 #include <deque>
 #include <filesystem>
@@ -10,8 +11,6 @@
 
 #include <SDL3/SDL.h>
 #include <sdkgenny.hpp>
-using namespace sdkgenny;
-#include <sdkgenny_ida.hpp>
 #include <sol/sol.hpp>
 
 #include "Config.hpp"
@@ -53,6 +52,10 @@ public:
     auto& lua_lock() { return m_lua_lock; }
     auto& lua() { return *m_lua; }
     void reset_lua_state_api() { reset_lua_state(); }
+
+    // Shared mutex for state accessed by the API thread.
+    // API handlers take shared (read) locks; main thread takes unique (write) locks at mutation points.
+    auto& state_mtx() { return m_state_mtx; }
 
     auto add_address_resolver(std::function<uintptr_t(const std::string&)> resolver) {
         auto id = m_address_resolvers.size();
@@ -153,6 +156,7 @@ private:
 
     Project m_project{};
     std::unique_ptr<Api> m_api;
+    std::shared_mutex m_state_mtx;
 
     void menu_ui();
 
