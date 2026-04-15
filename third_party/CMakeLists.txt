@@ -78,7 +78,7 @@ CPMAddPackage(
 )
 
 # sdkgenny
-CPMAddPackage("gh:cursey/sdkgenny#cbf986af49c45afb2016c96202b66d66fa1cbd8e")
+CPMAddPackage("gh:cursey/sdkgenny#b08e17068e91cddd00c27b45eb2524a8a1836cfb")
 
 # Lua
 CPMAddPackage(
@@ -101,7 +101,7 @@ CPMAddPackage("gh:ThePhD/sol2@3.3.0")
 CPMAddPackage(
         NAME luagenny
         GITHUB_REPOSITORY praydog/luagenny
-        GIT_TAG 30e204780387a665a6d43d41619dc990413925c1
+        GIT_TAG 02169a8943480b316e74b88f39b5e9a6312e8b2b
         DOWNLOAD_ONLY YES
 )
 if (luagenny_ADDED)
