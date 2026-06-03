@@ -107,6 +107,7 @@ void ReGenny::update() {
     if (m_api) {
         if (m_api->should_reparse()) {
             parse_file();
+            m_api->notify_reparse_done();
         }
         if (m_api->should_detach()) {
             action_detach();
@@ -2032,15 +2033,12 @@ void ReGenny::parse_file() try {
     } else {
         throw std::runtime_error{"Failed to parse file."};
     }
-
-    m_parse_generation.fetch_add(1);
 } catch (const std::exception& e) {
     spdlog::error(e.what());
     {
         std::unique_lock lk{m_state_mtx};
         m_last_parse_error = e.what();
     }
-    m_parse_generation.fetch_add(1);
 }
 
 void ReGenny::load_cfg() try {

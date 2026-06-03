@@ -213,16 +213,19 @@ void Api::server_thread_fn() {
 void Api::register_routes() {
     auto* rg = m_regenny;
 
-    // Request a reparse on the main thread and block until it completes (or times out).
-    // Returns the parser error text (empty string == clean parse). The bool is false on
-    // timeout, meaning the parse hadn't finished within the budget and the error text is stale.
+    // Request a reparse on the main thread and block until THAT reparse completes (or times out).
+    // We wait on m_reparse_completed (bumped only after ReGenny::update() consumes our request and
+    // finishes parse_file()) rather than a generic parse counter, so an unrelated parse -- e.g. the
+    // 1s mtime auto-reload -- can't satisfy the wait early and make us report a stale error.
+    // Returns the parser error text (empty string == clean parse). The bool is false on timeout,
+    // meaning our reparse hadn't finished within the budget and the error text may be stale.
     auto request_reparse_and_wait = [this, rg]() -> std::pair<bool, std::string> {
-        const auto gen_before = rg->parse_generation();
+        const auto completed_before = m_reparse_completed.load();
         m_reparse_requested.store(true);
 
         // Poll for up to ~3s for the main thread to consume the request and finish parsing.
         for (int i = 0; i < 300; ++i) {
-            if (rg->parse_generation() != gen_before) {
+            if (m_reparse_completed.load() != completed_before) {
                 std::shared_lock lk{rg->state_mtx()};
                 return {true, rg->last_parse_error()};
             }

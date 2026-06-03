@@ -104,11 +104,28 @@ bool WindowsProcess::is_64_bit() {
     if (m_process == nullptr) {
         return sizeof(void*) == 8;
     }
+
+    // IsWow64Process only reports whether the target runs under WOW64 (a 32-bit process
+    // on 64-bit Windows). On a 32-bit OS it always reports FALSE, which is then
+    // indistinguishable from a native 64-bit process -- so determine the OS bitness first.
+    SYSTEM_INFO si{};
+    GetNativeSystemInfo(&si);
+    const bool os_64_bit = si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64 ||
+                           si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM64 ||
+                           si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64;
+    if (!os_64_bit) {
+        // Every process on a 32-bit OS is 32-bit.
+        return false;
+    }
+
     BOOL is_wow64 = FALSE;
     if (IsWow64Process(m_process, &is_wow64)) {
+        // On a 64-bit OS, a WOW64 process is 32-bit; otherwise it is native 64-bit.
         return is_wow64 == FALSE;
     }
-    return sizeof(void*) == 8;
+
+    // Couldn't query the target -- assume the (64-bit) OS bitness.
+    return true;
 }
 
 bool WindowsProcess::handle_write(uintptr_t address, const void* buffer, size_t size) {
