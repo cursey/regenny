@@ -1,3 +1,5 @@
+#include <array>
+
 #include <Zydis/Zydis.h>
 #include <fmt/format.h>
 #include <imgui.h>
