@@ -93,7 +93,7 @@ void Undefined::display(uintptr_t address, uintptr_t offset, std::byte* mem) {
             }
         }
 
-        switch (m_size) {
+        switch(m_size) {
         case 1:
             ImGui::PushID("byte");
             handle_undefined_write<uint8_t>(m_process, address, mem);
@@ -164,7 +164,7 @@ void Undefined::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj:{:s} ", *tn);
         } else if (auto tn = m_process.get_typename_from_vtable(address); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "vtable:{:s} ", *tn);
-        }
+        } 
 
         if (auto tn = m_process.get_typename(addr); tn) {
             fmt::format_to(std::back_inserter(m_preview_str), "obj*:{:s} ", *tn);

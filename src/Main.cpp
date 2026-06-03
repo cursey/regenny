@@ -37,7 +37,8 @@ int main(int, char**) {
     SDL_GL_SetAttribute(SDL_GL_STENCIL_SIZE, 8);
     SDL_WindowFlags window_flags =
         (SDL_WindowFlags)(SDL_WINDOW_OPENGL | SDL_WINDOW_RESIZABLE | SDL_WINDOW_HIGH_PIXEL_DENSITY);
-    SDL_Window* window = SDL_CreateWindow("ReGenny", 1280, 720, window_flags);
+    SDL_Window* window =
+        SDL_CreateWindow("ReGenny", 1280, 720, window_flags);
     SDL_GLContext gl_context = SDL_GL_CreateContext(window);
     SDL_GL_SetSwapInterval(1); // Enable vsync
     SDL_SetWindowMinimumSize(window, 300, 150);
@@ -106,7 +107,8 @@ int main(int, char**) {
 
             if (e.type == SDL_EVENT_QUIT) {
                 done = true;
-            } else if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED && e.window.windowID == SDL_GetWindowID(window)) {
+            } else if (e.type == SDL_EVENT_WINDOW_CLOSE_REQUESTED &&
+                       e.window.windowID == SDL_GetWindowID(window)) {
                 done = true;
             }
         }
