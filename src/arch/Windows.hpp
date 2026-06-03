@@ -46,6 +46,7 @@ protected:
 
 private:
     HANDLE m_process{};
+    bool m_is_64_bit{sizeof(void*) == 8};
 };
 
 class WindowsHelpers : public Helpers {
