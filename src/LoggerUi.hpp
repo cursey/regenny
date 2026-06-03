@@ -17,7 +17,8 @@ public:
     // Drain all queued messages into the target buffer. Call from main thread only.
     void flush_to(ImGuiTextBuffer& buf, bool& scroll_to_bottom) {
         std::scoped_lock lk{m_queue_lock};
-        if (m_queue.empty()) return;
+        if (m_queue.empty())
+            return;
         for (auto& msg : m_queue) {
             buf.append(msg.c_str());
         }
@@ -53,7 +54,6 @@ public:
 private:
     ImGuiTextBuffer m_buf{};
     bool m_scroll_to_bottom{};
-    std::shared_ptr<LoggerUiSink<std::mutex>> m_sink{
-        std::make_shared<LoggerUiSink<std::mutex>>()};
+    std::shared_ptr<LoggerUiSink<std::mutex>> m_sink{std::make_shared<LoggerUiSink<std::mutex>>()};
     std::shared_ptr<spdlog::logger> m_logger{std::make_shared<spdlog::logger>("LoggerUi", m_sink)};
 };

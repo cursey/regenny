@@ -19,8 +19,8 @@ using namespace sdkgenny;
 #include <sdkgenny_ida.hpp>
 #include <spdlog/spdlog.h>
 
-#include "Api.hpp"
 #include "AboutUi.hpp"
+#include "Api.hpp"
 #include "Utility.hpp"
 #include "arch/Arch.hpp"
 #include "node/Undefined.hpp"
@@ -57,8 +57,11 @@ ReGenny::ReGenny(SDL_Window* window)
     m_triggers.on({SDLK_LCTRL, SDLK_Q}, [this] { file_quit(); });
     m_triggers.on({SDLK_LCTRL, SDLK_L}, [this] { file_run_lua_script(); });
     m_triggers.on({SDLK_LCTRL, SDLK_E}, [this] { file_open_in_editor(); });
-    m_triggers.on({SDLK_LCTRL, SDLK_T}, [this] { m_ui.show_new_tab_popup = true; m_ui.new_tab_name.clear(); });
-    
+    m_triggers.on({SDLK_LCTRL, SDLK_T}, [this] {
+        m_ui.show_new_tab_popup = true;
+        m_ui.new_tab_name.clear();
+    });
+
     m_ui.module_scan_in_progress = false;
     m_ui.module_scan_progress = 0.0f;
 }
@@ -205,26 +208,26 @@ void ReGenny::ui() {
         }
 
         ImGui::EndPopup();
-    }    
-    
+    }
+
     m_ui.module_memory_scan_popup = ImGui::GetID("Module Memory Scan");
-    
+
     // Set the next window size to use most of the available screen space
     ImGui::SetNextWindowSize(ImVec2(m_window_w * 0.9f, m_window_h * 0.9f), ImGuiCond_Appearing);
     ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
-    
+
     if (ImGui::BeginPopupModal("Module Memory Scan", nullptr, ImGuiWindowFlags_None)) {
         module_memory_scan_ui();
 
         // Make the close button more visible and ensure it's at the bottom
         ImGui::Separator();
         ImGui::NewLine();
-        
+
         // Center the Close button
         float width = ImGui::GetWindowWidth();
         float buttonWidth = 120.0f;
         ImGui::SetCursorPosX((width - buttonWidth) * 0.5f);
-        
+
         if (ImGui::Button("Close", ImVec2(buttonWidth, 0))) {
             ImGui::CloseCurrentPopup();
         }
@@ -544,7 +547,7 @@ void ReGenny::menu_ui() {
             if (ImGui::MenuItem("RTTI Sweep Scan")) {
                 ImGui::OpenPopup(m_ui.rtti_sweep_popup);
             }
-            
+
             if (ImGui::MenuItem("Module Memory Scan")) {
                 m_ui.module_scan_text.clear();
                 m_ui.module_scan_results.clear();
@@ -637,7 +640,10 @@ void ReGenny::file_new() {
         return;
     }
 
-    { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_open_filepath = out_path;
+    }
     m_open_filepath.replace_extension("genny");
 
     free(out_path);
@@ -668,10 +674,14 @@ void ReGenny::file_open(const std::filesystem::path& filepath) {
             return;
         }
 
-        { std::unique_lock lk{m_state_mtx}; m_open_filepath = out_path; }
+        {
+            std::unique_lock lk{m_state_mtx};
+            m_open_filepath = out_path;
+        }
         free(out_path);
     } else {
-        std::unique_lock lk{m_state_mtx}; m_open_filepath = filepath;
+        std::unique_lock lk{m_state_mtx};
+        m_open_filepath = filepath;
     }
 
     spdlog::info("Opening {}...", m_open_filepath.string());
@@ -709,7 +719,7 @@ void ReGenny::load_project() {
 
     // Reset the memory UI here since a new project has been loaded.
     m_mem_ui.reset();
-    
+
     // Load the active tab if one exists
     if (m_project.active_tab_index >= 0 && m_project.active_tab_index < static_cast<int>(m_project.tabs.size())) {
         const auto& active_tab = m_project.tabs[m_project.active_tab_index];
@@ -829,7 +839,7 @@ void ReGenny::action_generate_sdk(bool ida) {
     if (ida) {
         genny::ida::transform(*m_sdk);
     }
-    
+
     m_sdk->header_extension(m_project.extension_header)
         ->source_extension(m_project.extension_source)
         ->generate(sdk_path);
@@ -931,7 +941,7 @@ void ReGenny::module_memory_scan_ui() {
         if (ImGui::BeginCombo("Module", m_ui.selected_module.name.c_str())) {
             auto sorted_modules = m_process->modules();
             std::sort(sorted_modules.begin(), sorted_modules.end(),
-                      [](const Process::Module& a, const Process::Module& b) { return a.name < b.name; });
+                [](const Process::Module& a, const Process::Module& b) { return a.name < b.name; });
             for (auto&& module : sorted_modules) {
                 bool is_selected = (m_ui.selected_module.name == module.name);
                 if (ImGui::Selectable(fmt::format("{} (0x{:x})", module.name, module.start).c_str(), is_selected)) {
@@ -949,8 +959,8 @@ void ReGenny::module_memory_scan_ui() {
 
         // Show progress indicator during scan
         if (m_ui.module_scan_in_progress) {
-            ImGui::ProgressBar(m_ui.module_scan_progress, ImVec2(-1, 0), 
-                              fmt::format("Scanning... {:.1f}%", m_ui.module_scan_progress * 100.0f).c_str());
+            ImGui::ProgressBar(m_ui.module_scan_progress, ImVec2(-1, 0),
+                fmt::format("Scanning... {:.1f}%", m_ui.module_scan_progress * 100.0f).c_str());
         }
 
         // Scan and Clear buttons on same line
@@ -959,16 +969,16 @@ void ReGenny::module_memory_scan_ui() {
             m_ui.module_scan_results.clear();
             m_ui.module_scan_in_progress = true;
             m_ui.module_scan_progress = 0.0f;
-            
+
             // Start the scan in a separate thread to avoid UI freezing
             std::thread([this]() {
                 scan_module_memory();
                 m_ui.module_scan_in_progress = false;
             }).detach();
         }
-        
+
         ImGui::SameLine();
-        
+
         if (ImGui::Button("Clear Results")) {
             m_ui.module_scan_text.clear();
             m_ui.module_scan_results.clear();
@@ -978,9 +988,9 @@ void ReGenny::module_memory_scan_ui() {
     // Results display with fixed height
     ImGui::BeginChild("ModuleScanResults", content_size, true, ImGuiWindowFlags_HorizontalScrollbar);
     ImGui::PushStyleVar(ImGuiStyleVar_ItemSpacing, ImVec2(4, 1)); // Tighter spacing
-    ImGui::InputTextMultiline("##module_scan_results", &m_ui.module_scan_text, 
-                            ImVec2(-1.0f, -1.0f), // Fill the available space
-                            ImGuiInputTextFlags_ReadOnly);
+    ImGui::InputTextMultiline("##module_scan_results", &m_ui.module_scan_text,
+        ImVec2(-1.0f, -1.0f), // Fill the available space
+        ImGuiInputTextFlags_ReadOnly);
     ImGui::PopStyleVar();
     ImGui::EndChild();
 }
@@ -991,95 +1001,88 @@ void ReGenny::scan_module_memory() {
         return;
     }
 
-    spdlog::info("Scanning module {} at address 0x{:x} (size: {} bytes)...", 
-                m_ui.selected_module.name, m_ui.selected_module.start, m_ui.selected_module.size);
-    
+    spdlog::info("Scanning module {} at address 0x{:x} (size: {} bytes)...", m_ui.selected_module.name,
+        m_ui.selected_module.start, m_ui.selected_module.size);
+
     // Clone the module memory
     std::vector<uint8_t> module_memory(m_ui.selected_module.size);
-    
+
     if (!m_process->read(m_ui.selected_module.start, module_memory.data(), module_memory.size())) {
         m_ui.module_scan_text = fmt::format("Failed to read module memory for {}", m_ui.selected_module.name);
         return;
     }
-    
-    spdlog::info("Successfully cloned {} bytes of memory from module {}", 
-                module_memory.size(), m_ui.selected_module.name);
-    
+
+    spdlog::info(
+        "Successfully cloned {} bytes of memory from module {}", module_memory.size(), m_ui.selected_module.name);
+
     // Scan memory for RTTI objects
     std::unordered_map<std::string, std::vector<uintptr_t>> found_objects;
     size_t ptr_size = sizeof(void*);
     size_t total_pointers = (module_memory.size() - ptr_size) / ptr_size;
     size_t counter = 0;
-    
+
     // Start scanning at aligned addresses
     for (size_t i = 0; i <= module_memory.size() - ptr_size; i += ptr_size) {
         // Update progress every 10000 iterations to avoid UI overhead
         if (++counter % 10000 == 0) {
             m_ui.module_scan_progress = static_cast<float>(i) / static_cast<float>(module_memory.size());
         }
-        
+
         // Get pointer value from memory
         uintptr_t ptr_value = 0;
         std::memcpy(&ptr_value, module_memory.data() + i, ptr_size);
-        
+
         // Skip null or obviously invalid pointers
         if (ptr_value == 0 || ptr_value < 0x10000) {
             continue;
         }
-        
+
         // Check if this could be a valid pointer within the process address space
         for (size_t j = 0; j < 2; ++j) {
             const auto tname = m_process->get_typename(j == 0 ? m_ui.selected_module.start + i : ptr_value);
-            
+
             if (!tname || tname->empty()) {
                 continue;
             }
-            
+
             // Filter based on search term if provided
-            if (!m_ui.module_scan_search_name.empty() && 
+            if (!m_ui.module_scan_search_name.empty() &&
                 tname->find(m_ui.module_scan_search_name) == std::string::npos) {
                 continue;
             }
-            
+
             // Store the result
             found_objects[*tname].push_back(m_ui.selected_module.start + i);
-            
+
             // Add to results (limit to prevent UI overload)
             if (found_objects.size() < 10000) {
-                m_ui.module_scan_results.emplace_back(ModuleScanResult{
-                    .type_name = *tname,
-                    .address = m_ui.selected_module.start + i,
-                    .offset = i
-                });
+                m_ui.module_scan_results.emplace_back(
+                    ModuleScanResult{.type_name = *tname, .address = m_ui.selected_module.start + i, .offset = i});
             }
         }
     }
-    
+
     // Sort results by address
     std::sort(m_ui.module_scan_results.begin(), m_ui.module_scan_results.end(),
-             [](const ModuleScanResult& a, const ModuleScanResult& b) {
-                 return a.address < b.address;
-             });
-    
+        [](const ModuleScanResult& a, const ModuleScanResult& b) { return a.address < b.address; });
+
     // Format the results
     std::stringstream ss;
-    ss << fmt::format("Scan complete for module {} ({} bytes)\n", 
-                     m_ui.selected_module.name, m_ui.selected_module.size);
+    ss << fmt::format("Scan complete for module {} ({} bytes)\n", m_ui.selected_module.name, m_ui.selected_module.size);
     ss << fmt::format("Found {} unique RTTI types\n\n", found_objects.size());
-    
+
     for (const auto& result : m_ui.module_scan_results) {
-        ss << fmt::format("struct {:s}* @ 0x{:x} (offset: 0x{:x})\n", 
-                         result.type_name, result.address, result.offset);
+        ss << fmt::format("struct {:s}* @ 0x{:x} (offset: 0x{:x})\n", result.type_name, result.address, result.offset);
     }
-    
+
     if (m_ui.module_scan_results.size() >= 10000) {
         ss << "\n[Output limited to 10000 entries]";
     }
-    
+
     m_ui.module_scan_text = ss.str();
-    
-    spdlog::info("Module scan completed. Found {} unique types, {} total objects", 
-                found_objects.size(), m_ui.module_scan_results.size());
+
+    spdlog::info("Module scan completed. Found {} unique types, {} total objects", found_objects.size(),
+        m_ui.module_scan_results.size());
 }
 
 void ReGenny::rtti_sweep_ui() {
@@ -1470,14 +1473,15 @@ void ReGenny::set_type() {
 
 void ReGenny::tabs_ui() {
     // Tab bar
-    if (ImGui::BeginTabBar("TypeTabs", ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyScroll)) {
-        
+    if (ImGui::BeginTabBar("TypeTabs",
+            ImGuiTabBarFlags_AutoSelectNewTabs | ImGuiTabBarFlags_Reorderable | ImGuiTabBarFlags_FittingPolicyScroll)) {
+
         // Existing tabs
         for (int i = 0; i < static_cast<int>(m_project.tabs.size()); ++i) {
             bool open = true;
-            
+
             bool is_tab_selected = ImGui::BeginTabItem(m_project.tabs[i].name.c_str(), &open);
-            
+
             if (is_tab_selected) {
                 // This tab is currently selected
                 if (i != m_project.active_tab_index) {
@@ -1485,58 +1489,58 @@ void ReGenny::tabs_ui() {
                 }
                 ImGui::EndTabItem();
             }
-            
+
             if (!open) {
                 close_tab(i);
                 break; // Break to avoid iterator invalidation
             }
         }
-        
+
         // Add new tab button
         if (ImGui::TabItemButton("+", ImGuiTabItemFlags_Trailing | ImGuiTabItemFlags_NoTooltip)) {
             m_ui.show_new_tab_popup = true;
             m_ui.new_tab_name.clear();
         }
-        
+
         if (ImGui::IsItemHovered()) {
             ImGui::SetTooltip("Add new tab");
         }
-        
+
         ImGui::EndTabBar();
     }
-    
+
     // New tab popup
     ImGui::SetNextWindowPos(ImVec2{m_window_w / 2.0f, m_window_h / 2.0f}, ImGuiCond_Appearing, ImVec2{0.5f, 0.5f});
     ImGui::SetNextWindowSize(ImVec2{400.0f, 0.0f}, ImGuiCond_Appearing);
     m_ui.new_tab_popup = ImGui::GetID("New Tab");
-    
+
     if (m_ui.show_new_tab_popup) {
         ImGui::OpenPopup(m_ui.new_tab_popup);
         m_ui.show_new_tab_popup = false;
     }
-    
+
     if (ImGui::BeginPopupModal("New Tab")) {
         ImGui::Text("Create a new tab with current type and address");
         ImGui::Separator();
-        
+
         ImGui::InputText("Tab Name", &m_ui.new_tab_name);
-        
+
         ImGui::Text("Type: %s", m_project.type_chosen.c_str());
         ImGui::Text("Address: %s", m_ui.address.c_str());
-        
+
         ImGui::Separator();
-        
+
         if (ImGui::Button("Create") && !m_ui.new_tab_name.empty()) {
             create_tab();
             ImGui::CloseCurrentPopup();
         }
-        
+
         ImGui::SameLine();
-        
+
         if (ImGui::Button("Cancel")) {
             ImGui::CloseCurrentPopup();
         }
-        
+
         ImGui::EndPopup();
     }
 }
@@ -1545,22 +1549,22 @@ void ReGenny::create_tab() {
     if (m_ui.new_tab_name.empty() || m_project.type_chosen.empty()) {
         return;
     }
-    
+
     // Check if tab name already exists
     for (const auto& tab : m_project.tabs) {
         if (tab.name == m_ui.new_tab_name) {
             return; // Don't create duplicate names
         }
     }
-    
+
     TypeTab new_tab;
     new_tab.name = m_ui.new_tab_name;
     new_tab.type_name = m_project.type_chosen;
     new_tab.address = m_ui.address;
-    
+
     m_project.tabs.push_back(new_tab);
     m_project.active_tab_index = static_cast<int>(m_project.tabs.size()) - 1;
-    
+
     save_project();
 }
 
@@ -1568,28 +1572,28 @@ void ReGenny::switch_to_tab(int index) {
     if (index < 0 || index >= static_cast<int>(m_project.tabs.size()) || m_ui.switching_tabs) {
         return;
     }
-    
+
     m_ui.switching_tabs = true;
-    
+
     // Update current tab before switching
     update_current_tab();
-    
+
     // Switch to the new tab
     m_project.active_tab_index = index;
     const auto& tab = m_project.tabs[index];
-    
+
     // Save the previously selected type's props
     if (m_mem_ui != nullptr && !m_project.type_chosen.empty()) {
         m_project.props[m_project.type_chosen] = m_mem_ui->props();
     }
-    
+
     // Load the tab's type and address
     m_project.type_chosen = tab.type_name;
     m_ui.address = tab.address;
-    
+
     set_type();
     save_project();
-    
+
     m_ui.switching_tabs = false;
 }
 
@@ -1597,27 +1601,28 @@ void ReGenny::close_tab(int index) {
     if (index < 0 || index >= static_cast<int>(m_project.tabs.size())) {
         return;
     }
-    
+
     m_project.tabs.erase(m_project.tabs.begin() + index);
-    
+
     // Adjust active tab index
     if (m_project.active_tab_index >= index) {
         m_project.active_tab_index--;
     }
-    
+
     // If we closed the last tab or there are no tabs left
     if (m_project.active_tab_index >= static_cast<int>(m_project.tabs.size())) {
         m_project.active_tab_index = static_cast<int>(m_project.tabs.size()) - 1;
     }
-    
+
     save_project();
 }
 
 void ReGenny::update_current_tab() {
-    if (m_ui.switching_tabs || m_project.active_tab_index < 0 || m_project.active_tab_index >= static_cast<int>(m_project.tabs.size())) {
+    if (m_ui.switching_tabs || m_project.active_tab_index < 0 ||
+        m_project.active_tab_index >= static_cast<int>(m_project.tabs.size())) {
         return;
     }
-    
+
     auto& current_tab = m_project.tabs[m_project.active_tab_index];
     current_tab.type_name = m_project.type_chosen;
     current_tab.address = m_ui.address;
@@ -1636,16 +1641,26 @@ void ReGenny::reset_lua_state() {
     // clang-format off
 
     lua["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
-    lua["print"] = [](sol::this_state s, sol::object value) {
-        if (value.is<const char*>()) {
-            spdlog::info("{}", value.as<const char*>());
-        } else {
-            auto str = luaL_tolstring(s, lua_gettop(s), nullptr);
+    lua["print"] = [](sol::this_state s, sol::variadic_args va) {
+        // Mirror Lua's stock print: all arguments, tab-separated, converted via
+        // luaL_tolstring (honoring __tostring), emitted as one log line. The
+        // previous override took a single argument, so print(a, b, ...) silently
+        // dropped everything after the first value.
+        std::string line;
+        bool first = true;
 
-            spdlog::info("{}", str != nullptr ? str : "");
+        for (auto arg : va) {
+            if (!first) {
+                line += '\t';
+            }
+            first = false;
 
+            auto str = luaL_tolstring(s, arg.stack_index(), nullptr);
+            line += (str != nullptr ? str : "");
             lua_pop(s, 1);
         }
+
+        spdlog::info("{}", line);
     };
 
     auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
@@ -1772,7 +1787,9 @@ void ReGenny::reset_lua_state() {
         "get_module_within", &Process::get_module_within,
         "get_module", &Process::get_module,
         "modules", &Process::modules,
-        "allocations", &Process::allocations
+        "allocations", &Process::allocations,
+        "ok", &Process::ok,
+        "is_64_bit", &Process::is_64_bit
     );
 
 #ifdef _WIN32
@@ -2012,11 +2029,23 @@ void ReGenny::parse_file() try {
         }
 
         set_type();
+
+        {
+            std::unique_lock lk{m_state_mtx};
+            m_last_parse_error.clear();
+        }
     } else {
         throw std::runtime_error{"Failed to parse file."};
     }
+
+    m_parse_generation.fetch_add(1);
 } catch (const std::exception& e) {
     spdlog::error(e.what());
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_last_parse_error = e.what();
+    }
+    m_parse_generation.fetch_add(1);
 }
 
 void ReGenny::load_cfg() try {

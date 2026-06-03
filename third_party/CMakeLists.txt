@@ -141,3 +141,14 @@ if (httplib_ADDED)
     add_library(httplib INTERFACE)
     target_include_directories(httplib INTERFACE $<BUILD_INTERFACE:${httplib_SOURCE_DIR}>)
 endif ()
+
+# Zydis
+CPMAddPackage(
+        NAME zydis
+        GITHUB_REPOSITORY zyantific/zydis
+        GIT_TAG v4.0.0
+        GIT_SUBMODULES_RECURSIVE ON
+        OPTIONS
+        "ZYDIS_BUILD_TOOLS OFF"
+        "ZYDIS_BUILD_EXAMPLES OFF"
+)

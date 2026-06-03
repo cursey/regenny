@@ -57,7 +57,7 @@ void to_json(nlohmann::json& j, const Project& p) {
     j["extension"]["source"] = p.extension_source;
     j["type"]["addresses"] = p.type_addresses;
     j["type"]["chosen"] = p.type_chosen;
-    
+
     // Serialize tabs
     j["tabs"]["list"] = nlohmann::json::array();
     for (const auto& tab : p.tabs) {
@@ -78,7 +78,7 @@ void from_json(const nlohmann::json& j, Project& p) {
     p.extension_source = j.at("extension").value("source", ".cpp");
     p.type_addresses = j.at("type").value<decltype(p.type_addresses)>("addresses", {});
     p.type_chosen = j.at("type").value("chosen", "");
-    
+
     // Deserialize tabs
     p.tabs.clear();
     if (j.contains("tabs") && j["tabs"].contains("list")) {
@@ -91,7 +91,7 @@ void from_json(const nlohmann::json& j, Project& p) {
         }
     }
     p.active_tab_index = j.value("tabs", nlohmann::json::object()).value("active_index", -1);
-    
+
     p.props.clear();
 
     std::function<void(const nlohmann::json&, node::Property&)> visit = [&visit](const nlohmann::json& j,

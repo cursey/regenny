@@ -38,6 +38,7 @@ public:
 
     // NOTE: Return true by default so you can view structures without being attached.
     virtual bool ok() { return true; }
+    virtual bool is_64_bit() { return sizeof(void*) == 8; }
 
     // RTTI
     virtual std::optional<std::string> get_typename(uintptr_t ptr) { return std::nullopt; }

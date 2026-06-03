@@ -1,9 +1,11 @@
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <shared_mutex>
 
+#include <Zydis/Zydis.h>
 #include <fmt/format.h>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -27,8 +29,7 @@ using json = nlohmann::json;
 // ---------------------------------------------------------------------------
 #include <spdlog/sinks/base_sink.h>
 
-template <typename Mutex>
-class CaptureSink : public spdlog::sinks::base_sink<Mutex> {
+template <typename Mutex> class CaptureSink : public spdlog::sinks::base_sink<Mutex> {
 public:
     std::string& buffer() { return m_buf; }
     void clear() { m_buf.clear(); }
@@ -67,8 +68,10 @@ static std::optional<uintptr_t> parse_addr_param(const std::string& s) {
     try {
         size_t pos{};
         auto val = std::stoull(s, &pos, 0);
-        if (pos == s.size()) return static_cast<uintptr_t>(val);
-    } catch (...) {}
+        if (pos == s.size())
+            return static_cast<uintptr_t>(val);
+    } catch (...) {
+    }
     return std::nullopt;
 }
 
@@ -88,9 +91,15 @@ static json serialize_struct(sdkgenny::Struct* s) {
     // Variables (fields)
     auto fields = json::array();
     std::function<void(sdkgenny::Struct*, uintptr_t)> add_vars = [&](sdkgenny::Struct* st, uintptr_t base_offset) {
+        // Parents are laid out starting at base_offset, but the struct's OWN
+        // variables stay at base_offset + var->offset() (var->offset() is the
+        // absolute in-struct offset in this dialect). Mirrors the UI node layout in
+        // node/Struct.cpp. The previous code folded sum(parent sizes) into
+        // base_offset, double-counting every derived field's offset.
+        auto parent_offset = base_offset;
         for (auto* parent : st->parents()) {
-            add_vars(parent, base_offset);
-            base_offset += parent->size();
+            add_vars(parent, parent_offset);
+            parent_offset += parent->size();
         }
         for (auto* var : st->get_all<sdkgenny::Variable>()) {
             json f;
@@ -111,7 +120,8 @@ static json serialize_struct(sdkgenny::Struct* s) {
                     auto* arr = dynamic_cast<sdkgenny::Array*>(var->type());
                     if (arr) {
                         f["array_count"] = arr->count();
-                        if (arr->of()) f["array_element_type"] = arr->of()->name();
+                        if (arr->of())
+                            f["array_element_type"] = arr->of()->name();
                     }
                 } else if (var->type()->is_a<sdkgenny::Struct>()) {
                     f["is_struct"] = true;
@@ -144,12 +154,15 @@ static json serialize_struct(sdkgenny::Struct* s) {
 // Api
 // ---------------------------------------------------------------------------
 
-Api::Api(ReGenny* regenny, int port)
-    : m_regenny{regenny}, m_server{std::make_unique<httplib::Server>()} {
+Api::Api(ReGenny* regenny, int port) : m_regenny{regenny}, m_server{std::make_unique<httplib::Server>()} {
 
     // Determine port: env var > explicit arg > default 12025
     if (auto* env = std::getenv("REGENNY_API_PORT"); env != nullptr) {
-        try { m_port = std::stoi(env); } catch (...) { m_port = 12025; }
+        try {
+            m_port = std::stoi(env);
+        } catch (...) {
+            m_port = 12025;
+        }
     } else if (port > 0) {
         m_port = port;
     } else {
@@ -205,12 +218,33 @@ void Api::server_thread_fn() {
 void Api::register_routes() {
     auto* rg = m_regenny;
 
+    // Request a reparse on the main thread and block until it completes (or times out).
+    // Returns the parser error text (empty string == clean parse). The bool is false on
+    // timeout, meaning the parse hadn't finished within the budget and the error text is stale.
+    auto request_reparse_and_wait = [this, rg]() -> std::pair<bool, std::string> {
+        const auto gen_before = rg->parse_generation();
+        m_reparse_requested.store(true);
+
+        // Poll for up to ~3s for the main thread to consume the request and finish parsing.
+        for (int i = 0; i < 300; ++i) {
+            if (rg->parse_generation() != gen_before) {
+                std::shared_lock lk{rg->state_mtx()};
+                return {true, rg->last_parse_error()};
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        std::shared_lock lk{rg->state_mtx()};
+        return {false, rg->last_parse_error()};
+    };
+
     // Global exception handler — catches any unhandled exception from route handlers
     // (e.g. std::stoull/std::stoi on invalid input) and returns a 500 JSON error
     // instead of crashing the server thread.
     m_server->set_exception_handler([](const httplib::Request&, httplib::Response& res, std::exception_ptr ep) {
         try {
-            if (ep) std::rethrow_exception(ep);
+            if (ep)
+                std::rethrow_exception(ep);
         } catch (const std::exception& e) {
             res.status = 500;
             res.set_content(json{{"error", e.what()}}.dump(), "application/json");
@@ -259,8 +293,10 @@ void Api::register_routes() {
         try {
             auto body = json::parse(req.body);
             DeferredAttach da;
-            if (body.contains("pid")) da.pid = body["pid"].get<uint32_t>();
-            if (body.contains("name")) da.name = body["name"].get<std::string>();
+            if (body.contains("pid"))
+                da.pid = body["pid"].get<uint32_t>();
+            if (body.contains("name"))
+                da.name = body["name"].get<std::string>();
 
             if (da.pid == 0 && !da.name.empty()) {
                 // Resolve name to PID
@@ -283,7 +319,8 @@ void Api::register_routes() {
             if (da.name.empty()) {
                 auto helpers = arch::make_helpers();
                 auto procs = helpers->processes();
-                if (procs.count(da.pid)) da.name = procs[da.pid];
+                if (procs.count(da.pid))
+                    da.name = procs[da.pid];
             }
 
             {
@@ -318,7 +355,10 @@ void Api::register_routes() {
         }
 
         auto addr = parse_addr_param(addr_str);
-        if (!addr) { json_error(res, "Invalid address"); return; }
+        if (!addr) {
+            json_error(res, "Invalid address");
+            return;
+        }
 
         auto size = std::min(static_cast<size_t>(std::stoull(size_str, nullptr, 0)), size_t{8192});
         std::vector<uint8_t> buf(size);
@@ -376,10 +416,14 @@ void Api::register_routes() {
         }
 
         auto addr = parse_addr_param(addr_str);
-        if (!addr) { json_error(res, "Invalid address"); return; }
+        if (!addr) {
+            json_error(res, "Invalid address");
+            return;
+        }
 
         int count = 1;
-        if (!count_str.empty()) count = std::clamp(std::stoi(count_str), 1, 50);
+        if (!count_str.empty())
+            count = std::clamp(std::stoi(count_str), 1, 50);
 
         auto values = json::array();
 
@@ -387,27 +431,49 @@ void Api::register_routes() {
             auto cur = *addr;
 
             if (type_str == "u8") {
-                auto v = proc->read<uint8_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 1;
+                auto v = proc->read<uint8_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 1;
             } else if (type_str == "i8") {
-                auto v = proc->read<int8_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 1;
+                auto v = proc->read<int8_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 1;
             } else if (type_str == "u16") {
-                auto v = proc->read<uint16_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 2;
+                auto v = proc->read<uint16_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 2;
             } else if (type_str == "i16") {
-                auto v = proc->read<int16_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 2;
+                auto v = proc->read<int16_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 2;
             } else if (type_str == "u32") {
-                auto v = proc->read<uint32_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 4;
+                auto v = proc->read<uint32_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 4;
             } else if (type_str == "i32") {
-                auto v = proc->read<int32_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 4;
+                auto v = proc->read<int32_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 4;
             } else if (type_str == "u64") {
-                auto v = proc->read<uint64_t>(cur); values.push_back(v ? json(fmt::format("0x{:X}", *v)) : json(nullptr)); *addr += 8;
+                auto v = proc->read<uint64_t>(cur);
+                values.push_back(v ? json(fmt::format("0x{:X}", *v)) : json(nullptr));
+                *addr += 8;
             } else if (type_str == "i64") {
-                auto v = proc->read<int64_t>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 8;
+                auto v = proc->read<int64_t>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 8;
             } else if (type_str == "f32") {
-                auto v = proc->read<float>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 4;
+                auto v = proc->read<float>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 4;
             } else if (type_str == "f64") {
-                auto v = proc->read<double>(cur); values.push_back(v ? json(*v) : json(nullptr)); *addr += 8;
+                auto v = proc->read<double>(cur);
+                values.push_back(v ? json(*v) : json(nullptr));
+                *addr += 8;
             } else if (type_str == "ptr") {
-                auto v = proc->read<uintptr_t>(cur); values.push_back(v ? json(fmt::format("0x{:X}", *v)) : json(nullptr)); *addr += sizeof(uintptr_t);
+                auto v = proc->read<uintptr_t>(cur);
+                values.push_back(v ? json(fmt::format("0x{:X}", *v)) : json(nullptr));
+                *addr += sizeof(uintptr_t);
             } else {
                 json_error(res, "Unknown type. Supported: u8,i8,u16,i16,u32,i32,u64,i64,f32,f64,ptr");
                 return;
@@ -436,20 +502,36 @@ void Api::register_routes() {
             auto type_str = body.value("type", "");
 
             auto addr = parse_addr_param(addr_str);
-            if (!addr) { json_error(res, "Invalid address"); return; }
+            if (!addr) {
+                json_error(res, "Invalid address");
+                return;
+            }
 
             bool ok = false;
-            if (type_str == "u8") ok = proc->write<uint8_t>(*addr, body["value"].get<uint8_t>());
-            else if (type_str == "i8") ok = proc->write<int8_t>(*addr, body["value"].get<int8_t>());
-            else if (type_str == "u16") ok = proc->write<uint16_t>(*addr, body["value"].get<uint16_t>());
-            else if (type_str == "i16") ok = proc->write<int16_t>(*addr, body["value"].get<int16_t>());
-            else if (type_str == "u32") ok = proc->write<uint32_t>(*addr, body["value"].get<uint32_t>());
-            else if (type_str == "i32") ok = proc->write<int32_t>(*addr, body["value"].get<int32_t>());
-            else if (type_str == "u64") ok = proc->write<uint64_t>(*addr, body["value"].get<uint64_t>());
-            else if (type_str == "i64") ok = proc->write<int64_t>(*addr, body["value"].get<int64_t>());
-            else if (type_str == "f32") ok = proc->write<float>(*addr, body["value"].get<float>());
-            else if (type_str == "f64") ok = proc->write<double>(*addr, body["value"].get<double>());
-            else { json_error(res, "Unknown type"); return; }
+            if (type_str == "u8")
+                ok = proc->write<uint8_t>(*addr, body["value"].get<uint8_t>());
+            else if (type_str == "i8")
+                ok = proc->write<int8_t>(*addr, body["value"].get<int8_t>());
+            else if (type_str == "u16")
+                ok = proc->write<uint16_t>(*addr, body["value"].get<uint16_t>());
+            else if (type_str == "i16")
+                ok = proc->write<int16_t>(*addr, body["value"].get<int16_t>());
+            else if (type_str == "u32")
+                ok = proc->write<uint32_t>(*addr, body["value"].get<uint32_t>());
+            else if (type_str == "i32")
+                ok = proc->write<int32_t>(*addr, body["value"].get<int32_t>());
+            else if (type_str == "u64")
+                ok = proc->write<uint64_t>(*addr, body["value"].get<uint64_t>());
+            else if (type_str == "i64")
+                ok = proc->write<int64_t>(*addr, body["value"].get<int64_t>());
+            else if (type_str == "f32")
+                ok = proc->write<float>(*addr, body["value"].get<float>());
+            else if (type_str == "f64")
+                ok = proc->write<double>(*addr, body["value"].get<double>());
+            else {
+                json_error(res, "Unknown type");
+                return;
+            }
 
             json_response(res, json{{"status", ok ? "ok" : "write_failed"}});
         } catch (const std::exception& e) {
@@ -467,22 +549,142 @@ void Api::register_routes() {
 
         auto addr_str = req.get_param_value("address");
         auto max_len_str = req.get_param_value("max_length");
-        if (addr_str.empty()) { json_error(res, "Required param: address"); return; }
+        if (addr_str.empty()) {
+            json_error(res, "Required param: address");
+            return;
+        }
 
         auto addr = parse_addr_param(addr_str);
-        if (!addr) { json_error(res, "Invalid address"); return; }
+        if (!addr) {
+            json_error(res, "Invalid address");
+            return;
+        }
 
         size_t max_len = 256;
-        if (!max_len_str.empty()) max_len = std::clamp<size_t>(std::stoull(max_len_str, nullptr, 0), 1, 4096);
+        if (!max_len_str.empty())
+            max_len = std::clamp<size_t>(std::stoull(max_len_str, nullptr, 0), 1, 4096);
 
         std::string result;
         for (size_t i = 0; i < max_len; i++) {
             auto byte = proc->read<uint8_t>(*addr + i);
-            if (!byte || *byte == 0) break;
+            if (!byte || *byte == 0)
+                break;
             result += static_cast<char>(*byte);
         }
 
         json_response(res, json{{"address", addr_str}, {"value", result}, {"length", result.size()}});
+    });
+
+    m_server->Get("/api/memory/disassemble", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
+        auto& proc = rg->process();
+        if (!proc || proc->process_id() == 0) {
+            json_error(res, "Not attached to a process");
+            return;
+        }
+
+        auto addr_str = req.get_param_value("address");
+        if (addr_str.empty()) {
+            json_error(res, "Required param: address");
+            return;
+        }
+
+        auto addr_opt = parse_addr_param(addr_str);
+        if (!addr_opt) {
+            json_error(res, "Invalid address");
+            return;
+        }
+        auto addr = *addr_opt;
+
+        auto count_str = req.get_param_value("count");
+        int count = 20;
+        if (!count_str.empty()) {
+            try {
+                count = std::clamp(std::stoi(count_str), 1, 100);
+            } catch (...) {
+            }
+        }
+
+        auto detailed_str = req.get_param_value("detailed");
+        bool detailed = (detailed_str == "true" || detailed_str == "1");
+
+        size_t max_read_size = count * 15;
+        std::vector<uint8_t> buf(max_read_size);
+        if (!proc->read(addr, buf.data(), max_read_size)) {
+            json_error(res, "Failed to read memory for disassembly");
+            return;
+        }
+
+        ZydisDecoder decoder;
+        auto machine_mode = proc->is_64_bit() ? ZYDIS_MACHINE_MODE_LONG_64 : ZYDIS_MACHINE_MODE_LEGACY_32;
+        auto stack_width = proc->is_64_bit() ? ZYDIS_STACK_WIDTH_64 : ZYDIS_STACK_WIDTH_32;
+
+        if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, machine_mode, stack_width))) {
+            json_error(res, "Failed to initialize Zydis decoder");
+            return;
+        }
+
+        ZydisFormatter formatter;
+        if (!ZYAN_SUCCESS(ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL))) {
+            json_error(res, "Failed to initialize Zydis formatter");
+            return;
+        }
+
+        auto arr = json::array();
+        std::string disassembly_str;
+        size_t offset = 0;
+        int instructions_decoded = 0;
+
+        while (offset < max_read_size && instructions_decoded < count) {
+            ZydisDecodedInstruction insn;
+            ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+
+            auto status =
+                ZydisDecoderDecodeFull(&decoder, buf.data() + offset, max_read_size - offset, &insn, operands);
+            if (!ZYAN_SUCCESS(status)) {
+                break;
+            }
+
+            char formatted_insn[256];
+            ZydisFormatterFormatInstruction(&formatter, &insn, operands, insn.operand_count_visible, formatted_insn,
+                sizeof(formatted_insn), addr + offset, ZYAN_NULL);
+
+            if (detailed) {
+                json insn_json;
+                insn_json["address"] = fmt::format("0x{:X}", addr + offset);
+
+                std::string byte_str;
+                for (size_t i = 0; i < insn.length; ++i) {
+                    byte_str += fmt::format("{:02X} ", buf[offset + i]);
+                }
+                if (!byte_str.empty())
+                    byte_str.pop_back();
+                insn_json["bytes"] = byte_str;
+
+                const char* mnemonic_str = ZydisMnemonicGetString(insn.mnemonic);
+                insn_json["mnemonic"] = mnemonic_str ? mnemonic_str : "??";
+                insn_json["instruction"] = formatted_insn;
+
+                arr.push_back(insn_json);
+            } else {
+                disassembly_str += fmt::format("0x{:X}: {}\n", addr + offset, formatted_insn);
+            }
+
+            offset += insn.length;
+            instructions_decoded++;
+        }
+
+        json j;
+        j["address"] = fmt::format("0x{:X}", addr);
+        j["is_64_bit"] = proc->is_64_bit();
+        if (detailed) {
+            j["instructions"] = arr;
+        } else {
+            if (!disassembly_str.empty())
+                disassembly_str.pop_back(); // Remove trailing newline
+            j["disassembly"] = disassembly_str;
+        }
+        json_response(res, j);
     });
 
     m_server->Get("/api/modules", [rg](const httplib::Request&, httplib::Response& res) {
@@ -495,12 +697,8 @@ void Api::register_routes() {
 
         auto arr = json::array();
         for (auto& mod : proc->modules()) {
-            arr.push_back(json{
-                {"name", mod.name},
-                {"start", fmt::format("0x{:X}", mod.start)},
-                {"end", fmt::format("0x{:X}", mod.end)},
-                {"size", mod.size}
-            });
+            arr.push_back(json{{"name", mod.name}, {"start", fmt::format("0x{:X}", mod.start)},
+                {"end", fmt::format("0x{:X}", mod.end)}, {"size", mod.size}});
         }
         json_response(res, arr);
     });
@@ -515,14 +713,8 @@ void Api::register_routes() {
 
         auto arr = json::array();
         for (auto& alloc : proc->allocations()) {
-            arr.push_back(json{
-                {"start", fmt::format("0x{:X}", alloc.start)},
-                {"end", fmt::format("0x{:X}", alloc.end)},
-                {"size", alloc.size},
-                {"read", alloc.read},
-                {"write", alloc.write},
-                {"execute", alloc.execute}
-            });
+            arr.push_back(json{{"start", fmt::format("0x{:X}", alloc.start)}, {"end", fmt::format("0x{:X}", alloc.end)},
+                {"size", alloc.size}, {"read", alloc.read}, {"write", alloc.write}, {"execute", alloc.execute}});
         }
         json_response(res, arr);
     });
@@ -549,9 +741,13 @@ void Api::register_routes() {
         }
     });
 
-    m_server->Post("/api/genny/content", [this, rg](const httplib::Request& req, httplib::Response& res) {
-        std::shared_lock state_lk{rg->state_mtx()};
-        auto& filepath = rg->open_filepath();
+    m_server->Post("/api/genny/content", [this, rg, request_reparse_and_wait](
+                                            const httplib::Request& req, httplib::Response& res) {
+        std::filesystem::path filepath{};
+        {
+            std::shared_lock state_lk{rg->state_mtx()};
+            filepath = rg->open_filepath();
+        }
         if (filepath.empty()) {
             json_error(res, "No file open");
             return;
@@ -565,10 +761,22 @@ void Api::register_routes() {
             f << content;
             f.close();
 
-            // Request re-parse on main thread
-            m_reparse_requested.store(true);
+            // Request re-parse on the main thread and wait for the result so the caller
+            // sees parser errors instead of a silent failure.
+            auto [completed, error] = request_reparse_and_wait();
 
-            json_response(res, json{{"status", "ok"}, {"path", filepath.string()}});
+            json result{{"path", filepath.string()}};
+            if (!completed) {
+                result["status"] = "pending";
+                result["error"] = error;
+                result["note"] = "reparse did not finish within timeout; error text may be stale";
+            } else if (error.empty()) {
+                result["status"] = "ok";
+            } else {
+                result["status"] = "error";
+                result["error"] = error;
+            }
+            json_response(res, result);
         } catch (const std::exception& e) {
             json_error(res, e.what(), 500);
         }
@@ -584,8 +792,14 @@ void Api::register_routes() {
         try {
             auto body = json::parse(req.body);
             auto path = body.value("path", "");
-            if (path.empty()) { json_error(res, "Required: path"); return; }
-            if (!std::filesystem::exists(path)) { json_error(res, "File not found: " + path); return; }
+            if (path.empty()) {
+                json_error(res, "Required: path");
+                return;
+            }
+            if (!std::filesystem::exists(path)) {
+                json_error(res, "File not found: " + path);
+                return;
+            }
 
             {
                 std::scoped_lock lk{m_deferred_lock};
@@ -603,7 +817,10 @@ void Api::register_routes() {
             auto path = body.value("path", "");
             auto content = body.value("content", "");
 
-            if (path.empty()) { json_error(res, "Required: path"); return; }
+            if (path.empty()) {
+                json_error(res, "Required: path");
+                return;
+            }
 
             // Ensure .genny extension
             std::filesystem::path fpath{path};
@@ -630,16 +847,39 @@ void Api::register_routes() {
         }
     });
 
-    m_server->Post("/api/genny/reload", [this](const httplib::Request&, httplib::Response& res) {
-        m_reparse_requested.store(true);
-        json_response(res, json{{"status", "ok"}});
+    m_server->Post("/api/genny/reload", [request_reparse_and_wait](
+                                           const httplib::Request&, httplib::Response& res) {
+        auto [completed, error] = request_reparse_and_wait();
+
+        json result{};
+        if (!completed) {
+            result["status"] = "pending";
+            result["error"] = error;
+            result["note"] = "reparse did not finish within timeout; error text may be stale";
+        } else if (error.empty()) {
+            result["status"] = "ok";
+        } else {
+            result["status"] = "error";
+            result["error"] = error;
+        }
+        json_response(res, result);
+    });
+
+    // Returns the current parse status without triggering a reparse.
+    m_server->Get("/api/genny/parse_error", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
+        auto& error = rg->last_parse_error();
+        json_response(res, json{{"status", error.empty() ? "ok" : "error"}, {"error", error}});
     });
 
     // ── Type Introspection ───────────────────────────────────────────────
     m_server->Get("/api/types", [rg](const httplib::Request&, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto& sdk = rg->sdk();
-        if (!sdk) { json_error(res, "No SDK loaded (open a .genny file first)"); return; }
+        if (!sdk) {
+            json_error(res, "No SDK loaded (open a .genny file first)");
+            return;
+        }
 
         std::unordered_set<sdkgenny::Struct*> structs{};
         sdk->global_ns()->get_all_in_children<sdkgenny::Struct>(structs);
@@ -648,12 +888,15 @@ void Api::register_routes() {
         for (auto* s : structs) {
             // Build fully qualified name
             std::vector<std::string> parts;
-            for (auto* p = s->owner<sdkgenny::Object>(); p && !p->is_a<sdkgenny::Sdk>(); p = p->owner<sdkgenny::Object>()) {
-                if (!p->name().empty()) parts.push_back(p->name());
+            for (auto* p = s->owner<sdkgenny::Object>(); p && !p->is_a<sdkgenny::Sdk>();
+                 p = p->owner<sdkgenny::Object>()) {
+                if (!p->name().empty())
+                    parts.push_back(p->name());
             }
             std::reverse(parts.begin(), parts.end());
             std::string fqn;
-            for (auto& part : parts) fqn += part + ".";
+            for (auto& part : parts)
+                fqn += part + ".";
             fqn += s->name();
 
             arr.push_back(json{{"name", fqn}, {"size", s->size()}});
@@ -665,10 +908,16 @@ void Api::register_routes() {
     m_server->Get("/api/type", [rg](const httplib::Request& req, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto& sdk = rg->sdk();
-        if (!sdk) { json_error(res, "No SDK loaded"); return; }
+        if (!sdk) {
+            json_error(res, "No SDK loaded");
+            return;
+        }
 
         auto name = req.get_param_value("name");
-        if (name.empty()) { json_error(res, "Required param: name"); return; }
+        if (name.empty()) {
+            json_error(res, "Required param: name");
+            return;
+        }
 
         // Find the struct by name (support dot-separated and plain names)
         std::unordered_set<sdkgenny::Struct*> structs{};
@@ -678,12 +927,15 @@ void Api::register_routes() {
         for (auto* s : structs) {
             // Build FQN
             std::vector<std::string> parts;
-            for (auto* p = s->owner<sdkgenny::Object>(); p && !p->is_a<sdkgenny::Sdk>(); p = p->owner<sdkgenny::Object>()) {
-                if (!p->name().empty()) parts.push_back(p->name());
+            for (auto* p = s->owner<sdkgenny::Object>(); p && !p->is_a<sdkgenny::Sdk>();
+                 p = p->owner<sdkgenny::Object>()) {
+                if (!p->name().empty())
+                    parts.push_back(p->name());
             }
             std::reverse(parts.begin(), parts.end());
             std::string fqn;
-            for (auto& part : parts) fqn += part + ".";
+            for (auto& part : parts)
+                fqn += part + ".";
             fqn += s->name();
 
             if (fqn == name || s->name() == name) {
@@ -692,7 +944,10 @@ void Api::register_routes() {
             }
         }
 
-        if (!found) { json_error(res, "Type not found: " + name, 404); return; }
+        if (!found) {
+            json_error(res, "Type not found: " + name, 404);
+            return;
+        }
 
         json_response(res, serialize_struct(found));
     });
@@ -700,7 +955,10 @@ void Api::register_routes() {
     m_server->Get("/api/type/address", [rg](const httplib::Request& req, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto name = req.get_param_value("name");
-        if (name.empty()) { json_error(res, "Required param: name"); return; }
+        if (name.empty()) {
+            json_error(res, "Required param: name");
+            return;
+        }
 
         auto& project = rg->project();
         auto it = project.type_addresses.find(name);
@@ -716,7 +974,10 @@ void Api::register_routes() {
             auto body = json::parse(req.body);
             auto name = body.value("name", "");
             auto address = body.value("address", "");
-            if (name.empty()) { json_error(res, "Required: name"); return; }
+            if (name.empty()) {
+                json_error(res, "Required: name");
+                return;
+            }
 
             {
                 std::scoped_lock lk{m_deferred_lock};
@@ -734,15 +995,17 @@ void Api::register_routes() {
         try {
             auto body = json::parse(req.body);
             auto code = body.value("code", "");
-            if (code.empty()) { json_error(res, "Required: code"); return; }
+            if (code.empty()) {
+                json_error(res, "Required: code");
+                return;
+            }
 
             // Create a per-request logger with two sinks:
             //   1. CaptureSink — raw "%v" output for the API JSON response
             //   2. UI logger sink — so the user sees output in the ReGenny Log panel
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
             auto ui_sink = rg->logger().logger()->sinks().front();
-            auto eval_logger = std::make_shared<spdlog::logger>("api_eval",
-                spdlog::sinks_init_list{capture, ui_sink});
+            auto eval_logger = std::make_shared<spdlog::logger>("api_eval", spdlog::sinks_init_list{capture, ui_sink});
             capture->set_pattern("%v");
 
             std::string result_str;
@@ -765,7 +1028,8 @@ void Api::register_routes() {
                     if (obj.get_type() != sol::type::none && obj.get_type() != sol::type::lua_nil) {
                         obj.push();
                         auto str = luaL_tolstring(lua, -1, nullptr);
-                        if (str) result_str = str;
+                        if (str)
+                            result_str = str;
                         lua_pop(lua, 2);
                     }
                 } else {
@@ -784,8 +1048,10 @@ void Api::register_routes() {
             json j;
             j["success"] = success;
             j["output"] = capture->buffer();
-            if (!result_str.empty()) j["result"] = result_str;
-            if (!error_msg.empty()) j["error"] = error_msg;
+            if (!result_str.empty())
+                j["result"] = result_str;
+            if (!error_msg.empty())
+                j["error"] = error_msg;
 
             json_response(res, j);
         } catch (const std::exception& e) {
@@ -798,13 +1064,18 @@ void Api::register_routes() {
         try {
             auto body = json::parse(req.body);
             auto path = body.value("path", "");
-            if (path.empty()) { json_error(res, "Required: path"); return; }
-            if (!std::filesystem::exists(path)) { json_error(res, "File not found: " + path); return; }
+            if (path.empty()) {
+                json_error(res, "Required: path");
+                return;
+            }
+            if (!std::filesystem::exists(path)) {
+                json_error(res, "File not found: " + path);
+                return;
+            }
 
             auto capture = std::make_shared<CaptureSink<std::mutex>>();
             auto ui_sink = rg->logger().logger()->sinks().front();
-            auto eval_logger = std::make_shared<spdlog::logger>("api_exec",
-                spdlog::sinks_init_list{capture, ui_sink});
+            auto eval_logger = std::make_shared<spdlog::logger>("api_exec", spdlog::sinks_init_list{capture, ui_sink});
             capture->set_pattern("%v");
 
             bool success = true;
@@ -831,7 +1102,8 @@ void Api::register_routes() {
             json j;
             j["success"] = success;
             j["output"] = capture->buffer();
-            if (!error_msg.empty()) j["error"] = error_msg;
+            if (!error_msg.empty())
+                j["error"] = error_msg;
             json_response(res, j);
         } catch (const std::exception& e) {
             json_error(res, e.what(), 500);
@@ -848,8 +1120,14 @@ void Api::register_routes() {
 
     m_server->Get("/api/lua/script", [](const httplib::Request& req, httplib::Response& res) {
         auto path = req.get_param_value("path");
-        if (path.empty()) { json_error(res, "Required param: path"); return; }
-        if (!std::filesystem::exists(path)) { json_error(res, "File not found: " + path, 404); return; }
+        if (path.empty()) {
+            json_error(res, "Required param: path");
+            return;
+        }
+        if (!std::filesystem::exists(path)) {
+            json_error(res, "File not found: " + path, 404);
+            return;
+        }
 
         try {
             std::ifstream f{path};
@@ -869,11 +1147,15 @@ void Api::register_routes() {
             auto body = json::parse(req.body);
             auto path = body.value("path", "");
             auto content = body.value("content", "");
-            if (path.empty()) { json_error(res, "Required: path"); return; }
+            if (path.empty()) {
+                json_error(res, "Required: path");
+                return;
+            }
 
             // Ensure directory exists
             auto dir = std::filesystem::path{path}.parent_path();
-            if (!dir.empty()) std::filesystem::create_directories(dir);
+            if (!dir.empty())
+                std::filesystem::create_directories(dir);
 
             std::ofstream f{path};
             f << content;
@@ -912,14 +1194,23 @@ void Api::register_routes() {
     m_server->Get("/api/rtti/typename", [rg](const httplib::Request& req, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
-        if (!proc || proc->process_id() == 0) { json_error(res, "Not attached"); return; }
+        if (!proc || proc->process_id() == 0) {
+            json_error(res, "Not attached");
+            return;
+        }
 
         auto addr_str = req.get_param_value("address");
         auto addr = parse_addr_param(addr_str);
-        if (!addr) { json_error(res, "Invalid address"); return; }
+        if (!addr) {
+            json_error(res, "Invalid address");
+            return;
+        }
 
         auto* wp = dynamic_cast<arch::WindowsProcess*>(proc.get());
-        if (!wp) { json_error(res, "RTTI only available on Windows processes"); return; }
+        if (!wp) {
+            json_error(res, "RTTI only available on Windows processes");
+            return;
+        }
 
         auto name = wp->get_typename(*addr);
         if (name) {
@@ -932,14 +1223,23 @@ void Api::register_routes() {
     m_server->Get("/api/rtti/vtable_typename", [rg](const httplib::Request& req, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
-        if (!proc || proc->process_id() == 0) { json_error(res, "Not attached"); return; }
+        if (!proc || proc->process_id() == 0) {
+            json_error(res, "Not attached");
+            return;
+        }
 
         auto addr_str = req.get_param_value("address");
         auto addr = parse_addr_param(addr_str);
-        if (!addr) { json_error(res, "Invalid address"); return; }
+        if (!addr) {
+            json_error(res, "Invalid address");
+            return;
+        }
 
         auto* wp = dynamic_cast<arch::WindowsProcess*>(proc.get());
-        if (!wp) { json_error(res, "RTTI only available on Windows processes"); return; }
+        if (!wp) {
+            json_error(res, "RTTI only available on Windows processes");
+            return;
+        }
 
         auto name = wp->get_typename_from_vtable(*addr);
         if (name) {
@@ -956,10 +1256,10 @@ void Api::register_routes() {
         auto exe_dir = std::filesystem::current_path();
 
         for (auto& candidate : {
-            exe_dir / "AGENT.md",
-            exe_dir / ".." / "AGENT.md",
-            exe_dir / "mcp-server" / "AGENT.md",
-        }) {
+                 exe_dir / "AGENT.md",
+                 exe_dir / ".." / "AGENT.md",
+                 exe_dir / "mcp-server" / "AGENT.md",
+             }) {
             if (std::filesystem::exists(candidate)) {
                 std::ifstream f{candidate};
                 if (!f.is_open()) {

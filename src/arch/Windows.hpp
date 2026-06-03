@@ -16,6 +16,7 @@ public:
 
     uint32_t process_id() override;
     bool ok() override;
+    bool is_64_bit() override;
 
     std::optional<std::string> get_typename(uintptr_t ptr) override;
     std::optional<std::string> get_typename_from_vtable(uintptr_t ptr) override;
@@ -24,10 +25,12 @@ public:
     std::optional<uintptr_t> get_complete_object_locator_ptr_from_vtable(uintptr_t vtable);
     std::optional<uintptr_t> get_complete_object_locator_ptr(uintptr_t ptr);
     std::optional<_s_RTTICompleteObjectLocator> get_complete_object_locator(uintptr_t ptr);
-    std::optional<uintptr_t> resolve_object_base_address(uintptr_t ptr); // subtracts value of RTTICompleteObjectLocator.offset
+    std::optional<uintptr_t> resolve_object_base_address(
+        uintptr_t ptr); // subtracts value of RTTICompleteObjectLocator.offset
     std::vector<uintptr_t> get_objects_of_type(uintptr_t start, size_t size, const std::string_view& type_name);
-    
-    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_locator(uintptr_t locator_ptr);
+
+    std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_locator(
+        uintptr_t locator_ptr);
     std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_ptr(uintptr_t ptr);
     std::optional<std::array<uint8_t, sizeof(std::type_info) + 256>> try_get_typeinfo_from_vtable(uintptr_t vtable);
 

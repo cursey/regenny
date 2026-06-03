@@ -1,11 +1,12 @@
 #pragma once
 
-#include <shared_mutex>
+#include <atomic>
 #include <chrono>
 #include <deque>
 #include <filesystem>
 #include <map>
 #include <memory>
+#include <shared_mutex>
 #include <string>
 #include <unordered_map>
 
@@ -78,6 +79,13 @@ public:
     auto& eval_history_index() { return m_eval_history_index; }
     auto& eval_history() const { return m_eval_history; }
 
+    // Parse status for the API/MCP. last_parse_error() is empty on a clean parse,
+    // otherwise holds the most recent parser message (e.g. PEGTL line/col diagnostic).
+    // parse_generation() increments once per completed parse attempt (success or failure),
+    // so callers can detect when a requested reparse has finished.
+    auto& last_parse_error() const { return m_last_parse_error; }
+    uint64_t parse_generation() const { return m_parse_generation.load(); }
+
 private:
     int m_window_w{};
     int m_window_h{};
@@ -86,6 +94,10 @@ private:
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
     std::unique_ptr<sdkgenny::Sdk> m_sdk{};
+    // Empty when the last parse_file() succeeded; otherwise the parser error text.
+    std::string m_last_parse_error{};
+    // Bumped at the end of every parse_file() attempt (guarded by m_state_mtx writes).
+    std::atomic<uint64_t> m_parse_generation{0};
     sdkgenny::Type* m_type{};
     uintptr_t m_address{};
     bool m_is_address_valid{};
