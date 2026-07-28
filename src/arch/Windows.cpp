@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <limits>
 
 #include <sstream>
@@ -45,7 +46,16 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
     }
 
     // Iterate modules.
-    auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
+    // TH32CS_SNAPMODULE32 is REQUIRED to see the real module list of a WOW64
+    // (32-bit) target from a 64-bit ReGenny: without it a snapshot contains
+    // only the 64-bit WOW64 stubs (ntdll/wow64/wow64win/wow64cpu) plus the
+    // executable itself -- every 32-bit module the game actually uses
+    // (its engine DLLs, d3d9, our injected fear2vr.dll...) is invisible.
+    // With both flags set we get the 64-bit view AND the 32-bit view; the two
+    // overlap (e.g. the exe appears in both), so dedupe by base address.
+    // For a native 32-bit ReGenny/32-bit target the extra flag is a no-op.
+    const auto snapshot_flags = TH32CS_SNAPMODULE | (m_is_64_bit ? 0 : TH32CS_SNAPMODULE32);
+    auto snapshot = CreateToolhelp32Snapshot(snapshot_flags, process_id);
 
     if (snapshot != INVALID_HANDLE_VALUE) {
         MODULEENTRY32 entry{};
@@ -54,6 +64,14 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
 
         if (Module32First(snapshot, &entry)) {
             do {
+                // Dedupe the overlapping 64-bit/32-bit views by base address.
+                const auto already_listed = std::any_of(m_modules.begin(), m_modules.end(), [&](const Module& existing) {
+                    return existing.start == (uintptr_t)entry.modBaseAddr && existing.size == entry.modBaseSize;
+                });
+                if (already_listed) {
+                    continue;
+                }
+
                 Module m{};
 
                 m.name = entry.szExePath;
