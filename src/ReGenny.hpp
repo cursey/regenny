@@ -78,6 +78,11 @@ public:
     auto& eval_history_index() { return m_eval_history_index; }
     auto& eval_history() const { return m_eval_history; }
 
+    // Parse status for the API/MCP. last_parse_error() is empty on a clean parse,
+    // otherwise holds the most recent parser message (e.g. PEGTL line/col diagnostic).
+    // Written under m_state_mtx at the end of every parse_file() attempt.
+    auto& last_parse_error() const { return m_last_parse_error; }
+
 private:
     int m_window_w{};
     int m_window_h{};
@@ -86,6 +91,8 @@ private:
     std::unique_ptr<Helpers> m_helpers{};
     std::unique_ptr<Process> m_process{};
     std::unique_ptr<sdkgenny::Sdk> m_sdk{};
+    // Empty when the last parse_file() succeeded; otherwise the parser error text.
+    std::string m_last_parse_error{};
     sdkgenny::Type* m_type{};
     uintptr_t m_address{};
     bool m_is_address_valid{};

@@ -29,6 +29,10 @@ public:
     // Deferred operations — checked by ReGenny::update() on the main thread.
     // These exist because PEGTL parsing and UI state mutations must happen on the main thread.
     bool should_reparse() { return m_reparse_requested.exchange(false); }
+    // Called by ReGenny::update() immediately after a reparse triggered by should_reparse()
+    // finishes. request_reparse_and_wait() waits on this counter so it observes the result of
+    // its OWN reparse, not an unrelated parse (e.g. the mtime auto-reload) that merely raced.
+    void notify_reparse_done() { m_reparse_completed.fetch_add(1); }
     bool should_detach() { return m_detach_requested.exchange(false); }
 
     struct DeferredAttach {
@@ -60,6 +64,8 @@ private:
 
     // Deferred operation state — written by HTTP thread, consumed by main thread.
     std::atomic<bool> m_reparse_requested{false};
+    // Incremented once per API-triggered reparse, after the parse completes on the main thread.
+    std::atomic<uint64_t> m_reparse_completed{0};
     std::atomic<bool> m_detach_requested{false};
 
     std::mutex m_deferred_lock;

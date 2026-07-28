@@ -28,4 +28,16 @@ target_link_libraries(regenny PRIVATE
         sol2::sol2
         luagenny
         httplib
+        Zydis
 )
+
+#
+# Copy the agent navigation guide next to the executable so the /api/help
+# endpoint (which resolves AGENT.md relative to the working directory) can
+# find it when ReGenny is launched from its build/output directory.
+#
+add_custom_command(TARGET regenny POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy_if_different
+        "${CMAKE_CURRENT_SOURCE_DIR}/AGENT.md"
+        "$<TARGET_FILE_DIR:regenny>/AGENT.md"
+        VERBATIM)

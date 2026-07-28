@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <limits>
 
 #include <sstream>
@@ -17,8 +18,44 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
         return;
     }
 
+    // A process's bitness is fixed for its lifetime, so determine it once here
+    // instead of issuing these syscalls on every is_64_bit() query (the disassembly
+    // paths call it repeatedly). If OpenProcess failed we return above, leaving
+    // m_is_64_bit at its sizeof(void*) default.
+    //
+    // IsWow64Process only reports whether the target runs under WOW64 (a 32-bit
+    // process on 64-bit Windows). On a 32-bit OS it always reports FALSE, which is
+    // indistinguishable from a native 64-bit process -- so check OS bitness first.
+    SYSTEM_INFO si{};
+    GetNativeSystemInfo(&si);
+    const bool os_64_bit = si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_AMD64 ||
+                           si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_ARM64 ||
+                           si.wProcessorArchitecture == PROCESSOR_ARCHITECTURE_IA64;
+    if (!os_64_bit) {
+        // Every process on a 32-bit OS is 32-bit.
+        m_is_64_bit = false;
+    } else {
+        BOOL is_wow64 = FALSE;
+        if (IsWow64Process(m_process, &is_wow64)) {
+            // On a 64-bit OS, a WOW64 process is 32-bit; otherwise native 64-bit.
+            m_is_64_bit = is_wow64 == FALSE;
+        } else {
+            // Couldn't query the target -- assume the (64-bit) OS bitness.
+            m_is_64_bit = true;
+        }
+    }
+
     // Iterate modules.
-    auto snapshot = CreateToolhelp32Snapshot(TH32CS_SNAPMODULE, process_id);
+    // TH32CS_SNAPMODULE32 is REQUIRED to see the real module list of a WOW64
+    // (32-bit) target from a 64-bit ReGenny: without it a snapshot contains
+    // only the 64-bit WOW64 stubs (ntdll/wow64/wow64win/wow64cpu) plus the
+    // executable itself -- every 32-bit module the game actually uses
+    // (its engine DLLs, d3d9, our injected fear2vr.dll...) is invisible.
+    // With both flags set we get the 64-bit view AND the 32-bit view; the two
+    // overlap (e.g. the exe appears in both), so dedupe by base address.
+    // For a native 32-bit ReGenny/32-bit target the extra flag is a no-op.
+    const auto snapshot_flags = TH32CS_SNAPMODULE | (m_is_64_bit ? 0 : TH32CS_SNAPMODULE32);
+    auto snapshot = CreateToolhelp32Snapshot(snapshot_flags, process_id);
 
     if (snapshot != INVALID_HANDLE_VALUE) {
         MODULEENTRY32 entry{};
@@ -27,6 +64,14 @@ WindowsProcess::WindowsProcess(DWORD process_id) : Process{} {
 
         if (Module32First(snapshot, &entry)) {
             do {
+                // Dedupe the overlapping 64-bit/32-bit views by base address.
+                const auto already_listed = std::any_of(m_modules.begin(), m_modules.end(), [&](const Module& existing) {
+                    return existing.start == (uintptr_t)entry.modBaseAddr && existing.size == entry.modBaseSize;
+                });
+                if (already_listed) {
+                    continue;
+                }
+
                 Module m{};
 
                 m.name = entry.szExePath;
@@ -98,6 +143,10 @@ bool WindowsProcess::ok() {
     GetExitCodeProcess(m_process, &exitcode);
 
     return exitcode == STILL_ACTIVE;
+}
+
+bool WindowsProcess::is_64_bit() {
+    return m_is_64_bit;
 }
 
 bool WindowsProcess::handle_write(uintptr_t address, const void* buffer, size_t size) {

@@ -107,6 +107,7 @@ void ReGenny::update() {
     if (m_api) {
         if (m_api->should_reparse()) {
             parse_file();
+            m_api->notify_reparse_done();
         }
         if (m_api->should_detach()) {
             action_detach();
@@ -1636,16 +1637,26 @@ void ReGenny::reset_lua_state() {
     // clang-format off
 
     lua["sdkgenny"] = sol::stack::pop<sol::table>(*m_lua);
-    lua["print"] = [](sol::this_state s, sol::object value) {
-        if (value.is<const char*>()) {
-            spdlog::info("{}", value.as<const char*>());
-        } else {
-            auto str = luaL_tolstring(s, lua_gettop(s), nullptr);
+    lua["print"] = [](sol::this_state s, sol::variadic_args va) {
+        // Mirror Lua's stock print: all arguments, tab-separated, converted via
+        // luaL_tolstring (honoring __tostring), emitted as one log line. The
+        // previous override took a single argument, so print(a, b, ...) silently
+        // dropped everything after the first value.
+        std::string line;
+        bool first = true;
 
-            spdlog::info("{}", str != nullptr ? str : "");
+        for (auto arg : va) {
+            if (!first) {
+                line += '\t';
+            }
+            first = false;
 
+            auto str = luaL_tolstring(s, arg.stack_index(), nullptr);
+            line += (str != nullptr ? str : "");
             lua_pop(s, 1);
         }
+
+        spdlog::info("{}", line);
     };
 
     auto create_overlay = lua.safe_script("return function(addr, t) return sdkgenny.StructOverlay(addr, t) end").get<sol::function>();
@@ -1772,7 +1783,9 @@ void ReGenny::reset_lua_state() {
         "get_module_within", &Process::get_module_within,
         "get_module", &Process::get_module,
         "modules", &Process::modules,
-        "allocations", &Process::allocations
+        "allocations", &Process::allocations,
+        "ok", &Process::ok,
+        "is_64_bit", &Process::is_64_bit
     );
 
 #ifdef _WIN32
@@ -2012,11 +2025,20 @@ void ReGenny::parse_file() try {
         }
 
         set_type();
+
+        {
+            std::unique_lock lk{m_state_mtx};
+            m_last_parse_error.clear();
+        }
     } else {
         throw std::runtime_error{"Failed to parse file."};
     }
 } catch (const std::exception& e) {
     spdlog::error(e.what());
+    {
+        std::unique_lock lk{m_state_mtx};
+        m_last_parse_error = e.what();
+    }
 }
 
 void ReGenny::load_cfg() try {

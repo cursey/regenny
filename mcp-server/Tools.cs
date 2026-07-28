@@ -70,6 +70,16 @@ public static class MemoryTools
         [Description("Number of bytes to read (max 8192)")] int size = 256)
         => await Http.Get("/api/memory/read", new() { ["address"] = address, ["size"] = size.ToString() });
 
+    [McpServerTool(Name = "regenny_disassemble")]
+    [Description("Disassemble machine instructions starting at address. Requires attached process.")]
+    public static async Task<string> Disassemble(
+        [Description("Memory address to start disassembling from (hex or decimal)")] string address,
+        [Description("Number of instructions to decode (default 20, max 100)")] int? count = null,
+        [Description("Whether to retrieve full parsed instruction objects instead of a single string (default false)")] bool detailed = false)
+        => await Http.Get("/api/memory/disassemble", new() {
+            ["address"] = address, ["count"] = count?.ToString(), ["detailed"] = detailed ? "true" : "false"
+        });
+
     [McpServerTool(Name = "regenny_read_typed")]
     [Description("Read typed values at address. Types: u8,i8,u16,i16,u32,i32,u64,i64,f32,f64,ptr. Use count>1 to read sequential values.")]
     public static async Task<string> ReadTyped(
@@ -114,7 +124,7 @@ public static class GennyTools
         => await Http.Get("/api/genny/content");
 
     [McpServerTool(Name = "regenny_set_file")]
-    [Description("Write new content to the current .genny file. Triggers re-parse and UI update. Use this to modify struct definitions.")]
+    [Description("Write new content to the current .genny file. Triggers re-parse and waits for it to finish. Returns {status: ok|error|pending, error}: 'error' holds the parser diagnostic (e.g. line/col 'Can't find type ...') when parsing fails.")]
     public static async Task<string> SetFile(
         [Description("New .genny file content (full file text)")] string content)
         => await Http.Post("/api/genny/content", new { content });
@@ -133,9 +143,14 @@ public static class GennyTools
         => await Http.Post("/api/genny/new", new { path, content });
 
     [McpServerTool(Name = "regenny_reload")]
-    [Description("Force re-parse the current .genny file (useful after external edits)")]
+    [Description("Force re-parse the current .genny file (useful after external edits). Waits for the parse to finish and returns {status: ok|error|pending, error}: 'error' holds the parser diagnostic when parsing fails.")]
     public static async Task<string> Reload()
         => await Http.Post("/api/genny/reload", new { });
+
+    [McpServerTool(Name = "regenny_parse_status")]
+    [Description("Get the current .genny parse status without triggering a reparse. Returns {status: ok|error, error}: 'error' holds the most recent parser diagnostic (line/col message) when the last parse failed, empty otherwise.")]
+    public static async Task<string> ParseStatus()
+        => await Http.Get("/api/genny/parse_error");
 }
 
 // ── Type Introspection ───────────────────────────────────────────────

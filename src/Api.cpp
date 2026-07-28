@@ -1,9 +1,11 @@
+#include <chrono>
 #include <cstdlib>
 #include <filesystem>
 #include <fstream>
 #include <mutex>
 #include <shared_mutex>
 
+#include <Zydis/Zydis.h>
 #include <fmt/format.h>
 #include <httplib.h>
 #include <nlohmann/json.hpp>
@@ -88,9 +90,15 @@ static json serialize_struct(sdkgenny::Struct* s) {
     // Variables (fields)
     auto fields = json::array();
     std::function<void(sdkgenny::Struct*, uintptr_t)> add_vars = [&](sdkgenny::Struct* st, uintptr_t base_offset) {
+        // Parents are laid out starting at base_offset, but the struct's OWN
+        // variables stay at base_offset + var->offset() (var->offset() is the
+        // absolute in-struct offset in this dialect). Mirrors the UI node layout in
+        // node/Struct.cpp. The previous code folded sum(parent sizes) into
+        // base_offset, double-counting every derived field's offset.
+        auto parent_offset = base_offset;
         for (auto* parent : st->parents()) {
-            add_vars(parent, base_offset);
-            base_offset += parent->size();
+            add_vars(parent, parent_offset);
+            parent_offset += parent->size();
         }
         for (auto* var : st->get_all<sdkgenny::Variable>()) {
             json f;
@@ -204,6 +212,29 @@ void Api::server_thread_fn() {
 
 void Api::register_routes() {
     auto* rg = m_regenny;
+
+    // Request a reparse on the main thread and block until THAT reparse completes (or times out).
+    // We wait on m_reparse_completed (bumped only after ReGenny::update() consumes our request and
+    // finishes parse_file()) rather than a generic parse counter, so an unrelated parse -- e.g. the
+    // 1s mtime auto-reload -- can't satisfy the wait early and make us report a stale error.
+    // Returns the parser error text (empty string == clean parse). The bool is false on timeout,
+    // meaning our reparse hadn't finished within the budget and the error text may be stale.
+    auto request_reparse_and_wait = [this, rg]() -> std::pair<bool, std::string> {
+        const auto completed_before = m_reparse_completed.load();
+        m_reparse_requested.store(true);
+
+        // Poll for up to ~3s for the main thread to consume the request and finish parsing.
+        for (int i = 0; i < 300; ++i) {
+            if (m_reparse_completed.load() != completed_before) {
+                std::shared_lock lk{rg->state_mtx()};
+                return {true, rg->last_parse_error()};
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+        }
+
+        std::shared_lock lk{rg->state_mtx()};
+        return {false, rg->last_parse_error()};
+    };
 
     // Global exception handler — catches any unhandled exception from route handlers
     // (e.g. std::stoull/std::stoi on invalid input) and returns a 500 JSON error
@@ -485,6 +516,118 @@ void Api::register_routes() {
         json_response(res, json{{"address", addr_str}, {"value", result}, {"length", result.size()}});
     });
 
+    m_server->Get("/api/memory/disassemble", [rg](const httplib::Request& req, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
+        auto& proc = rg->process();
+        if (!proc || proc->process_id() == 0) {
+            json_error(res, "Not attached to a process");
+            return;
+        }
+
+        auto addr_str = req.get_param_value("address");
+        if (addr_str.empty()) {
+            json_error(res, "Required param: address");
+            return;
+        }
+
+        auto addr_opt = parse_addr_param(addr_str);
+        if (!addr_opt) {
+            json_error(res, "Invalid address");
+            return;
+        }
+        auto addr = *addr_opt;
+
+        auto count_str = req.get_param_value("count");
+        int count = 20;
+        if (!count_str.empty()) {
+            try {
+                count = std::clamp(std::stoi(count_str), 1, 100);
+            } catch (...) {
+            }
+        }
+
+        auto detailed_str = req.get_param_value("detailed");
+        bool detailed = (detailed_str == "true" || detailed_str == "1");
+
+        size_t max_read_size = count * 15;
+        std::vector<uint8_t> buf(max_read_size);
+        if (!proc->read(addr, buf.data(), max_read_size)) {
+            json_error(res, "Failed to read memory for disassembly");
+            return;
+        }
+
+        ZydisDecoder decoder;
+        auto machine_mode = proc->is_64_bit() ? ZYDIS_MACHINE_MODE_LONG_64 : ZYDIS_MACHINE_MODE_LEGACY_32;
+        auto stack_width = proc->is_64_bit() ? ZYDIS_STACK_WIDTH_64 : ZYDIS_STACK_WIDTH_32;
+
+        if (!ZYAN_SUCCESS(ZydisDecoderInit(&decoder, machine_mode, stack_width))) {
+            json_error(res, "Failed to initialize Zydis decoder");
+            return;
+        }
+
+        ZydisFormatter formatter;
+        if (!ZYAN_SUCCESS(ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL))) {
+            json_error(res, "Failed to initialize Zydis formatter");
+            return;
+        }
+
+        auto arr = json::array();
+        std::string disassembly_str;
+        size_t offset = 0;
+        int instructions_decoded = 0;
+
+        while (offset < max_read_size && instructions_decoded < count) {
+            ZydisDecodedInstruction insn;
+            ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+
+            auto status =
+                ZydisDecoderDecodeFull(&decoder, buf.data() + offset, max_read_size - offset, &insn, operands);
+            if (!ZYAN_SUCCESS(status)) {
+                break;
+            }
+
+            char formatted_insn[256];
+            ZydisFormatterFormatInstruction(&formatter, &insn, operands, insn.operand_count_visible, formatted_insn,
+                sizeof(formatted_insn), addr + offset, ZYAN_NULL);
+
+            if (detailed) {
+                json insn_json;
+                insn_json["address"] = fmt::format("0x{:X}", addr + offset);
+
+                std::string byte_str;
+                for (size_t i = 0; i < insn.length; ++i) {
+                    byte_str += fmt::format("{:02X} ", buf[offset + i]);
+                }
+                if (!byte_str.empty())
+                    byte_str.pop_back();
+                insn_json["bytes"] = byte_str;
+
+                const char* mnemonic_str = ZydisMnemonicGetString(insn.mnemonic);
+                insn_json["mnemonic"] = mnemonic_str ? mnemonic_str : "??";
+                insn_json["instruction"] = formatted_insn;
+
+                arr.push_back(insn_json);
+            } else {
+                disassembly_str += fmt::format("0x{:X}: {}\n", addr + offset, formatted_insn);
+            }
+
+            offset += insn.length;
+            instructions_decoded++;
+        }
+
+        json j;
+        j["address"] = fmt::format("0x{:X}", addr);
+        j["is_64_bit"] = proc->is_64_bit();
+        if (detailed) {
+            j["instructions"] = arr;
+        } else {
+            if (!disassembly_str.empty())
+                disassembly_str.pop_back(); // Remove trailing newline
+            j["disassembly"] = disassembly_str;
+        }
+        json_response(res, j);
+    });
+
     m_server->Get("/api/modules", [rg](const httplib::Request&, httplib::Response& res) {
         std::shared_lock state_lk{rg->state_mtx()};
         auto& proc = rg->process();
@@ -549,9 +692,13 @@ void Api::register_routes() {
         }
     });
 
-    m_server->Post("/api/genny/content", [this, rg](const httplib::Request& req, httplib::Response& res) {
-        std::shared_lock state_lk{rg->state_mtx()};
-        auto& filepath = rg->open_filepath();
+    m_server->Post("/api/genny/content", [this, rg, request_reparse_and_wait](
+                                            const httplib::Request& req, httplib::Response& res) {
+        std::filesystem::path filepath{};
+        {
+            std::shared_lock state_lk{rg->state_mtx()};
+            filepath = rg->open_filepath();
+        }
         if (filepath.empty()) {
             json_error(res, "No file open");
             return;
@@ -565,10 +712,22 @@ void Api::register_routes() {
             f << content;
             f.close();
 
-            // Request re-parse on main thread
-            m_reparse_requested.store(true);
+            // Request a reparse on the main thread and wait for the result so the caller
+            // sees parser errors instead of a silent failure.
+            auto [completed, error] = request_reparse_and_wait();
 
-            json_response(res, json{{"status", "ok"}, {"path", filepath.string()}});
+            json result{{"path", filepath.string()}};
+            if (!completed) {
+                result["status"] = "pending";
+                result["error"] = error;
+                result["note"] = "reparse did not finish within timeout; error text may be stale";
+            } else if (error.empty()) {
+                result["status"] = "ok";
+            } else {
+                result["status"] = "error";
+                result["error"] = error;
+            }
+            json_response(res, result);
         } catch (const std::exception& e) {
             json_error(res, e.what(), 500);
         }
@@ -630,9 +789,29 @@ void Api::register_routes() {
         }
     });
 
-    m_server->Post("/api/genny/reload", [this](const httplib::Request&, httplib::Response& res) {
-        m_reparse_requested.store(true);
-        json_response(res, json{{"status", "ok"}});
+    m_server->Post("/api/genny/reload", [request_reparse_and_wait](
+                                           const httplib::Request&, httplib::Response& res) {
+        auto [completed, error] = request_reparse_and_wait();
+
+        json result{};
+        if (!completed) {
+            result["status"] = "pending";
+            result["error"] = error;
+            result["note"] = "reparse did not finish within timeout; error text may be stale";
+        } else if (error.empty()) {
+            result["status"] = "ok";
+        } else {
+            result["status"] = "error";
+            result["error"] = error;
+        }
+        json_response(res, result);
+    });
+
+    // Returns the current parse status without triggering a reparse.
+    m_server->Get("/api/genny/parse_error", [rg](const httplib::Request&, httplib::Response& res) {
+        std::shared_lock state_lk{rg->state_mtx()};
+        auto& error = rg->last_parse_error();
+        json_response(res, json{{"status", error.empty() ? "ok" : "error"}, {"error", error}});
     });
 
     // ── Type Introspection ───────────────────────────────────────────────

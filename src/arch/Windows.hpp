@@ -16,6 +16,7 @@ public:
 
     uint32_t process_id() override;
     bool ok() override;
+    bool is_64_bit() override;
 
     std::optional<std::string> get_typename(uintptr_t ptr) override;
     std::optional<std::string> get_typename_from_vtable(uintptr_t ptr) override;
@@ -45,6 +46,7 @@ protected:
 
 private:
     HANDLE m_process{};
+    bool m_is_64_bit{sizeof(void*) == 8};
 };
 
 class WindowsHelpers : public Helpers {

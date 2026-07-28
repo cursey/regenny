@@ -1,3 +1,6 @@
+#include <array>
+
+#include <Zydis/Zydis.h>
 #include <fmt/format.h>
 #include <imgui.h>
 #include <utf8.h>
@@ -196,6 +199,64 @@ void Pointer::update(uintptr_t address, uintptr_t offset, std::byte* mem) {
             }
 
             display_str(m_value_str, utf32conv);
+        } else if (md == "code") {
+            uintptr_t code_addr = *(uintptr_t*)mem;
+            if (code_addr != 0) {
+                std::array<uint8_t, 300> insn_buf{};
+                if (m_process.read(code_addr, insn_buf.data(), insn_buf.size())) {
+                    ZydisDecoder decoder;
+                    auto machine_mode =
+                        m_process.is_64_bit() ? ZYDIS_MACHINE_MODE_LONG_64 : ZYDIS_MACHINE_MODE_LEGACY_32;
+                    auto stack_width = m_process.is_64_bit() ? ZYDIS_STACK_WIDTH_64 : ZYDIS_STACK_WIDTH_32;
+
+                    if (ZYAN_SUCCESS(ZydisDecoderInit(&decoder, machine_mode, stack_width))) {
+                        ZydisFormatter formatter;
+                        if (ZYAN_SUCCESS(ZydisFormatterInit(&formatter, ZYDIS_FORMATTER_STYLE_INTEL))) {
+                            size_t offset = 0;
+                            int instructions_decoded = 0;
+                            std::string disassembly_str;
+                            std::string prefix = fmt::format("-> 0x{:X} ", code_addr);
+
+                            while (offset < insn_buf.size() && instructions_decoded < 20) {
+                                ZydisDecodedInstruction insn;
+                                ZydisDecodedOperand operands[ZYDIS_MAX_OPERAND_COUNT];
+
+                                auto status = ZydisDecoderDecodeFull(
+                                    &decoder, insn_buf.data() + offset, insn_buf.size() - offset, &insn, operands);
+                                if (!ZYAN_SUCCESS(status)) {
+                                    break;
+                                }
+
+                                char formatted_insn[256];
+                                ZydisFormatterFormatInstruction(&formatter, &insn, operands, insn.operand_count_visible,
+                                    formatted_insn, sizeof(formatted_insn), code_addr + offset, ZYAN_NULL);
+
+                                if (instructions_decoded > 0) {
+                                    disassembly_str += "\n" + std::string(prefix.size(), ' ');
+                                }
+                                disassembly_str += formatted_insn;
+
+                                offset += insn.length;
+                                instructions_decoded++;
+
+                                if (insn.mnemonic == ZYDIS_MNEMONIC_RET || insn.mnemonic == ZYDIS_MNEMONIC_INT3) {
+                                    break;
+                                }
+                            }
+
+                            if (instructions_decoded > 0) {
+                                m_value_str += prefix + disassembly_str + " ";
+                            } else {
+                                m_value_str += fmt::format("-> instruction decode failed @ 0x{:X} ", code_addr);
+                            }
+                        }
+                    }
+                } else {
+                    m_value_str += fmt::format("-> pointer 0x{:X} unreadable ", code_addr);
+                }
+            } else {
+                m_value_str += "nullptr ";
+            }
         }
     }
 

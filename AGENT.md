@@ -13,8 +13,9 @@ Full scripting reference: https://praydog.github.io/regenny-book/
 5. **List types**: `regenny_list_types` -- see what structs are defined
 6. **Select a type**: `regenny_select_type` with a name and address to view it in the UI
 7. **Read memory**: `regenny_read_memory` or `regenny_read_typed` for raw access
-8. **Modify definitions**: `regenny_set_file` to update the .genny content (triggers re-parse)
-9. **Use Lua**: `regenny_lua_eval` for complex operations using the full scripting API
+8. **Disassemble instructions**: `regenny_disassemble` starting at a given address (auto-detects bitness)
+9. **Modify definitions**: `regenny_set_file` to update the .genny content (triggers re-parse)
+10. **Use Lua**: `regenny_lua_eval` for complex operations using the full scripting API
 
 ## Address Syntax
 
@@ -36,8 +37,8 @@ Primitives must be declared with a name, byte size, and optional metadata tag:
 type bool 1 [[bool]]
 type byte 1 [[u8]]
 type ubyte 1 [[u8]]
-type char 1 [[utf8]]
-type wchar_t 2 [[utf16]]
+type char 1
+type wchar_t 2 [[u16]]
 type short 2 [[i16]]
 type ushort 2 [[u16]]
 type int 4 [[i32]]
@@ -49,7 +50,7 @@ type uint64_t 8 [[u64]]
 type uintptr_t 8 [[u64]]
 ```
 
-Metadata tags control how values are displayed: `[[i32]]` = signed 32-bit int, `[[f32]]` = float, `[[utf8*]]` = null-terminated string pointer, etc. Metadata can also be applied per-variable inline: `char* name [[utf8*]]`.
+Metadata tags control how values are displayed: `[[i32]]` = signed 32-bit int, `[[f32]]` = float, `[[utf8*]]` = null-terminated string pointer, `[[code]]` = dynamic instruction disassembly, etc. Metadata can also be applied per-variable inline: `char* name [[utf8*]]` or `void* vtable[10] [[code]]`.
 
 ### Structs
 
@@ -65,19 +66,24 @@ struct MyStruct {
 
 ### Explicit Offsets
 
-Use `+N` to place a field at a specific byte offset:
+Two operators control where a field is placed:
+
+- `@N` -- **absolute**: place the field at byte offset `N` from the start of the struct.
+- `+N` -- **relative**: skip `N` padding bytes after the previous field's end, then place the field.
 
 ```
 struct Player {
-    int health +0x10
-    int max_health
-    float position_x +0x40
-    float position_y
-    float position_z
+    int   health     @0x10   // absolute -> 0x10
+    int   max_health         // sequential -> 0x14
+    float position_x +0x28   // relative: 0x18 (prev end) + 0x28 -> 0x40
+    float position_y         // sequential -> 0x44
+    float position_z         // sequential -> 0x48
 }
 ```
 
-Fields without `+N` are placed sequentially after the previous field.
+Fields without an operator are placed sequentially after the previous field.
+Prefer `@N` when transcribing known absolute offsets (e.g. from a disassembler):
+unlike `+N`, it does not drift when an earlier field is inserted or resized.
 
 ### Explicit Struct Size
 
@@ -239,6 +245,48 @@ local name = proc:get_typename_from_vtable(vtable_addr) -- RTTI class name from 
 proc:allocate_rwx(addr, size)       -- allocate PAGE_EXECUTE_READWRITE
 proc:protect_rwx(addr, size)        -- change to PAGE_EXECUTE_READWRITE
 proc:create_remote_thread(addr, param)  -- run thread in target process
+```
+
+### Disassembly & Machine Instructions
+
+Live disassembly is supported directly inside the agents through the following endpoints/tools:
+
+- **`regenny_disassemble`**: Reads a segment of memory and disassembles it into standard Intel x86/x64 instruction format using **Zydis**.
+  - **`address`**: The start address to read and decode (e.g. `"0x7FF6896E6A30"`).
+  - **`count`**: The number of instructions (default `20`, max `100`) to decode.
+  - **`detailed`**: Optional boolean (default `false`). If `true`, returns structured JSON object format; if `false`/omitted, returns a highly compact newline-separated single string mapping address to instruction to minimize token usage.
+  
+```json
+// Example compact payload (detailed = false, default):
+// { "address": "0x7FF6896E6A30", "count": 2 }
+{
+  "address": "0x7FF6896E6A30",
+  "is_64_bit": true,
+  "disassembly": "0x7FF6896E6A30: mov [rsp+0x08], rbx\n0x7FF6896E6A35: push rdi"
+}
+```
+
+```json
+// Example detailed payload (detailed = true):
+// { "address": "0x7FF6896E6A30", "count": 2, "detailed": true }
+{
+  "address": "0x7FF6896E6A30",
+  "is_64_bit": true,
+  "instructions": [
+    {
+      "address": "0x7FF6896E6A30",
+      "bytes": "48 89 5C 24 08",
+      "instruction": "mov [rsp+0x08], rbx",
+      "mnemonic": "mov"
+    },
+    {
+      "address": "0x7FF6896E6A35",
+      "bytes": "57",
+      "instruction": "push rdi",
+      "mnemonic": "push"
+    }
+  ]
+}
 ```
 
 ### Struct Overlays (typed memory access)
