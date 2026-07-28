@@ -97,11 +97,14 @@ endif ()
 # sol2
 CPMAddPackage("gh:ThePhD/sol2@3.3.0")
 
-# luagenny
+# luagenny -- pinned past the null-guard fix for a StructOverlay/PointerOverlay
+# crash (constructing an overlay with a null Struct*/Pointer* type -- e.g.
+# from a failed Lua-side find_struct() lookup -- used to null-deref inside
+# Object::find() instead of failing soft).
 CPMAddPackage(
         NAME luagenny
         GITHUB_REPOSITORY praydog/luagenny
-        GIT_TAG 02169a8943480b316e74b88f39b5e9a6312e8b2b
+        GIT_TAG 1e262a69a6aa8bf25be2776a69c97f2de44e6f38
         DOWNLOAD_ONLY YES
 )
 if (luagenny_ADDED)
